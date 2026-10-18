@@ -1,0 +1,511 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// This security rules file secures the Assist Interiors architecture
+// and interior management application with the following data schema:
+//
+// 1. Collection: users
+//    Document ID: {userId} (matches Firebase Auth UID)
+//    Fields:
+//      - id: string (required, 1-64 chars, immutable on update)
+//      - fullName: string (required, 1-100 chars)
+//      - email: string (required, valid email, 3-100 chars, immutable by non-proprietors)
+//      - phone: string (required, 5-30 chars)
+//      - role: string (required, enum: 'proprietor', 'sales', 'projectManager', 'designer', 'accounts', 'supervisor')
+//      - status: string (required, enum: 'approved', 'pendingApproval', 'rejected')
+//      - createdAt: timestamp | string | int (required, immutable on update)
+//      - updatedAt: timestamp | string | int (optional)
+//
+// 2. Collection: projects
+//    Document ID: {projectId}
+//    Fields:
+//      - id: string (required, 1-64 chars, immutable on update)
+//      - name: string (required, 1-150 chars)
+//      - location: string (required, 1-200 chars)
+//      - status: string (required, 1-100 chars)
+//      - createdAt: timestamp | string | int (required, immutable on update)
+//      - clientName: string (optional, 1-150 chars)
+//      - category: string (optional, 1-100 chars)
+//      - isDelayed: bool (optional)
+//      - type: string (optional, 1-100 chars)
+//      - budget: string | number (optional, <= 50 chars or >= 0)
+//      - spent: string | number (optional, <= 50 chars or >= 0)
+//      - progress: number (optional, 0-100)
+//      - pm: string (optional, 1-100 chars)
+//      - supervisor: string (optional, 1-100 chars)
+//      - handover: string (optional, 1-100 chars)
+//      - color: int | string (optional)
+//      - isChecklistOpen: bool (optional)
+//      - stages: list (optional, max 50 items)
+//      - updatedAt: timestamp | string | int (optional)
+//
+// 3. Collection: tasks
+//    Document ID: {taskId}
+//    Fields:
+//      - id: string (required, 1-64 chars, immutable on update)
+//      - title: string (required, 1-200 chars)
+//      - project: string (required, 1-150 chars)
+//      - status: string (required, 1-50 chars)
+//      - createdAt: timestamp | string | int (required, immutable on update)
+//      - assignee: string (optional, 1-100 chars)
+//      - priority: string (optional, 1-50 chars)
+//      - deadline: string (optional, 1-100 chars)
+//      - dueDate: timestamp | string | int (optional)
+//      - completed: bool (optional)
+//      - color: int | string (optional)
+//      - updatedAt: timestamp | string | int (optional)
+//
+// 4. Collection: vendors
+//    Document ID: {vendorId}
+//    Fields:
+//      - id: string (required, 1-64 chars, immutable on update)
+//      - name: string (required, 1-150 chars)
+//      - category: string (required, 1-100 chars)
+//      - status: string (required, 1-50 chars)
+//      - rating: string | number (optional, <= 20 chars or 0-5)
+//      - phone: string (optional, 5-30 chars)
+//      - email: string (optional, valid email, 3-100 chars)
+//      - contactPerson: string (optional, 1-100 chars)
+//      - onTime: string (optional, 1-30 chars)
+//      - activeOrders: string | int (optional, <= 50 chars or >= 0)
+//      - openPOs: int | number (optional, >= 0)
+//      - projectsCount: int | number (optional, >= 0)
+//      - totalBilled: string | number (optional, <= 50 chars or >= 0)
+//      - outstanding: string | number (optional, <= 50 chars or >= 0)
+//      - color: int | string (optional)
+//      - createdAt: timestamp | string | int (optional, immutable on update)
+//      - updatedAt: timestamp | string | int (optional)
+//
+// 5. Collection: invoices
+//    Document ID: {invoiceId}
+//    Fields:
+//      - id: string (required, 1-64 chars, immutable on update)
+//      - amount: string | number (required, <= 50 chars or >= 0)
+//      - status: string (required, 1-50 chars)
+//      - invoiceNumber: string (optional, 1-64 chars)
+//      - vendorOrClient: string (optional, 1-150 chars)
+//      - client: string (optional, 1-150 chars)
+//      - project: string (optional, 1-150 chars)
+//      - date: timestamp | string | int (optional)
+//      - dueDate: timestamp | string | int (optional)
+//      - items: list (optional, max 100 items)
+//      - statusColor: int | string (optional)
+//      - createdAt: timestamp | string | int (optional, immutable on update)
+//      - updatedAt: timestamp | string | int (optional)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Authentication & User Identity Helpers
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function userDocExists() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Role & Approval verification (supports custom claims with database fallback)
+    function hasCustomAdmin() {
+      return isAuthenticated() && (
+        (('admin' in request.auth.token) && request.auth.token.admin == true) ||
+        (('role' in request.auth.token) && request.auth.token.role == 'proprietor')
+      );
+    }
+
+    function hasCustomRole(role) {
+      return isAuthenticated() && ('role' in request.auth.token) && request.auth.token.role == role;
+    }
+
+    function isDbApprovedStaff() {
+      return userDocExists() && getUserData().status == 'approved';
+    }
+
+    function isDbApprovedProprietor() {
+      return isDbApprovedStaff() && getUserData().role == 'proprietor';
+    }
+
+    function hasDbApprovedRole(role) {
+      return isDbApprovedStaff() && getUserData().role == role;
+    }
+
+    function isProprietor() {
+      return hasCustomAdmin() || isDbApprovedProprietor();
+    }
+
+    function isApproved() {
+      return hasCustomAdmin() ||
+             (isAuthenticated() && ('status' in request.auth.token) && request.auth.token.status == 'approved') ||
+             isDbApprovedStaff();
+    }
+
+    function hasRole(role) {
+      return isProprietor() ? (role == 'proprietor') : (hasCustomRole(role) || hasDbApprovedRole(role));
+    }
+
+    function isProjectManager() {
+      return hasRole('projectManager');
+    }
+
+    function isDesigner() {
+      return hasRole('designer');
+    }
+
+    function isSupervisor() {
+      return hasRole('supervisor');
+    }
+
+    function isAccounts() {
+      return hasRole('accounts');
+    }
+
+    function isSales() {
+      return hasRole('sales');
+    }
+
+    // ===============================================================
+    // Validation Helper Primitives
+    // ===============================================================
+
+    function isValidEmail(email) {
+      return email is string &&
+             email.size() >= 3 &&
+             email.size() <= 100 &&
+             email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    function isValidDate(val) {
+      return val is timestamp ||
+             (val is string && val.size() >= 3 && val.size() <= 50) ||
+             (val is int && val > 0);
+    }
+
+    function isValidOptionalDate(data, field) {
+      return !(field in data) || isValidDate(data[field]);
+    }
+
+    function isValidOptionalString(data, field, minLen, maxLen) {
+      return !(field in data) ||
+             (data[field] is string && data[field].size() >= minLen && data[field].size() <= maxLen);
+    }
+
+    function isValidOptionalBool(data, field) {
+      return !(field in data) || (data[field] is bool);
+    }
+
+    function isValidOptionalNumber(data, field, minVal, maxVal) {
+      return !(field in data) ||
+             (data[field] is number && data[field] >= minVal && data[field] <= maxVal);
+    }
+
+    function isValidOptionalEmail(data, field) {
+      return !(field in data) || isValidEmail(data[field]);
+    }
+
+    function isValidOptionalRating(data, field) {
+      return !(field in data) ||
+             (data[field] is string && data[field].size() <= 20) ||
+             (data[field] is number && data[field] >= 0 && data[field] <= 5);
+    }
+
+    function isValidOptionalBudget(data, field) {
+      return !(field in data) ||
+             (data[field] is string && data[field].size() <= 50) ||
+             (data[field] is number && data[field] >= 0);
+    }
+
+    function isValidOptionalColor(data, field) {
+      return !(field in data) ||
+             (data[field] is int) ||
+             (data[field] is string && data[field].size() <= 30);
+    }
+
+    // ===============================================================
+    // Domain Validators (Enforced on BOTH create and update)
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'fullName', 'email', 'phone', 'role', 'status', 'createdAt']) &&
+             data.keys().hasOnly(['id', 'fullName', 'email', 'phone', 'role', 'status', 'createdAt', 'updatedAt']) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+             data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100 &&
+             isValidEmail(data.email) &&
+             data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 30 &&
+             data.role in ['proprietor', 'sales', 'projectManager', 'designer', 'accounts', 'supervisor'] &&
+             data.status in ['approved', 'pendingApproval', 'rejected'] &&
+             isValidDate(data.createdAt) &&
+             isValidOptionalDate(data, 'updatedAt');
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['id', 'name', 'location', 'status', 'createdAt']) &&
+             data.keys().hasOnly([
+               'id', 'name', 'clientName', 'location', 'category', 'status',
+               'isDelayed', 'type', 'budget', 'spent', 'pm', 'supervisor',
+               'handover', 'color', 'isChecklistOpen', 'stages', 'progress',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 150 &&
+             data.location is string && data.location.size() >= 1 && data.location.size() <= 200 &&
+             data.status is string && data.status.size() >= 1 && data.status.size() <= 100 &&
+             isValidDate(data.createdAt) &&
+             isValidOptionalString(data, 'clientName', 1, 150) &&
+             isValidOptionalString(data, 'category', 1, 100) &&
+             isValidOptionalBool(data, 'isDelayed') &&
+             isValidOptionalString(data, 'type', 1, 100) &&
+             isValidOptionalBudget(data, 'budget') &&
+             isValidOptionalBudget(data, 'spent') &&
+             isValidOptionalString(data, 'pm', 1, 100) &&
+             isValidOptionalString(data, 'supervisor', 1, 100) &&
+             isValidOptionalString(data, 'handover', 1, 100) &&
+             isValidOptionalColor(data, 'color') &&
+             isValidOptionalBool(data, 'isChecklistOpen') &&
+             (!('stages' in data) || (data.stages is list && data.stages.size() <= 50)) &&
+             isValidOptionalNumber(data, 'progress', 0, 100) &&
+             isValidOptionalDate(data, 'updatedAt');
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['id', 'title', 'project', 'status', 'createdAt']) &&
+             data.keys().hasOnly([
+               'id', 'title', 'project', 'assignee', 'priority', 'status',
+               'deadline', 'dueDate', 'completed', 'color', 'createdAt', 'updatedAt'
+             ]) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.project is string && data.project.size() >= 1 && data.project.size() <= 150 &&
+             data.status is string && data.status.size() >= 1 && data.status.size() <= 50 &&
+             isValidDate(data.createdAt) &&
+             isValidOptionalString(data, 'assignee', 1, 100) &&
+             isValidOptionalString(data, 'priority', 1, 50) &&
+             isValidOptionalString(data, 'deadline', 1, 100) &&
+             isValidOptionalDate(data, 'dueDate') &&
+             isValidOptionalBool(data, 'completed') &&
+             isValidOptionalColor(data, 'color') &&
+             isValidOptionalDate(data, 'updatedAt');
+    }
+
+    function isValidVendor(data) {
+      return data.keys().hasAll(['id', 'name', 'category', 'status']) &&
+             data.keys().hasOnly([
+               'id', 'name', 'category', 'rating', 'status', 'phone', 'email',
+               'projectsCount', 'totalBilled', 'contactPerson', 'onTime',
+               'activeOrders', 'openPOs', 'outstanding', 'color', 'createdAt', 'updatedAt'
+             ]) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 150 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 100 &&
+             data.status is string && data.status.size() >= 1 && data.status.size() <= 50 &&
+             isValidOptionalRating(data, 'rating') &&
+             isValidOptionalString(data, 'phone', 5, 30) &&
+             isValidOptionalEmail(data, 'email') &&
+             isValidOptionalString(data, 'contactPerson', 1, 100) &&
+             isValidOptionalString(data, 'onTime', 1, 30) &&
+             (!('activeOrders' in data) || (data.activeOrders is string && data.activeOrders.size() <= 50) || (data.activeOrders is int && data.activeOrders >= 0)) &&
+             (!('openPOs' in data) || (data.openPOs is number && data.openPOs >= 0)) &&
+             (!('projectsCount' in data) || (data.projectsCount is number && data.projectsCount >= 0)) &&
+             (!('totalBilled' in data) || (data.totalBilled is string && data.totalBilled.size() <= 50) || (data.totalBilled is number && data.totalBilled >= 0)) &&
+             (!('outstanding' in data) || (data.outstanding is string && data.outstanding.size() <= 50) || (data.outstanding is number && data.outstanding >= 0)) &&
+             isValidOptionalColor(data, 'color') &&
+             isValidOptionalDate(data, 'createdAt') &&
+             isValidOptionalDate(data, 'updatedAt');
+    }
+
+    function isValidInvoice(data) {
+      return data.keys().hasAll(['id', 'amount', 'status']) &&
+             data.keys().hasOnly([
+               'id', 'invoiceNumber', 'vendorOrClient', 'client', 'project',
+               'amount', 'status', 'date', 'dueDate', 'items', 'statusColor',
+               'createdAt', 'updatedAt'
+             ]) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 64 &&
+             ((data.amount is string && data.amount.size() >= 1 && data.amount.size() <= 50) || (data.amount is number && data.amount >= 0)) &&
+             data.status is string && data.status.size() >= 1 && data.status.size() <= 50 &&
+             isValidOptionalString(data, 'invoiceNumber', 1, 64) &&
+             isValidOptionalString(data, 'vendorOrClient', 1, 150) &&
+             isValidOptionalString(data, 'client', 1, 150) &&
+             isValidOptionalString(data, 'project', 1, 150) &&
+             isValidOptionalDate(data, 'date') &&
+             isValidOptionalDate(data, 'dueDate') &&
+             (!('items' in data) || (data.items is list && data.items.size() <= 100)) &&
+             isValidOptionalColor(data, 'statusColor') &&
+             isValidOptionalDate(data, 'createdAt') &&
+             isValidOptionalDate(data, 'updatedAt');
+    }
+
+    // ===============================================================
+    // Default Deny Root
+    // ===============================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // 1. Users Collection (/users/{userId})
+    // ===============================================================
+
+    match /users/{userId} {
+      // Read: Users can read their own profile, proprietors can read all users (e.g. pending approvals),
+      // and approved staff can read approved user profiles.
+      allow read: if isAuthenticated() && (
+        isOwner(userId) ||
+        isProprietor() ||
+        (isApproved() && resource.data.status == 'approved')
+      );
+
+      // Create:
+      // - Pending user self-registration: must set status to 'pendingApproval' and cannot claim proprietor role.
+      // - Direct staff creation: verified proprietor can create approved staff directly.
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (
+        (isOwner(userId) &&
+         request.resource.data.id == userId &&
+         request.resource.data.status == 'pendingApproval' &&
+         request.resource.data.role in ['sales', 'projectManager', 'designer', 'accounts', 'supervisor']) ||
+        isProprietor()
+      );
+
+      // Update:
+      // - Proprietors can update any user's role or status.
+      // - Users can update their own non-role profile fields (cannot change role, status, email, id, createdAt).
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.createdAt == resource.data.createdAt && (
+          isProprietor() ||
+          (isOwner(userId) &&
+           request.resource.data.role == resource.data.role &&
+           request.resource.data.status == resource.data.status &&
+           request.resource.data.email == resource.data.email)
+        );
+
+      // Delete: Only proprietors can remove or reject user profiles.
+      allow delete: if isProprietor();
+    }
+
+    // ===============================================================
+    // 2. Projects Collection (/projects/{projectId})
+    // ===============================================================
+
+    match /projects/{projectId} {
+      // Read: All authenticated approved staff can view projects.
+      allow read: if isApproved();
+
+      // Create: Proprietor and project managers can create projects.
+      allow create: if isApproved() &&
+        (isProprietor() || isProjectManager()) &&
+        isValidProject(request.resource.data);
+
+      // Update:
+      // - Proprietor and PM can update all fields.
+      // - Designers and Supervisors can only update stages, progress, checklist and updatedAt.
+      allow update: if isApproved() && isValidProject(request.resource.data) &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.createdAt == resource.data.createdAt && (
+          isProprietor() ||
+          isProjectManager() ||
+          ((isDesigner() || isSupervisor()) &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stages', 'progress', 'isChecklistOpen', 'updatedAt']))
+        );
+
+      // Delete: Only proprietor and project managers can delete projects.
+      allow delete: if isApproved() && (isProprietor() || isProjectManager());
+    }
+
+    // ===============================================================
+    // 3. Tasks Collection (/tasks/{taskId})
+    // ===============================================================
+
+    match /tasks/{taskId} {
+      // Read: All authenticated approved staff can view tasks.
+      allow read: if isApproved();
+
+      // Create: Proprietor and project managers can create tasks.
+      allow create: if isApproved() &&
+        (isProprietor() || isProjectManager()) &&
+        isValidTask(request.resource.data);
+
+      // Update:
+      // - Proprietor, Project Manager, Supervisor, Designer, or the assigned team member.
+      allow update: if isApproved() && isValidTask(request.resource.data) &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.createdAt == resource.data.createdAt && (
+          isProprietor() ||
+          isProjectManager() ||
+          isSupervisor() ||
+          isDesigner() ||
+          (resource.data.assignee != null && (
+            resource.data.assignee == request.auth.uid ||
+            (userDocExists() && resource.data.assignee == getUserData().fullName)
+          ))
+        );
+
+      // Delete: Only proprietor and project managers can delete tasks.
+      allow delete: if isApproved() && (isProprietor() || isProjectManager());
+    }
+
+    // ===============================================================
+    // 4. Vendors Collection (/vendors/{vendorId})
+    // ===============================================================
+
+    match /vendors/{vendorId} {
+      // Read: All authenticated approved staff can view vendors.
+      allow read: if isApproved();
+
+      // Create: Proprietor, Accounts, and Project Manager can register vendors.
+      allow create: if isApproved() &&
+        (isProprietor() || isAccounts() || isProjectManager()) &&
+        isValidVendor(request.resource.data);
+
+      // Update: Proprietor, Accounts, and Project Manager can update vendor details.
+      allow update: if isApproved() &&
+        (isProprietor() || isAccounts() || isProjectManager()) &&
+        isValidVendor(request.resource.data) &&
+        request.resource.data.id == resource.data.id &&
+        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+
+      // Delete: Proprietor, Accounts, and Project Manager can remove vendors.
+      allow delete: if isApproved() && (isProprietor() || isAccounts() || isProjectManager());
+    }
+
+    // ===============================================================
+    // 5. Invoices Collection (/invoices/{invoiceId})
+    // ===============================================================
+
+    match /invoices/{invoiceId} {
+      // Read: Confidential financial data accessible only to Proprietor, Accounts, and Project Manager.
+      allow read: if isApproved() && (isProprietor() || isAccounts() || isProjectManager());
+
+      // Create: Proprietor and Accounts can generate invoices.
+      allow create: if isApproved() &&
+        (isProprietor() || isAccounts()) &&
+        isValidInvoice(request.resource.data);
+
+      // Update: Proprietor and Accounts can update invoices.
+      allow update: if isApproved() &&
+        (isProprietor() || isAccounts()) &&
+        isValidInvoice(request.resource.data) &&
+        request.resource.data.id == resource.data.id &&
+        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+
+      // Delete: Proprietor and Accounts can delete invoices.
+      allow delete: if isApproved() && (isProprietor() || isAccounts());
+    }
+  }
+}
