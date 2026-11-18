@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../constants/app_constants.dart';
 import 'pdf_file_utils.dart';
 import 'pdf_widgets.dart';
 
@@ -335,43 +336,100 @@ class InvoicePdfBuilder {
                           pw.Radius.circular(4),
                         ),
                       ),
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            'BANK TRANSFER DETAILS (NEFT / RTGS):',
-                            style: pw.TextStyle(
-                              fontSize: 8,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.blueGrey800,
-                            ),
-                          ),
-                          pw.SizedBox(height: 3),
-                          pw.Text(
-                            'Account Name: Assist Interiors Private Limited',
-                            style: const pw.TextStyle(fontSize: 8),
-                          ),
-                          pw.Text(
-                            'Account No: 50200084729103',
-                            style: const pw.TextStyle(fontSize: 8),
-                          ),
-                          pw.Text(
-                            'Bank & Branch: HDFC Bank, Indiranagar Branch',
-                            style: const pw.TextStyle(fontSize: 8),
-                          ),
-                          pw.Text(
-                            'IFSC Code: HDFC0000128',
-                            style: const pw.TextStyle(fontSize: 8),
-                          ),
-                          pw.SizedBox(height: 5),
-                          pw.Text(
-                            'Notes: Please quote invoice number during wire transfer. Turnkey fitouts are carried out under standard architectural warranty terms.',
-                            style: const pw.TextStyle(
-                              fontSize: 7,
-                              color: PdfColors.grey600,
-                            ),
-                          ),
-                        ],
+                      child: pw.Builder(
+                        builder: (context) {
+                          final upi = (invoice['upiId']?.toString().isNotEmpty == true)
+                              ? invoice['upiId'] as String
+                              : AppConstants.defaultUpiId;
+                          final cleanTotal = totalAmount > 0 ? totalAmount.round() : 250000;
+                          final upiPayload =
+                              'upi://pay?pa=$upi&pn=Assist%20Interiors&am=$cleanTotal&cu=INR&tn=Invoice%20$invoiceId';
+
+                          return pw.Row(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Expanded(
+                                child: pw.Column(
+                                  crossAxisAlignment:
+                                      pw.CrossAxisAlignment.start,
+                                  children: [
+                                    pw.Text(
+                                      'BANK TRANSFER (NEFT / RTGS / UPI):',
+                                      style: pw.TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: PdfColors.blueGrey800,
+                                      ),
+                                    ),
+                                    pw.SizedBox(height: 3),
+                                    pw.Text(
+                                      'Account Name: Assist Interiors Private Limited',
+                                      style: const pw.TextStyle(fontSize: 8),
+                                    ),
+                                    pw.Text(
+                                      'Account No: 50200084729103',
+                                      style: const pw.TextStyle(fontSize: 8),
+                                    ),
+                                    pw.Text(
+                                      'Bank & Branch: HDFC Bank, Indiranagar',
+                                      style: const pw.TextStyle(fontSize: 8),
+                                    ),
+                                    pw.Text(
+                                      'IFSC Code: HDFC0000128',
+                                      style: const pw.TextStyle(fontSize: 8),
+                                    ),
+                                    pw.Text(
+                                      'UPI ID: $upi',
+                                      style: pw.TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: pw.FontWeight.bold,
+                                        color: PdfColors.blueGrey900,
+                                      ),
+                                    ),
+                                    pw.SizedBox(height: 3),
+                                    pw.Text(
+                                      'Notes: Quote invoice number during transfer. Works contract warranty applies.',
+                                      style: const pw.TextStyle(
+                                        fontSize: 6.5,
+                                        color: PdfColors.grey600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              pw.SizedBox(width: 8),
+                              pw.Column(
+                                children: [
+                                  pw.Container(
+                                    padding: const pw.EdgeInsets.all(3),
+                                    decoration: pw.BoxDecoration(
+                                      border: pw.Border.all(
+                                        color: PdfColors.grey400,
+                                        width: 0.5,
+                                      ),
+                                      color: PdfColors.white,
+                                    ),
+                                    child: pw.BarcodeWidget(
+                                      barcode: pw.Barcode.qrCode(),
+                                      data: upiPayload,
+                                      width: 48,
+                                      height: 48,
+                                    ),
+                                  ),
+                                  pw.SizedBox(height: 2),
+                                  pw.Text(
+                                    'SCAN TO PAY',
+                                    style: pw.TextStyle(
+                                      fontSize: 6,
+                                      fontWeight: pw.FontWeight.bold,
+                                      color: PdfColors.blueGrey800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),

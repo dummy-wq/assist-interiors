@@ -465,16 +465,20 @@ class _ProjectStatusDistributionChartState
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
               const SizedBox(width: 7),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                  color: isSelected
-                      ? color
-                      : (isDark
-                          ? AppColors.textLightPrimary
-                          : AppColors.textDarkPrimary),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                    color: isSelected
+                        ? color
+                        : (isDark
+                            ? AppColors.textLightPrimary
+                            : AppColors.textDarkPrimary),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

@@ -369,7 +369,7 @@ class TeamSnapshotCard extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 10.5,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
             color: isDark ? AppColors.textLightMuted : AppColors.textDarkMuted,
           ),
           maxLines: 1,

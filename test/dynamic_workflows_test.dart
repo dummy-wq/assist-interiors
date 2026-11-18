@@ -367,4 +367,91 @@ void main() {
       expect(storedProjects.first['name'], 'The Camellias Villa 12');
     },
   );
+
+  testWidgets(
+    'Sales Origin Pipeline: Selecting sales lead in CreateProjectSheet auto-populates fields and converts lead to Closed Won',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      // Seed a sales lead
+      final lead = {
+        'id': 'lead_dyn_convert_9',
+        'client': 'Sunil Mittal',
+        'name': 'Sunil Mittal',
+        'phone': '+91 98100 99887',
+        'scope': 'Penthouse Turnkey 8000 sqft',
+        'location': 'Shanti Niketan, New Delhi',
+        'estValue': '₹ 6,00,00,000',
+        'referralSource': 'Client Referral',
+        'stage': 'Negotiation & Final Terms',
+        'status': 'Negotiation & Final Terms',
+        'isConverted': false,
+        'convertedToProject': null,
+      };
+      await StorageService.saveLeads([lead]);
+
+      await tester.pumpWidget(
+        createTestWidget(
+          const ProprietorDashboard(),
+          role: UserRole.proprietor,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open Initiate Project Sheet
+      final initiateBtn = find.widgetWithText(
+        ElevatedButton,
+        'Initiate Project',
+      );
+      await tester.tap(initiateBtn.first);
+      await tester.pumpAndSettle();
+
+      // Verify the dropdown has the sales lead
+      final dropdown =
+          find.byType(DropdownButtonFormField<String?>);
+      expect(dropdown, findsOneWidget);
+
+      await tester.tap(dropdown);
+      await tester.pumpAndSettle();
+
+      // Select Sunil Mittal's lead
+      final leadItem = find.textContaining('Sunil Mittal').last;
+      await tester.tap(leadItem);
+      await tester.pumpAndSettle();
+
+      // Verify auto-populated values
+      expect(
+        find.widgetWithText(TextField, 'Sunil Mittal Residence'),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(TextField, 'Sunil Mittal'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '60000000'), findsOneWidget);
+
+      // Launch project
+      final launchBtn = find.widgetWithText(ElevatedButton, 'Launch Project');
+      await tester.tap(launchBtn);
+      await tester.pumpAndSettle();
+
+      // Verify project is launched and lead converted
+      final updatedLeads = StorageService.getLeads();
+      expect(updatedLeads.first['isConverted'], isTrue);
+      expect(updatedLeads.first['stage'], 'Closed Won');
+      expect(
+        updatedLeads.first['convertedToProject'],
+        'Sunil Mittal Residence',
+      );
+
+      final projects = StorageService.getProjects();
+      expect(
+        projects.any((p) => p['name'] == 'Sunil Mittal Residence'),
+        isTrue,
+      );
+      expect(
+        AppConstants.preExistingProjects.contains('Sunil Mittal Residence'),
+        isTrue,
+      );
+    },
+  );
 }

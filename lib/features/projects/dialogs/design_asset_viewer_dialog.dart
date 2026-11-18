@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/blueprint_grid_painter.dart';
+import '../../../core/widgets/expanded_detail_dialog.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
 
 /// Modal dialog for inspecting architectural CAD drawings, 3D renders, and BOQs.
@@ -62,7 +65,13 @@ class DesignAssetViewerDialog {
           builder: (context, setDialogState) {
             final statusColor = getStatusColor(status);
 
-            return Dialog(
+            return FlickDismissibleCard(
+              onDismiss: () {
+                if (Navigator.of(dialogCtx).canPop()) {
+                  Navigator.of(dialogCtx).pop();
+                }
+              },
+              child: Dialog(
               backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(6.0),
@@ -231,7 +240,8 @@ class DesignAssetViewerDialog {
                             // Blueprint grid lines background
                             Positioned.fill(
                               child: CustomPaint(
-                                painter: _BlueprintGridPainter(
+                                painter: BlueprintGridPainter(
+                                  step: 16.0,
                                   gridColor: (isDark
                                           ? AppColors.info
                                           : Colors.blueGrey)
@@ -599,8 +609,20 @@ class DesignAssetViewerDialog {
                                     vertical: 10,
                                   ),
                                 ),
-                                onPressed: () {
+                                onPressed: () async {
+                                  final cloudUrl =
+                                      (asset['fileUrl'] ??
+                                              asset['downloadUrl'])
+                                          ?.toString();
                                   Navigator.pop(dialogCtx);
+                                  if (cloudUrl != null &&
+                                      cloudUrl.startsWith('http')) {
+                                    await launchUrl(
+                                      Uri.parse(cloudUrl),
+                                      mode: LaunchMode.externalApplication,
+                                    );
+                                    return;
+                                  }
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
@@ -631,6 +653,7 @@ class DesignAssetViewerDialog {
                   ),
                 ),
               ),
+            ),
             );
           },
         );
@@ -684,29 +707,4 @@ class DesignAssetViewerDialog {
       ),
     );
   }
-}
-
-class _BlueprintGridPainter extends CustomPainter {
-  final Color gridColor;
-
-  const _BlueprintGridPainter({required this.gridColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = gridColor
-      ..strokeWidth = 0.5;
-
-    const step = 16.0;
-    for (double x = 0; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BlueprintGridPainter oldDelegate) =>
-      oldDelegate.gridColor != gridColor;
 }

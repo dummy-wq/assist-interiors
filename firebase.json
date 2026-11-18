@@ -1,5 +1,1 @@
-{
-  "firestore": {
-    "rules": "firestore.rules"
-  }
-}
+{"firestore":{"rules":"firestore.rules"},"storage":{"rules":"storage.rules"},"flutter":{"platforms":{"android":{"default":{"projectId":"assist-interiors-d4889","appId":"1:573580636358:android:522987b9bb4cd3acc0e7c7","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"assist-interiors-d4889","configurations":{"android":"1:573580636358:android:522987b9bb4cd3acc0e7c7","ios":"1:573580636358:ios:05469c2e63ea0d62c0e7c7","macos":"1:573580636358:ios:05469c2e63ea0d62c0e7c7","web":"1:573580636358:web:3fb925347fb212c5c0e7c7","windows":"1:573580636358:web:5547636c03f03dafc0e7c7"}}}}}}

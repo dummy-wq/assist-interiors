@@ -1,16 +1,23 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
 import '../theme/app_colors.dart';
+import 'backend_manager.dart';
+import 'spreadsheet_service.dart';
 
 /// Centralized local persistent storage service for Assist Interiors.
 /// Backed by SharedPreferences (NSUserDefaults on iOS, Android SharedPreferences on Android,
 /// and local key-value storage on desktop / web).
 class StorageService {
   static SharedPreferences? _prefs;
+
+  /// Emits whenever remote Firestore snapshot data updates local collections.
+  static final ValueNotifier<int> cloudSyncNotifier = ValueNotifier<int>(0);
+  static bool _isApplyingRemoteUpdate = false;
 
   static const String _keyProjects = 'assist_projects_v1';
   static const String _keyTasks = 'assist_tasks_v1';
@@ -21,9 +28,27 @@ class StorageService {
   static const String _keySiteLogs = 'assist_sitelogs_v1';
   static const String _keyMilestones = 'assist_milestones_v1';
   static const String _keyDesignItems = 'assist_design_items_v1';
+  static const String _keyMaterialRequests = 'assist_material_requests_v1';
+  static const String _keyAmendments = 'assist_amendments_v1';
   static const String _keyApprovedUsers = 'assist_approved_users_v1';
   static const String _keyPendingUsers = 'assist_pending_users_v1';
+  static const String _keyCustomRoles = 'assist_custom_roles_v1';
+  static const String _keyCurrentUserId = 'assist_current_user_id_v1';
   static const String _keyAppLanguage = 'assist_app_language_v1';
+  static const String _keyPhotoRetentionMonths =
+      'assist_photo_retention_months_v1';
+  static const String _keyCadRetentionMonths = 'assist_cad_retention_months_v1';
+  static const String _keySeedVersion = 'assist_seed_version_v1';
+  static const int _currentSeedVersion = 3;
+
+  /// Default backend reservation period for uploaded site photos (6 months).
+  static const int defaultPhotoRetentionMonths = 6;
+  static const int extendedPhotoRetentionMonths = 12;
+  static const List<int> supportedPhotoRetentionMonths = [6, 12];
+
+  /// Default backend reservation period for CAD drawings & 3D renders (12 months).
+  static const int defaultCadRetentionMonths = 12;
+  static const List<int> supportedCadRetentionMonths = [6, 12];
 
   /// Initialize persistent storage engine on app boot or in tests.
   static Future<void> init([SharedPreferences? mockPrefs]) async {
@@ -42,7 +67,99 @@ class StorageService {
     }
   }
 
+  static List<Map<String, dynamic>> _readMapList(
+    String key, {
+    List<String> colorFields = const ['color'],
+  }) {
+    final raw = _prefs?.getString(key);
+    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded.map((item) {
+        final map = Map<String, dynamic>.from(item as Map);
+        for (final field in colorFields) {
+          if (map[field] is int) {
+            map[field] = Color(map[field] as int);
+          }
+        }
+        return map;
+      }).toList();
+    } catch (_) {
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  static Future<void> _writeMapList(
+    String key,
+    List<Map<String, dynamic>> items, {
+    List<String> colorFields = const ['color'],
+    String label = 'items',
+  }) async {
+    try {
+      final serializable = colorFields.isEmpty
+          ? items
+          : items.map((item) {
+              final copy = Map<String, dynamic>.from(item);
+              for (final field in colorFields) {
+                if (copy[field] is Color) {
+                  copy[field] = (copy[field] as Color).toARGB32();
+                }
+              }
+              return copy;
+            }).toList();
+      await _prefs?.setString(key, jsonEncode(serializable));
+    } catch (e) {
+      debugPrint('Failed to save $label to storage: $e');
+    }
+  }
+
   // ==================== PROJECTS ====================
+
+  /// Computes normalized completion progress (0.0..1.0) for [project] from its stages.
+  static double computeProjectProgress(Map<String, dynamic> project) {
+    final stages = project['stages'];
+    if (stages is List && stages.isNotEmpty) {
+      final doneCount =
+          stages.where((s) => s is Map && s['isDone'] == true).length;
+      return (doneCount / stages.length).clamp(0.0, 1.0);
+    }
+    final raw = project['progress'];
+    if (raw is num) {
+      return raw > 1.0
+          ? (raw / 100.0).clamp(0.0, 1.0)
+          : raw.toDouble().clamp(0.0, 1.0);
+    }
+    return project['status'] == 'Completed' ? 1.0 : 0.0;
+  }
+
+  /// Synchronizes `progress` (0.0..1.0) and `status` on [project] from its stages and delay flag.
+  static void syncProjectProgressAndStatus(Map<String, dynamic> project) {
+    project['progress'] = computeProjectProgress(project);
+    final stages = project['stages'];
+    if (project['isDelayed'] == true) {
+      project['status'] = 'Delayed';
+      return;
+    }
+    if (stages is List && stages.isNotEmpty) {
+      final doneCount =
+          stages.where((s) => s is Map && s['isDone'] == true).length;
+      if (doneCount == stages.length) {
+        project['status'] = 'Completed';
+      } else {
+        final currStatus = (project['status'] ?? '').toString();
+        if (currStatus.isEmpty ||
+            currStatus == 'Completed' ||
+            currStatus == 'Delayed') {
+          project['status'] = 'On Track';
+        }
+      }
+    } else {
+      final currStatus = (project['status'] ?? '').toString();
+      if (currStatus.isEmpty || currStatus == 'Delayed') {
+        project['status'] = 'Design and Planning';
+      }
+    }
+  }
 
   static List<Map<String, dynamic>> getProjects() {
     final raw = _prefs?.getString(_keyProjects);
@@ -74,9 +191,30 @@ class StorageService {
           map['stages'] = <Map<String, dynamic>>[];
         }
         if (map['photos'] is List) {
+          final activeRetention = getPhotoRetentionMonths();
           map['photos'] = (map['photos'] as List).map((p) {
-            if (p is Map) return Map<String, dynamic>.from(p);
-            return {'title': p.toString(), 'timestamp': '', 'tag': 'Site'};
+            final photoMap = p is Map
+                ? Map<String, dynamic>.from(p)
+                : <String, dynamic>{
+                    'title': p.toString(),
+                    'timestamp': '',
+                    'tag': 'Site',
+                  };
+            final uploadedIso = photoMap['uploadedAt']?.toString() ??
+                DateTime.now().toIso8601String();
+            final uploadedDate =
+                DateTime.tryParse(uploadedIso) ?? DateTime.now();
+            final retention = photoMap['retentionMonths'] is int
+                ? photoMap['retentionMonths'] as int
+                : activeRetention;
+            final reservedUntil = uploadedDate.add(
+              Duration(days: retention * 30),
+            );
+            photoMap['uploadedAt'] = uploadedDate.toIso8601String();
+            photoMap['retentionMonths'] = retention;
+            photoMap['reservedUntil'] =
+                DateFormat('dd MMM yyyy').format(reservedUntil);
+            return photoMap;
           }).toList();
         } else {
           map['photos'] = <Map<String, dynamic>>[];
@@ -89,6 +227,16 @@ class StorageService {
         } else {
           map['designAssets'] = _defaultDesignAssetsForProject(projName);
         }
+        if (map['timelineSpreadsheet'] is Map) {
+          map['timelineSpreadsheet'] = Map<String, dynamic>.from(
+            map['timelineSpreadsheet'] as Map,
+          );
+        } else {
+          map['timelineSpreadsheet'] =
+              SpreadsheetService.generateDefaultTimelineForProject(projName)
+                  .toMap();
+        }
+        syncProjectProgressAndStatus(map);
         return map;
       }).toList();
     } catch (_) {
@@ -108,6 +256,7 @@ class StorageService {
       }
 
       final serializable = projects.map((p) {
+        syncProjectProgressAndStatus(p);
         final copy = Map<String, dynamic>.from(p);
         if (copy['color'] is Color) {
           copy['color'] = (copy['color'] as Color).toARGB32();
@@ -128,10 +277,18 @@ class StorageService {
               .map((d) => Map<String, dynamic>.from(d as Map))
               .toList();
         }
+        if (copy['timelineSpreadsheet'] is Map) {
+          copy['timelineSpreadsheet'] = Map<String, dynamic>.from(
+            copy['timelineSpreadsheet'] as Map,
+          );
+        }
         return copy;
       }).toList();
 
       await _prefs?.setString(_keyProjects, jsonEncode(serializable));
+      if (!_isApplyingRemoteUpdate) {
+        BackendManager.instance.syncCollection('projects', projects);
+      }
     } catch (e) {
       debugPrint('Failed to save projects to storage: $e');
     }
@@ -139,182 +296,117 @@ class StorageService {
 
   // ==================== TASKS ====================
 
-  static List<Map<String, dynamic>> getTasks() {
-    final raw = _prefs?.getString(_keyTasks);
-    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded.map((item) {
-        final map = Map<String, dynamic>.from(item as Map);
-        if (map['color'] is int) {
-          map['color'] = Color(map['color'] as int);
-        }
-        if (map['statusColor'] is int) {
-          map['statusColor'] = Color(map['statusColor'] as int);
-        }
-        return map;
-      }).toList();
-    } catch (_) {
-      return <Map<String, dynamic>>[];
-    }
-  }
+  static List<Map<String, dynamic>> getTasks() => _readMapList(
+    _keyTasks,
+    colorFields: const ['color', 'statusColor'],
+  );
 
   static Future<void> saveTasks(List<Map<String, dynamic>> tasks) async {
-    try {
-      final serializable = tasks.map((t) {
-        final copy = Map<String, dynamic>.from(t);
-        if (copy['color'] is Color) {
-          copy['color'] = (copy['color'] as Color).toARGB32();
-        }
-        if (copy['statusColor'] is Color) {
-          copy['statusColor'] = (copy['statusColor'] as Color).toARGB32();
-        }
-        return copy;
-      }).toList();
-
-      await _prefs?.setString(_keyTasks, jsonEncode(serializable));
-    } catch (e) {
-      debugPrint('Failed to save tasks to storage: $e');
+    await _writeMapList(
+      _keyTasks,
+      tasks,
+      colorFields: const ['color', 'statusColor'],
+      label: 'tasks',
+    );
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncCollection('tasks', tasks);
     }
   }
 
   // ==================== VENDORS ====================
 
-  static List<Map<String, dynamic>> getVendors() {
-    final raw = _prefs?.getString(_keyVendors);
-    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded.map((item) {
-        final map = Map<String, dynamic>.from(item as Map);
-        if (map['color'] is int) {
-          map['color'] = Color(map['color'] as int);
-        }
-        return map;
-      }).toList();
-    } catch (_) {
-      return <Map<String, dynamic>>[];
-    }
-  }
+  static List<Map<String, dynamic>> getVendors() => _readMapList(_keyVendors);
 
   static Future<void> saveVendors(List<Map<String, dynamic>> vendors) async {
-    try {
-      final serializable = vendors.map((v) {
-        final copy = Map<String, dynamic>.from(v);
-        if (copy['color'] is Color) {
-          copy['color'] = (copy['color'] as Color).toARGB32();
-        }
-        return copy;
-      }).toList();
-
-      await _prefs?.setString(_keyVendors, jsonEncode(serializable));
-    } catch (e) {
-      debugPrint('Failed to save vendors to storage: $e');
+    await _writeMapList(_keyVendors, vendors, label: 'vendors');
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncCollection('vendors', vendors);
     }
   }
 
   // ==================== INVOICES ====================
 
-  static List<Map<String, dynamic>> getInvoices() {
-    final raw = _prefs?.getString(_keyInvoices);
-    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded.map((item) {
-        final map = Map<String, dynamic>.from(item as Map);
-        if (map['statusColor'] is int) {
-          map['statusColor'] = Color(map['statusColor'] as int);
-        }
-        return map;
-      }).toList();
-    } catch (_) {
-      return <Map<String, dynamic>>[];
+  static List<Map<String, dynamic>> getInvoices() => _readMapList(
+    _keyInvoices,
+    colorFields: const ['statusColor', 'color'],
+  );
+
+  static Future<void> saveInvoices(List<Map<String, dynamic>> invoices) async {
+    await _writeMapList(
+      _keyInvoices,
+      invoices,
+      colorFields: const ['statusColor', 'color'],
+      label: 'invoices',
+    );
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncCollection('invoices', invoices);
     }
   }
 
-  static Future<void> saveInvoices(List<Map<String, dynamic>> invoices) async {
-    try {
-      final serializable = invoices.map((inv) {
-        final copy = Map<String, dynamic>.from(inv);
-        if (copy['statusColor'] is Color) {
-          copy['statusColor'] = (copy['statusColor'] as Color).toARGB32();
-        }
-        return copy;
-      }).toList();
-
-      await _prefs?.setString(_keyInvoices, jsonEncode(serializable));
-    } catch (e) {
-      debugPrint('Failed to save invoices to storage: $e');
+  static Future<Map<String, dynamic>?> updateInvoice(
+    String invoiceId,
+    Map<String, dynamic> updatedFields,
+  ) async {
+    final invoices = getInvoices();
+    final idx = invoices.indexWhere(
+      (i) => i['id'] == invoiceId || i['invoiceNumber'] == invoiceId,
+    );
+    if (idx != -1) {
+      invoices[idx] = {
+        ...invoices[idx],
+        ...updatedFields,
+      };
+      await saveInvoices(invoices);
+      return invoices[idx];
     }
+    return null;
+  }
+
+  static Future<bool> updateInvoiceQrCode(
+    String invoiceId, {
+    String? qrCodePath,
+    String? qrCodeBase64,
+    String? upiId,
+  }) async {
+    final updated = await updateInvoice(invoiceId, {
+      'qrCodePath': ?qrCodePath,
+      'qrCodeBase64': ?qrCodeBase64,
+      'upiId': ?upiId,
+    });
+    return updated != null;
+  }
+
+  static Future<bool> updateInvoiceStatus(
+    String invoiceId,
+    String status, {
+    Color? statusColor,
+  }) async {
+    final updated = await updateInvoice(invoiceId, {
+      'status': status,
+      'statusColor': ?statusColor,
+    });
+    return updated != null;
   }
 
   // ==================== EXPENSES / VOUCHERS ====================
 
-  static List<Map<String, dynamic>> getExpenses() {
-    final raw = _prefs?.getString(_keyExpenses);
-    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded.map((item) {
-        final map = Map<String, dynamic>.from(item as Map);
-        if (map['color'] is int) {
-          map['color'] = Color(map['color'] as int);
-        }
-        return map;
-      }).toList();
-    } catch (_) {
-      return <Map<String, dynamic>>[];
-    }
-  }
+  static List<Map<String, dynamic>> getExpenses() => _readMapList(_keyExpenses);
 
   static Future<void> saveExpenses(List<Map<String, dynamic>> expenses) async {
-    try {
-      final serializable = expenses.map((e) {
-        final copy = Map<String, dynamic>.from(e);
-        if (copy['color'] is Color) {
-          copy['color'] = (copy['color'] as Color).toARGB32();
-        }
-        return copy;
-      }).toList();
-
-      await _prefs?.setString(_keyExpenses, jsonEncode(serializable));
-    } catch (e) {
-      debugPrint('Failed to save expenses to storage: $e');
+    await _writeMapList(_keyExpenses, expenses, label: 'expenses');
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncCollection('expenses', expenses);
     }
   }
 
   // ==================== LEADS (SALES) ====================
 
-  static List<Map<String, dynamic>> getLeads() {
-    final raw = _prefs?.getString(_keyLeads);
-    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded.map((item) {
-        final map = Map<String, dynamic>.from(item as Map);
-        if (map['color'] is int) {
-          map['color'] = Color(map['color'] as int);
-        }
-        return map;
-      }).toList();
-    } catch (_) {
-      return <Map<String, dynamic>>[];
-    }
-  }
+  static List<Map<String, dynamic>> getLeads() => _readMapList(_keyLeads);
 
   static Future<void> saveLeads(List<Map<String, dynamic>> leads) async {
-    try {
-      final serializable = leads.map((l) {
-        final copy = Map<String, dynamic>.from(l);
-        if (copy['color'] is Color) {
-          copy['color'] = (copy['color'] as Color).toARGB32();
-        }
-        return copy;
-      }).toList();
-
-      await _prefs?.setString(_keyLeads, jsonEncode(serializable));
-    } catch (e) {
-      debugPrint('Failed to save leads to storage: $e');
+    await _writeMapList(_keyLeads, leads, label: 'leads');
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncCollection('leads', leads);
     }
   }
 
@@ -338,70 +430,33 @@ class StorageService {
 
   // ==================== SITE LOGS (SUPERVISOR) ====================
 
-  static List<Map<String, dynamic>> getSiteLogs() {
-    final raw = _prefs?.getString(_keySiteLogs);
-    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded.map((item) {
-        final map = Map<String, dynamic>.from(item as Map);
-        return map;
-      }).toList();
-    } catch (_) {
-      return <Map<String, dynamic>>[];
-    }
-  }
+  static List<Map<String, dynamic>> getSiteLogs() => _readMapList(
+    _keySiteLogs,
+    colorFields: const [],
+  );
 
-  static Future<void> saveSiteLogs(List<Map<String, dynamic>> logs) async {
-    try {
-      await _prefs?.setString(_keySiteLogs, jsonEncode(logs));
-    } catch (e) {
-      debugPrint('Failed to save site logs to storage: $e');
-    }
-  }
+  static Future<void> saveSiteLogs(List<Map<String, dynamic>> logs) =>
+      _writeMapList(
+        _keySiteLogs,
+        logs,
+        colorFields: const [],
+        label: 'site logs',
+      );
 
   // ==================== MILESTONES (PM) ====================
 
-  static List<Map<String, dynamic>> getMilestones() {
-    final raw = _prefs?.getString(_keyMilestones);
-    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded.map((item) {
-        final map = Map<String, dynamic>.from(item as Map);
-        if (map['color'] is int) {
-          map['color'] = Color(map['color'] as int);
-        }
-        if (map['statusColor'] is int) {
-          map['statusColor'] = Color(map['statusColor'] as int);
-        }
-        return map;
-      }).toList();
-    } catch (_) {
-      return <Map<String, dynamic>>[];
-    }
-  }
+  static List<Map<String, dynamic>> getMilestones() => _readMapList(
+    _keyMilestones,
+    colorFields: const ['color', 'statusColor'],
+  );
 
-  static Future<void> saveMilestones(
-    List<Map<String, dynamic>> milestones,
-  ) async {
-    try {
-      final serializable = milestones.map((m) {
-        final copy = Map<String, dynamic>.from(m);
-        if (copy['color'] is Color) {
-          copy['color'] = (copy['color'] as Color).toARGB32();
-        }
-        if (copy['statusColor'] is Color) {
-          copy['statusColor'] = (copy['statusColor'] as Color).toARGB32();
-        }
-        return copy;
-      }).toList();
-
-      await _prefs?.setString(_keyMilestones, jsonEncode(serializable));
-    } catch (e) {
-      debugPrint('Failed to save milestones to storage: $e');
-    }
-  }
+  static Future<void> saveMilestones(List<Map<String, dynamic>> milestones) =>
+      _writeMapList(
+        _keyMilestones,
+        milestones,
+        colorFields: const ['color', 'statusColor'],
+        label: 'milestones',
+      );
 
   // ==================== DESIGN ITEMS ====================
 
@@ -442,72 +497,298 @@ class StorageService {
   }
 
   static Future<void> saveDesignItems(List<Map<String, dynamic>> items) async {
-    try {
-      final serializable = items.map((i) {
-        final copy = Map<String, dynamic>.from(i);
-        if (copy['color'] is Color) {
-          copy['color'] = (copy['color'] as Color).toARGB32();
-        }
-        if (copy['statusColor'] is Color) {
-          copy['statusColor'] = (copy['statusColor'] as Color).toARGB32();
-        }
-        return copy;
-      }).toList();
-      await _prefs?.setString(_keyDesignItems, jsonEncode(serializable));
-    } catch (e) {
-      debugPrint('Failed to save design items to storage: $e');
+    await _writeMapList(
+      _keyDesignItems,
+      items,
+      colorFields: const ['color', 'statusColor'],
+      label: 'design items',
+    );
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncCollection('design_items', items);
     }
+  }
+
+  // ==================== MATERIAL REQUESTS ====================
+
+  static List<Map<String, dynamic>> getMaterialRequests() =>
+      _readMapList(_keyMaterialRequests);
+
+  static Future<void> saveMaterialRequests(
+    List<Map<String, dynamic>> requests,
+  ) async {
+    await _writeMapList(
+      _keyMaterialRequests,
+      requests,
+      label: 'material requests',
+    );
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncCollection('material_requests', requests);
+    }
+  }
+
+  static Future<void> seedFillerMaterialRequestsIfEmpty() async {
+    final existing = getMaterialRequests();
+    if (existing.isNotEmpty) return;
+
+    final defaultRequests = <Map<String, dynamic>>[
+      {
+        'id': 'MR-2026-201',
+        'itemName': 'Calacatta Oro Bookmatched Italian Marble (20mm)',
+        'category': 'Italian Marble & Tiles',
+        'project': 'Veridian Golf Links Residence',
+        'quantity': '1,120 sq ft',
+        'urgency': 'Urgent',
+        'status': 'Pending Approval',
+        'requestedBy': 'Suresh Kumar (Supervisor)',
+        'assignedSupplier': 'Carrara Stone & Surfaces',
+        'estimatedCost': '₹ 8,96,000',
+        'requestDate': '15 Nov 2026',
+        'requiredDate': '20 Nov 2026',
+        'notes':
+            'Required for double-height atrium lobby and formal dining dry-lay.',
+        'color': AppColors.warning,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(hours: 3))
+            .toIso8601String(),
+      },
+      {
+        'id': 'MR-2026-202',
+        'itemName': 'Blum Legrabox Pure Matte Servo-Drive Channels',
+        'category': 'Hardware & Fittings',
+        'project': 'Veridian Golf Links Residence',
+        'quantity': '48 Sets',
+        'urgency': 'Standard',
+        'status': 'Approved',
+        'requestedBy': 'Ananya Sen (PM)',
+        'assignedSupplier': 'Hafele & Blum Architectural Hub',
+        'estimatedCost': '₹ 2,64,000',
+        'requestDate': '13 Nov 2026',
+        'requiredDate': '22 Nov 2026',
+        'notes':
+            'Approved for chef kitchen island and butler pantry pull-out units.',
+        'color': AppColors.info,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(days: 1))
+            .toIso8601String(),
+      },
+      {
+        'id': 'MR-2026-203',
+        'itemName': 'Saint-Gobain 12mm Acoustic Laminated Fluted Glass',
+        'category': 'Carpentry & Joinery',
+        'project': 'Solstice Terrace Duplex 19B',
+        'quantity': '340 sq ft',
+        'urgency': 'Urgent',
+        'status': 'Dispatched',
+        'requestedBy': 'Suresh Kumar (Supervisor)',
+        'assignedSupplier': 'Saint-Gobain Studio Glassworks',
+        'estimatedCost': '₹ 3,06,000',
+        'requestDate': '11 Nov 2026',
+        'requiredDate': '19 Nov 2026',
+        'notes':
+            'Toughened & acoustic-laminated panels in transit for study partition.',
+        'color': AppColors.brandPeach,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(days: 2))
+            .toIso8601String(),
+      },
+      {
+        'id': 'MR-2026-204',
+        'itemName': 'Lutron HomeWorks QSX DALI Dimming Modules',
+        'category': 'Electrical & Automation',
+        'project': 'Aurelia Sea-Facing Penthouse 42',
+        'quantity': '24 Panels',
+        'urgency': 'Standard',
+        'status': 'Delivered',
+        'requestedBy': 'Ananya Sen (PM)',
+        'assignedSupplier': 'Lumina Smart Controls',
+        'estimatedCost': '₹ 4,80,000',
+        'requestDate': '06 Nov 2026',
+        'requiredDate': '10 Nov 2026',
+        'notes': 'Installed and commissioned across all 5 suites and sky deck.',
+        'color': AppColors.success,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(days: 4))
+            .toIso8601String(),
+      },
+      {
+        'id': 'MR-2026-205',
+        'itemName': 'Burma Teak Crown-Cut Architectural Veneer Sheets',
+        'category': 'Carpentry & Joinery',
+        'project': 'Saffron Heritage Courtyard Villa',
+        'quantity': '85 Sheets',
+        'urgency': 'Standard',
+        'status': 'Pending Approval',
+        'requestedBy': 'Vikram Malhotra (Designer)',
+        'assignedSupplier': 'Decowood & Century Veneers',
+        'estimatedCost': '₹ 3,82,500',
+        'requestDate': '16 Nov 2026',
+        'requiredDate': '26 Nov 2026',
+        'notes':
+            'Lot-matched sequential grain bundles selected for courtyard lounge ceiling.',
+        'color': AppColors.warning,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(hours: 9))
+            .toIso8601String(),
+      },
+    ];
+
+    await saveMaterialRequests(defaultRequests);
+  }
+
+  // ==================== AMENDMENTS ====================
+
+  static List<Map<String, dynamic>> getAmendments() =>
+      _readMapList(_keyAmendments);
+
+  static Future<void> saveAmendments(List<Map<String, dynamic>> amendments) async {
+    await _writeMapList(_keyAmendments, amendments, label: 'amendments');
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncCollection('amendments', amendments);
+    }
+  }
+
+  static Future<void> seedFillerAmendmentsIfEmpty() async {
+    final existing = getAmendments();
+    if (existing.isNotEmpty) return;
+
+    final defaultAmendments = <Map<String, dynamic>>[
+      {
+        'id': 'AMD-2026-101',
+        'title': 'Private Cinema Dolby Atmos Acoustic Baffle & Suede Wall',
+        'project': 'Veridian Golf Links Residence',
+        'initiatedBy': 'Client Request',
+        'costImpact': '+₹ 4,20,000',
+        'timelineImpact': '+6 Days',
+        'priority': 'High',
+        'status': 'Client Approved',
+        'requestedBy': 'Justice Siddharth Luthra',
+        'description':
+            'Upgraded basement lounge to a 9.2.4 Dolby Atmos screening room with concealed acoustic timber slat absorbers and alcantara wall panels.',
+        'clientSignOffDate': '12 Nov 2026',
+        'color': AppColors.success,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(days: 3))
+            .toIso8601String(),
+      },
+      {
+        'id': 'AMD-2026-102',
+        'title': 'Cantilevered Brass & Onyx Floating Bar Counter',
+        'project': 'Saffron Heritage Courtyard Villa',
+        'initiatedBy': 'Design Refinement',
+        'costImpact': '+₹ 2,95,000',
+        'timelineImpact': '+4 Days',
+        'priority': 'Medium',
+        'status': 'Under Review',
+        'requestedBy': 'Vikram Malhotra (Designer)',
+        'description':
+            'Backlit honey onyx monolithic bar island with concealed structural steel cantilever bracket and PVD brushed champagne brass fascia.',
+        'clientSignOffDate': 'Pending Client Sign-off',
+        'color': AppColors.warning,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(days: 2))
+            .toIso8601String(),
+      },
+      {
+        'id': 'AMD-2026-103',
+        'title': 'Double-Glazed Thermal Break Balcony Slider Frame Upgrade',
+        'project': 'Solstice Terrace Duplex 19B',
+        'initiatedBy': 'Site Engineering Condition',
+        'costImpact': '+₹ 1,65,000',
+        'timelineImpact': '+8 Days',
+        'priority': 'Urgent',
+        'status': 'In Execution',
+        'requestedBy': 'Suresh Kumar (Supervisor)',
+        'description':
+            'High wind-load exposure on 19th-floor terrace required upgrading standard slim-profile aluminum track to reinforced acoustic DGU system.',
+        'clientSignOffDate': '09 Nov 2026',
+        'color': AppColors.info,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(days: 4))
+            .toIso8601String(),
+      },
+      {
+        'id': 'AMD-2026-104',
+        'title': 'Heated Italian Travertine Spa Deck & Steam Enclosure',
+        'project': 'Aurelia Sea-Facing Penthouse 42',
+        'initiatedBy': 'Client Request',
+        'costImpact': '+₹ 3,50,000',
+        'timelineImpact': '+5 Days',
+        'priority': 'Medium',
+        'status': 'Completed',
+        'requestedBy': 'Mrs. Rhea Birla',
+        'description':
+            'Added underfloor electric radiant heating mat and frameless low-iron glass steam generator enclosure in the master bath suite.',
+        'clientSignOffDate': '02 Nov 2026',
+        'color': AppColors.brandPeach,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(days: 8))
+            .toIso8601String(),
+      },
+    ];
+
+    await saveAmendments(defaultAmendments);
   }
 
   // ==================== USERS & STAFF ACCESS ====================
 
-  static List<Map<String, dynamic>> getApprovedUsers() {
-    final raw = _prefs?.getString(_keyApprovedUsers);
-    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded
-          .map((item) => Map<String, dynamic>.from(item as Map))
-          .toList();
-    } catch (_) {
-      return <Map<String, dynamic>>[];
-    }
-  }
+  static List<Map<String, dynamic>> getApprovedUsers() => _readMapList(
+    _keyApprovedUsers,
+    colorFields: const [],
+  );
 
-  static Future<void> saveApprovedUsers(
-    List<Map<String, dynamic>> users,
-  ) async {
-    try {
-      await _prefs?.setString(_keyApprovedUsers, jsonEncode(users));
-    } catch (e) {
-      debugPrint('Failed to save approved users to storage: $e');
-    }
-  }
+  static Future<void> saveApprovedUsers(List<Map<String, dynamic>> users) =>
+      _writeMapList(
+        _keyApprovedUsers,
+        users,
+        colorFields: const [],
+        label: 'approved users',
+      );
 
-  static List<Map<String, dynamic>> getPendingUsers() {
-    final raw = _prefs?.getString(_keyPendingUsers);
-    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
-    try {
-      final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded
-          .map((item) => Map<String, dynamic>.from(item as Map))
-          .toList();
-    } catch (_) {
-      return <Map<String, dynamic>>[];
-    }
-  }
+  static List<Map<String, dynamic>> getPendingUsers() => _readMapList(
+    _keyPendingUsers,
+    colorFields: const [],
+  );
 
-  static Future<void> savePendingUsers(List<Map<String, dynamic>> users) async {
-    try {
-      await _prefs?.setString(_keyPendingUsers, jsonEncode(users));
-    } catch (e) {
-      debugPrint('Failed to save pending users to storage: $e');
+  static Future<void> savePendingUsers(List<Map<String, dynamic>> users) =>
+      _writeMapList(
+        _keyPendingUsers,
+        users,
+        colorFields: const [],
+        label: 'pending users',
+      );
+
+  static List<Map<String, dynamic>> getCustomRoles() => _readMapList(
+    _keyCustomRoles,
+    colorFields: const [],
+  );
+
+  static Future<void> saveCustomRoles(List<Map<String, dynamic>> roles) async {
+    await _writeMapList(
+      _keyCustomRoles,
+      roles,
+      colorFields: const [],
+      label: 'custom roles',
+    );
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncCollection('custom_roles', roles);
     }
   }
 
   static Future<void> clearUsers() async {
     await _prefs?.remove(_keyApprovedUsers);
     await _prefs?.remove(_keyPendingUsers);
+    await _prefs?.remove(_keyCustomRoles);
+    await _prefs?.remove(_keyCurrentUserId);
+  }
+
+  static String? getCurrentUserId() => _prefs?.getString(_keyCurrentUserId);
+
+  static Future<void> saveCurrentUserId(String? userId) async {
+    if (userId == null || userId.isEmpty) {
+      await _prefs?.remove(_keyCurrentUserId);
+    } else {
+      await _prefs?.setString(_keyCurrentUserId, userId);
+    }
   }
 
   // ==================== LANGUAGE PREFERENCE ====================
@@ -532,163 +813,188 @@ class StorageService {
     await _prefs?.remove(_keySiteLogs);
     await _prefs?.remove(_keyMilestones);
     await _prefs?.remove(_keyDesignItems);
+    await _prefs?.remove(_keyMaterialRequests);
+    await _prefs?.remove(_keyAmendments);
+    await _prefs?.remove(_keySeedVersion);
     AppConstants.preExistingProjects.clear();
   }
 
-  /// Seeds 3 realistic architectural filler projects: 1 complete, 1 ongoing, and 1 delayed.
+  /// Clears outdated placeholder data when upgrading seed version and populates
+  /// fresh showcase data across all modules (Projects, Sales Leads, Tasks,
+  /// Vendors, Invoices, Expenses, Material Requests, Amendments, Site Logs, Milestones).
   static Future<void> seedFillerProjectsIfEmpty() async {
+    final storedVersion = _prefs?.getInt(_keySeedVersion) ?? 0;
+    if (storedVersion != _currentSeedVersion) {
+      await clearAll();
+      await _prefs?.setInt(_keySeedVersion, _currentSeedVersion);
+    }
+
     final existing = getProjects();
     if (existing.isNotEmpty) return;
 
     final fillerProjects = <Map<String, dynamic>>[
       {
-        'id': 'proj_filler_001',
-        'name': 'DLF Magnolias 4BHK Sky Villa',
-        'location': 'Golf Course Road, DLF Phase 5, Gurugram',
-        'client': 'Mr. Kabir Singhania',
+        'id': 'proj_showcase_101',
+        'name': 'Aurelia Sea-Facing Penthouse 42',
+        'location': 'Worli Sea Face, Mumbai',
+        'client': 'Vikramaditya & Rhea Birla',
         'category': 'Residential',
         'status': 'Completed',
         'isDelayed': false,
-        'type': '5,400 sq ft Luxury Turnkey',
-        'budget': '₹ 1,85,00,000',
-        'spent': '₹ 1,82,40,000',
-        'pm': 'Rahul Mehta',
-        'supervisor': 'Vikram Rao',
-        'handover': '10 Oct 2026',
+        'type': '6,800 sq ft Sky Penthouse',
+        'budget': '₹ 3,40,00,000',
+        'spent': '₹ 3,32,00,000',
+        'pm': 'Ananya Sen',
+        'supervisor': 'Suresh Kumar',
+        'handover': '12 Nov 2026',
         'color': const Color(0xFFD96B43), // Terracotta Brick
         'swatchName': 'Terracotta Brick',
         'isChecklistOpen': false,
         'stages': <Map<String, dynamic>>[
-          {'title': 'Initial Site Recce & CAD Surveys', 'isDone': true},
-          {'title': '3D Moodboard & Client Sign-off', 'isDone': true},
-          {'title': 'Civil Demolition & Wet Masonry', 'isDone': true},
-          {'title': 'MEP Rough-ins & False Ceiling Framing', 'isDone': true},
-          {'title': 'Italian Marble & Hardwood Flooring', 'isDone': true},
-          {'title': 'Custom Millwork, Wardrobes & Veneering', 'isDone': true},
-          {'title': 'PU Painting & Architectural Lighting', 'isDone': true},
-          {'title': 'Final Snagging & Formal Handover', 'isDone': true},
+          {'title': 'Laser 3D LiDAR Survey & Structural Audit', 'isDone': true},
+          {'title': 'Bespoke Spatial Moodboard & BOQ Sign-off', 'isDone': true},
+          {'title': 'Civil Acoustic Masonry & Waterproofing', 'isDone': true},
+          {'title': 'VRV HVAC Ducting & Lutron QSX Rough-ins', 'isDone': true},
+          {'title': 'Bookmatched Statuario & Chevron Oak Flooring', 'isDone': true},
+          {'title': 'Smoked Eucalyptus Veneer & Wardrobe Millwork', 'isDone': true},
+          {'title': 'Architectural Cove Lighting & Soft Furnishings', 'isDone': true},
+          {'title': 'White-Glove Snagging & Key Handover', 'isDone': true},
         ],
         'photos': <Map<String, dynamic>>[
           {
-            'id': 'photo_dlf_01',
-            'title': 'Living Room Framing & False Ceiling',
+            'id': 'photo_aur_01',
+            'title': 'Double-Height Sea-Facing Lounge Bookmatched Marble',
             'tag': 'Living Room',
-            'timestamp': '08 Oct 2026, 04:30 PM',
-            'capturedBy': 'Vikram Rao',
+            'timestamp': '08 Nov 2026, 05:15 PM',
+            'capturedBy': 'Suresh Kumar',
           },
           {
-            'id': 'photo_dlf_02',
-            'title': 'Italian Marble Flooring Laying & Leveling',
-            'tag': 'Flooring',
-            'timestamp': '09 Oct 2026, 11:15 AM',
-            'capturedBy': 'Vikram Rao',
-          },
-          {
-            'id': 'photo_dlf_03',
-            'title': 'Master Bedroom Teak Veneer Wardrobes',
+            'id': 'photo_aur_02',
+            'title': 'Master Suite Smoked Oak Walk-In Wardrobe Joinery',
             'tag': 'Master Bed',
-            'timestamp': '10 Oct 2026, 06:00 PM',
-            'capturedBy': 'Vikram Rao',
+            'timestamp': '10 Nov 2026, 02:30 PM',
+            'capturedBy': 'Suresh Kumar',
+          },
+          {
+            'id': 'photo_aur_03',
+            'title': 'Lutron Architectural Scene Commissioning',
+            'tag': 'Electrical',
+            'timestamp': '11 Nov 2026, 06:45 PM',
+            'capturedBy': 'Ananya Sen',
           },
         ],
       },
       {
-        'id': 'proj_filler_002',
-        'name': 'The Camellias Penthouse 18',
-        'location': 'Sector 42, Golf Course Road, Gurugram',
-        'client': 'Mrs. Ananya Goenka',
+        'id': 'proj_showcase_102',
+        'name': 'Veridian Golf Links Residence',
+        'location': 'Golf Links, Lutyens New Delhi',
+        'client': 'Justice Siddharth & Nandini Luthra',
         'category': 'Residential',
         'status': 'On Track',
         'isDelayed': false,
-        'type': '7,200 sq ft Duplex Penthouse',
-        'budget': '₹ 2,60,00,000',
-        'spent': '₹ 1,45,00,000',
-        'pm': 'Rahul Mehta',
-        'supervisor': 'Vikram Rao',
-        'handover': '28 Nov 2026',
+        'type': '8,200 sq ft Heritage Bungalow',
+        'budget': '₹ 2,80,00,000',
+        'spent': '₹ 1,68,00,000',
+        'pm': 'Ananya Sen',
+        'supervisor': 'Suresh Kumar',
+        'handover': '18 Dec 2026',
         'color': const Color(0xFF4E7D63), // Forest Sage
         'swatchName': 'Forest Sage',
         'isChecklistOpen': false,
         'stages': <Map<String, dynamic>>[
-          {
-            'title': 'Architectural 3D Presentation & BOQ Approval',
-            'isDone': true,
-          },
-          {
-            'title': 'Civil Alterations & Wet Area Waterproofing',
-            'isDone': true,
-          },
-          {'title': 'HVAC Ducting & Home Automation Rough-in', 'isDone': true},
-          {
-            'title': 'Premium Veneer Paneling & Kitchen Carcass',
-            'isDone': true,
-          },
-          {
-            'title': 'Fluted Glass Partitions & Lighting Installation',
-            'isDone': false,
-          },
-          {
-            'title': 'Final Polishing, Soft Furnishings & Handover',
-            'isDone': false,
-          },
+          {'title': 'Architectural GFC Drawings & BOQ Lock', 'isDone': true},
+          {'title': 'Structural Retrofitting & Courtyard Skylight', 'isDone': true},
+          {'title': 'Underfloor Hydronic Piping & MEP Conduits', 'isDone': true},
+          {'title': 'Calacatta Oro Marble Dry-Lay & Polishing', 'isDone': true},
+          {'title': 'Chef Island Kitchen & Burma Teak Paneling', 'isDone': false},
+          {'title': 'Bespoke Brass Chandeliers & Final Styling', 'isDone': false},
         ],
         'photos': <Map<String, dynamic>>[
           {
-            'id': 'photo_cam_01',
-            'title': 'HVAC Ducting & Home Automation Rough-in',
-            'tag': 'MEP',
-            'timestamp': '12 Oct 2026, 02:45 PM',
-            'capturedBy': 'Vikram Rao',
+            'id': 'photo_ver_01',
+            'title': 'Central Atrium Skylight Steel Trusses & Glazing',
+            'tag': 'Civil',
+            'timestamp': '14 Nov 2026, 11:20 AM',
+            'capturedBy': 'Suresh Kumar',
           },
           {
-            'id': 'photo_cam_02',
-            'title': 'Kitchen Quartz Countertop & Carcass Fitting',
-            'tag': 'Kitchen',
-            'timestamp': '13 Oct 2026, 05:20 PM',
-            'capturedBy': 'Vikram Rao',
+            'id': 'photo_ver_02',
+            'title': 'Calacatta Oro Slab Inspection & Dry-Lay Alignment',
+            'tag': 'Flooring',
+            'timestamp': '16 Nov 2026, 03:40 PM',
+            'capturedBy': 'Suresh Kumar',
           },
         ],
       },
       {
-        'id': 'proj_filler_003',
-        'name': 'Oberoi Sky City Suite',
-        'location': 'Western Express Highway, Borivali East, Mumbai',
-        'client': 'Dr. Sameer Kulkarni',
+        'id': 'proj_showcase_103',
+        'name': 'Solstice Terrace Duplex 19B',
+        'location': '100ft Road, Indiranagar, Bengaluru',
+        'client': 'Devika & Pranav Narayan',
         'category': 'Residential',
         'status': 'Delayed',
         'isDelayed': true,
-        'type': '3,800 sq ft Contemporary Suite',
-        'budget': '₹ 1,20,00,000',
-        'spent': '₹ 78,50,000',
-        'pm': 'Rahul Mehta',
-        'supervisor': 'Vikram Rao',
-        'handover': '15 Dec 2026',
+        'type': '4,400 sq ft Biophilic Duplex',
+        'budget': '₹ 1,55,00,000',
+        'spent': '₹ 82,00,000',
+        'pm': 'Ananya Sen',
+        'supervisor': 'Suresh Kumar',
+        'handover': '05 Jan 2027',
         'color': const Color(0xFF4A6B82), // Slate Steel
         'swatchName': 'Slate Steel',
         'isChecklistOpen': false,
         'stages': <Map<String, dynamic>>[
-          {'title': 'Site Dimensions & Concept Approval', 'isDone': true},
+          {'title': 'Spatial Zoning & 3D Walkthrough Sign-off', 'isDone': true},
+          {'title': 'Acoustic Ceiling Framing & Electrical Routing', 'isDone': true},
+          {'title': 'Double-Glazed Terrace Slider & Deck Pergola', 'isDone': false},
+          {'title': 'Custom Fluted Glass Study & Bar Millwork', 'isDone': false},
           {
-            'title': 'Electrical Conduit Routing & POP Ceilings',
-            'isDone': true,
-          },
-          {
-            'title': 'Imported Quartz Countertops & Modular Joinery',
-            'isDone': false,
-          },
-          {'title': 'Custom Acoustic Wall Paneling', 'isDone': false},
-          {
-            'title': 'Snag Rectification & Deep Clean Handover',
+            'title': 'Snag Rectification & Acoustic Glazing Handover',
             'isDone': false,
           },
         ],
         'photos': <Map<String, dynamic>>[
           {
-            'id': 'photo_obs_01',
-            'title': 'Electrical Conduit Routing & POP Ceilings',
-            'tag': 'Electrical',
-            'timestamp': '11 Oct 2026, 01:10 PM',
-            'capturedBy': 'Vikram Rao',
+            'id': 'photo_sol_01',
+            'title': 'Terrace Structural Beam Drop & Slider Track Recce',
+            'tag': 'Site Snag',
+            'timestamp': '13 Nov 2026, 01:15 PM',
+            'capturedBy': 'Suresh Kumar',
+          },
+        ],
+      },
+      {
+        'id': 'proj_showcase_104',
+        'name': 'Saffron Heritage Courtyard Villa',
+        'location': 'Road No. 36, Jubilee Hills, Hyderabad',
+        'client': 'Dr. Aravind & Shalini Reddy',
+        'category': 'Residential',
+        'status': 'Design and Planning',
+        'isDelayed': false,
+        'type': '6,100 sq ft Courtyard Villa',
+        'budget': '₹ 2,15,00,000',
+        'spent': '₹ 24,00,000',
+        'pm': 'Ananya Sen',
+        'supervisor': 'Suresh Kumar',
+        'handover': '22 Feb 2027',
+        'color': const Color(0xFFB38B59), // Warm Ochre
+        'swatchName': 'Warm Ochre',
+        'isChecklistOpen': false,
+        'stages': <Map<String, dynamic>>[
+          {'title': 'Site Topographical Survey & Concept Brief', 'isDone': true},
+          {'title': '3D Courtyard Renders & Material Palette Sign-off', 'isDone': false},
+          {'title': 'Civil Demolition & Lime Plaster Prep', 'isDone': false},
+          {'title': 'MEP & Smart Home Automation Conduiting', 'isDone': false},
+          {'title': 'Handcrafted Athangudi Tile & Teak Joinery', 'isDone': false},
+          {'title': 'Landscape Lighting & Final Commissioning', 'isDone': false},
+        ],
+        'photos': <Map<String, dynamic>>[
+          {
+            'id': 'photo_saf_01',
+            'title': 'Existing Courtyard Colonade & Daylight Study',
+            'tag': 'Survey',
+            'timestamp': '15 Nov 2026, 10:00 AM',
+            'capturedBy': 'Vikram Malhotra',
           },
         ],
       },
@@ -699,26 +1005,72 @@ class StorageService {
     if (getInvoices().isEmpty) {
       await saveInvoices([
         {
-          'id': 'inv_001',
-          'invoiceNumber': 'INV-2026-081',
-          'client': 'Mr. Kabir Singhania',
-          'project': 'DLF Magnolias 4BHK Sky Villa',
-          'amount': '₹ 45,00,000',
+          'id': 'inv_showcase_01',
+          'invoiceNumber': 'INV-2026-201',
+          'title': 'Aurelia Penthouse 42 — Final Handover Tranche',
+          'client': 'Vikramaditya & Rhea Birla',
+          'project': 'Aurelia Sea-Facing Penthouse 42',
+          'projectId': 'proj_showcase_101',
+          'leadId': 'lead_showcase_005',
+          'leadName': 'Vikramaditya & Rhea Birla',
+          'amount': '₹ 68,00,000',
           'status': 'Settled',
-          'date': '10 Oct 2026',
-          'dueDate': '10 Oct 2026',
+          'date': '10 Nov 2026',
+          'dueDate': '12 Nov 2026',
           'statusColor': AppColors.success,
+          'qrCodeBase64': AppConstants.samplePaymentQrBase64,
+          'upiId': AppConstants.defaultUpiId,
         },
         {
-          'id': 'inv_002',
-          'invoiceNumber': 'INV-2026-094',
-          'client': 'Mrs. Ananya Goenka',
-          'project': 'The Camellias Penthouse 18',
-          'amount': '₹ 65,00,000',
-          'status': 'Pending',
-          'date': '02 Oct 2026',
-          'dueDate': '20 Oct 2026',
+          'id': 'inv_showcase_02',
+          'invoiceNumber': 'INV-2026-204',
+          'title': 'Veridian Golf Links — Milestone 3 (Marble & Millwork)',
+          'client': 'Justice Siddharth & Nandini Luthra',
+          'project': 'Veridian Golf Links Residence',
+          'projectId': 'proj_showcase_102',
+          'leadId': 'lead_showcase_002',
+          'leadName': 'Justice Siddharth & Nandini Luthra',
+          'amount': '₹ 56,00,000',
+          'status': 'Pending Payment',
+          'date': '14 Nov 2026',
+          'dueDate': '24 Nov 2026',
           'statusColor': AppColors.warning,
+          'qrCodeBase64': AppConstants.samplePaymentQrBase64,
+          'upiId': AppConstants.defaultUpiId,
+        },
+        {
+          'id': 'inv_showcase_03',
+          'invoiceNumber': 'INV-2026-207',
+          'title': 'Solstice Duplex 19B — MEP & Structural Glazing Tranche',
+          'client': 'Devika & Pranav Narayan',
+          'project': 'Solstice Terrace Duplex 19B',
+          'projectId': 'proj_showcase_103',
+          'leadId': 'lead_showcase_003',
+          'leadName': 'Devika & Pranav Narayan',
+          'amount': '₹ 31,00,000',
+          'status': 'Settled',
+          'date': '05 Nov 2026',
+          'dueDate': '12 Nov 2026',
+          'statusColor': AppColors.success,
+          'qrCodeBase64': AppConstants.samplePaymentQrBase64,
+          'upiId': AppConstants.defaultUpiId,
+        },
+        {
+          'id': 'inv_showcase_04',
+          'invoiceNumber': 'INV-2026-210',
+          'title': 'Saffron Courtyard Villa — 10% Mobilization & Design Retainer',
+          'client': 'Dr. Aravind & Shalini Reddy',
+          'project': 'Saffron Heritage Courtyard Villa',
+          'projectId': 'proj_showcase_104',
+          'leadId': 'lead_showcase_004',
+          'leadName': 'Dr. Aravind & Shalini Reddy',
+          'amount': '₹ 21,50,000',
+          'status': 'Pending Payment',
+          'date': '16 Nov 2026',
+          'dueDate': '23 Nov 2026',
+          'statusColor': AppColors.warning,
+          'qrCodeBase64': AppConstants.samplePaymentQrBase64,
+          'upiId': AppConstants.defaultUpiId,
         },
       ]);
     }
@@ -726,214 +1078,809 @@ class StorageService {
     if (getExpenses().isEmpty) {
       await saveExpenses([
         {
-          'id': 'exp_001',
-          'title': 'Italian Marble & Imported Quartz',
+          'id': 'exp_showcase_01',
+          'title': 'Calacatta Oro Slab Lot #14 & Air-Suspension Freight',
           'category': 'Material Procurement',
-          'amount': '₹ 18,50,00,000',
-          'project': 'The Camellias Penthouse 18',
+          'amount': '₹ 18,40,000',
+          'project': 'Veridian Golf Links Residence',
           'status': 'Disbursed',
-          'date': '05 Oct 2026',
+          'date': '12 Nov 2026',
           'color': AppColors.brandPeach,
+        },
+        {
+          'id': 'exp_showcase_02',
+          'title': 'Lutron QSX Processors & DALI Driver Batch',
+          'category': 'Electrical & Automation',
+          'amount': '₹ 12,60,000',
+          'project': 'Aurelia Sea-Facing Penthouse 42',
+          'status': 'Disbursed',
+          'date': '08 Nov 2026',
+          'color': AppColors.info,
+        },
+        {
+          'id': 'exp_showcase_03',
+          'title': 'Custom Acoustic DGU Slider Extrusions & Site Rigging',
+          'category': 'Site Civil & Glazing',
+          'amount': '₹ 6,75,000',
+          'project': 'Solstice Terrace Duplex 19B',
+          'status': 'Disbursed',
+          'date': '14 Nov 2026',
+          'color': AppColors.warning,
         },
       ]);
     }
+
+    await seedFillerTasksIfEmpty();
+    await seedFillerVendorsIfEmpty();
+    await seedFillerMaterialRequestsIfEmpty();
+    await seedFillerAmendmentsIfEmpty();
+    await seedFillerLeadsIfEmpty();
+    await seedFillerSiteLogsIfEmpty();
+    await seedFillerMilestonesIfEmpty();
+  }
+
+  static Future<void> seedFillerTasksIfEmpty() async {
+    if (getTasks().isNotEmpty) return;
+
+    await saveTasks([
+      {
+        'id': 'TSK-2026-301',
+        'title': 'Approve acoustic DGU shop drawings for 19th-floor terrace',
+        'description':
+            'Verify wind-load calculations and thermal-break mullion profiles with structural consultant.',
+        'project': 'Solstice Terrace Duplex 19B',
+        'assignee': 'Vikram Malhotra (Designer)',
+        'department': 'Design & Architecture',
+        'priority': 'Urgent',
+        'status': 'In Progress',
+        'deadline': 'Today, 06:00 PM',
+        'dueDate': DateFormat('dd MMM yyyy').format(DateTime.now()),
+        'color': AppColors.error,
+        'statusColor': AppColors.error,
+      },
+      {
+        'id': 'TSK-2026-302',
+        'title': 'Supervise Calacatta Oro bookmatch dry-lay in central atrium',
+        'description':
+            'Confirm vein continuity across 18 slabs before epoxy bedding.',
+        'project': 'Veridian Golf Links Residence',
+        'assignee': 'Suresh Kumar (Supervisor)',
+        'department': 'Site Execution & Civil',
+        'priority': 'High',
+        'status': 'In Progress',
+        'deadline': 'Tomorrow',
+        'dueDate': DateFormat('dd MMM yyyy')
+            .format(DateTime.now().add(const Duration(days: 1))),
+        'color': AppColors.warning,
+        'statusColor': AppColors.warning,
+      },
+      {
+        'id': 'TSK-2026-303',
+        'title': 'Present courtyard lighting & Burma teak ceiling renders',
+        'description':
+            'Walk Dr. & Mrs. Reddy through warm 2700K indirect lighting scenes.',
+        'project': 'Saffron Heritage Courtyard Villa',
+        'assignee': 'Vikram Malhotra (Designer)',
+        'department': 'Design & Architecture',
+        'priority': 'Medium',
+        'status': 'Review Required',
+        'deadline': 'In 2 Days',
+        'dueDate': DateFormat('dd MMM yyyy')
+            .format(DateTime.now().add(const Duration(days: 2))),
+        'color': AppColors.info,
+        'statusColor': AppColors.info,
+      },
+      {
+        'id': 'TSK-2026-304',
+        'title': 'Release 50% advance PO for Blum Legrabox kitchen hardware',
+        'description':
+            'Cross-check proforma invoice against approved modular kitchen BOQ.',
+        'project': 'Veridian Golf Links Residence',
+        'assignee': 'Pooja Iyer (Accounts)',
+        'department': 'Accounts & Billing',
+        'priority': 'Medium',
+        'status': 'In Progress',
+        'deadline': 'In 3 Days',
+        'dueDate': DateFormat('dd MMM yyyy')
+            .format(DateTime.now().add(const Duration(days: 3))),
+        'color': AppColors.brandPeach,
+        'statusColor': AppColors.brandPeach,
+      },
+      {
+        'id': 'TSK-2026-305',
+        'title': 'Sign off final snagging dossier & warranty certificates',
+        'description':
+            'Hand over MEP as-built drawings, Lutron scene backup, and appliance warranties.',
+        'project': 'Aurelia Sea-Facing Penthouse 42',
+        'assignee': 'Ananya Sen (PM)',
+        'department': 'Project Management',
+        'priority': 'High',
+        'status': 'Completed',
+        'deadline': 'Completed',
+        'dueDate': '12 Nov 2026',
+        'color': AppColors.success,
+        'statusColor': AppColors.success,
+      },
+    ]);
+  }
+
+  static Future<void> seedFillerVendorsIfEmpty() async {
+    if (getVendors().isNotEmpty) return;
+
+    await saveVendors([
+      {
+        'id': 'VND-2026-01',
+        'name': 'Carrara Stone & Surfaces',
+        'category': 'Italian Marble & Tiles',
+        'contact': 'Arjun Singhvi',
+        'contactPerson': 'Arjun Singhvi',
+        'phone': '+91 98201 44510',
+        'email': 'arjun@carrarastone.in',
+        'city': 'Mumbai / Kishangarh',
+        'rating': '4.9',
+        'openPOs': 2,
+        'paymentStatus': 'Partial',
+        'status': 'Active',
+        'amountDue': '₹ 4,48,000',
+        'outstanding': '₹ 4,48,000',
+        'notes': 'Direct importer of bookmatched Statuario & Calacatta Oro.',
+        'color': AppColors.warning,
+      },
+      {
+        'id': 'VND-2026-02',
+        'name': 'Hafele & Blum Architectural Hub',
+        'category': 'Hardware & Fittings',
+        'contact': 'Nikhil Malhotra',
+        'contactPerson': 'Nikhil Malhotra',
+        'phone': '+91 98114 77820',
+        'email': 'orders@hafeleblumhub.in',
+        'city': 'New Delhi',
+        'rating': '4.8',
+        'openPOs': 3,
+        'paymentStatus': 'Pending',
+        'status': 'Active',
+        'amountDue': '₹ 2,64,000',
+        'outstanding': '₹ 2,64,000',
+        'notes': 'Authorized studio partner for Servo-Drive and tandem systems.',
+        'color': AppColors.error,
+      },
+      {
+        'id': 'VND-2026-03',
+        'name': 'Decowood & Century Veneers',
+        'category': 'Plywood & Veneer',
+        'contact': 'Mahesh Bhargava',
+        'contactPerson': 'Mahesh Bhargava',
+        'phone': '+91 98452 33901',
+        'email': 'mahesh@decowoodstudio.in',
+        'city': 'Gurugram',
+        'rating': '4.7',
+        'openPOs': 1,
+        'paymentStatus': 'Partial',
+        'status': 'Active',
+        'amountDue': '₹ 1,90,000',
+        'outstanding': '₹ 1,90,000',
+        'notes': 'Sequential crown-cut Burma teak and smoked eucalyptus flitches.',
+        'color': AppColors.warning,
+      },
+      {
+        'id': 'VND-2026-04',
+        'name': 'Lumina Smart Controls',
+        'category': 'Electrical & Automation',
+        'contact': 'Rohan Kulkarni',
+        'contactPerson': 'Rohan Kulkarni',
+        'phone': '+91 99208 61234',
+        'email': 'rohan@luminacontrols.in',
+        'city': 'Mumbai',
+        'rating': '4.9',
+        'openPOs': 0,
+        'paymentStatus': 'Complete',
+        'status': 'Active',
+        'amountDue': '₹ 0',
+        'outstanding': '₹ 0',
+        'notes': 'Lutron HomeWorks QSX & KNX certified integration partner.',
+        'color': AppColors.success,
+      },
+      {
+        'id': 'VND-2026-05',
+        'name': 'Saint-Gobain Studio Glassworks',
+        'category': 'Lighting & Fixtures',
+        'contact': 'Divya Krishnan',
+        'contactPerson': 'Divya Krishnan',
+        'phone': '+91 98804 51920',
+        'email': 'divya@sgstudioglass.in',
+        'city': 'Bengaluru',
+        'rating': '4.8',
+        'openPOs': 1,
+        'paymentStatus': 'Partial',
+        'status': 'Active',
+        'amountDue': '₹ 1,53,000',
+        'outstanding': '₹ 1,53,000',
+        'notes': 'Acoustic DGU glazing, low-iron mirrors, and PVD brass partitions.',
+        'color': AppColors.warning,
+      },
+    ]);
+  }
+
+  static Future<void> seedFillerSiteLogsIfEmpty() async {
+    if (getSiteLogs().isNotEmpty) return;
+
+    await saveSiteLogs([
+      {
+        'id': 'LOG-2026-01',
+        'project': 'Veridian Golf Links Residence',
+        'supervisor': 'Suresh Kumar',
+        'workersCount': 22,
+        'note':
+            'Atrium Calacatta marble dry-lay 80% complete. MEP pressure test passed at 6 bar.',
+        'timestamp': 'Today, 04:15 PM',
+      },
+      {
+        'id': 'LOG-2026-02',
+        'project': 'Solstice Terrace Duplex 19B',
+        'supervisor': 'Suresh Kumar',
+        'workersCount': 14,
+        'note':
+            'Terrace slider sub-frame laser-leveled. Acoustic ceiling mineral wool batting installed.',
+        'timestamp': 'Yesterday, 06:00 PM',
+      },
+    ]);
+  }
+
+  static Future<void> seedFillerMilestonesIfEmpty() async {
+    if (getMilestones().isNotEmpty) return;
+
+    await saveMilestones([
+      {
+        'id': 'MS-2026-01',
+        'title': 'Calacatta Atrium Flooring & Brass Inlay Sign-off',
+        'project': 'Veridian Golf Links Residence',
+        'owner': 'Ananya Sen',
+        'deadline': 'In 4 Days',
+        'status': 'On Track',
+        'color': AppColors.success,
+        'statusColor': AppColors.success,
+      },
+      {
+        'id': 'MS-2026-02',
+        'title': 'Acoustic Terrace DGU Frame Delivery & Rigging',
+        'project': 'Solstice Terrace Duplex 19B',
+        'owner': 'Suresh Kumar',
+        'deadline': 'Urgent • 2 Days',
+        'status': 'Delayed',
+        'color': AppColors.error,
+        'statusColor': AppColors.error,
+      },
+    ]);
+  }
+
+  static Future<void> seedFillerLeadsIfEmpty() async {
+    final existing = getLeads();
+    if (existing.isNotEmpty) return;
+
+    final today = DateFormat('dd MMM yyyy').format(DateTime.now());
+    final tomorrow = DateFormat('dd MMM yyyy')
+        .format(DateTime.now().add(const Duration(days: 1)));
+    final inThreeDays = DateFormat('dd MMM yyyy')
+        .format(DateTime.now().add(const Duration(days: 3)));
+
+    final defaultLeads = <Map<String, dynamic>>[
+      {
+        'id': 'lead_showcase_001',
+        'client': 'Ishaan & Tara Malhotra',
+        'name': 'Ishaan & Tara Malhotra',
+        'phone': '+91 98111 45020',
+        'scope': '6BHK Heritage Bungalow Turnkey',
+        'location': 'Amrita Shergill Marg, New Delhi',
+        'estValue': '₹ 4,20,00,000',
+        'referralSource': 'Architect Partner',
+        'referralBy': 'Ar. Kabir Singh',
+        'stage': 'Lead',
+        'status': 'Lead',
+        'nextCallDate': today,
+        'nextCallTime': '11:30 AM',
+        'reminderNote':
+            'Discovery call to discuss Lutyens heritage conservation norms and scope.',
+        'isConverted': false,
+        'convertedToProject': null,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(hours: 6))
+            .toIso8601String(),
+        'notes': [
+          {
+            'date': DateFormat('dd MMM yyyy, hh:mm a')
+                .format(DateTime.now().subtract(const Duration(hours: 6))),
+            'text':
+                'Referred by Ar. Kabir Singh. Family seeking warm modernist interiors with private art gallery lighting.',
+          }
+        ],
+      },
+      {
+        'id': 'lead_showcase_002',
+        'client': 'Raghavendra & Kriti Rao',
+        'name': 'Raghavendra & Kriti Rao',
+        'phone': '+91 98450 77812',
+        'scope': '4BHK Sky Villa Interiors',
+        'location': 'Sadashivanagar, Bengaluru',
+        'estValue': '₹ 1,85,00,000',
+        'referralSource': 'Client Referral',
+        'referralBy': 'Vikramaditya Birla',
+        'stage': 'Followup (Call)',
+        'status': 'Followup (Call)',
+        'nextCallDate': today,
+        'nextCallTime': '03:00 PM',
+        'reminderNote':
+            'Follow up on initial spatial zoning options and confirm weekend site recce.',
+        'isConverted': false,
+        'convertedToProject': null,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(days: 2))
+            .toIso8601String(),
+        'notes': [
+          {
+            'date': DateFormat('dd MMM yyyy, hh:mm a')
+                .format(DateTime.now().subtract(const Duration(days: 2))),
+            'text':
+                'Introductory call completed. Shared portfolio of Aurelia Penthouse 42.',
+          }
+        ],
+      },
+      {
+        'id': 'lead_showcase_003',
+        'client': 'Zoya & Farhan Merchant',
+        'name': 'Zoya & Farhan Merchant',
+        'phone': '+91 98203 91400',
+        'scope': 'Sea-View Triplex Fitout',
+        'location': 'Pali Hill, Bandra West, Mumbai',
+        'estValue': '₹ 2,95,00,000',
+        'referralSource': 'Instagram / Social Media',
+        'referralBy': '@assistinteriors.studio',
+        'stage': 'Site Visit',
+        'status': 'Site Visit',
+        'nextCallDate': tomorrow,
+        'nextCallTime': '04:30 PM',
+        'reminderNote':
+            'On-site LiDAR measurement and structural beam inspection with PM.',
+        'isConverted': false,
+        'convertedToProject': null,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(days: 4))
+            .toIso8601String(),
+        'notes': [
+          {
+            'date': DateFormat('dd MMM yyyy, hh:mm a')
+                .format(DateTime.now().subtract(const Duration(days: 4))),
+            'text':
+                'Shell possession received by client. Laser recce scheduled with design lead.',
+          }
+        ],
+      },
+      {
+        'id': 'lead_showcase_004',
+        'client': 'Harshvardhan & Mira Jindal',
+        'name': 'Harshvardhan & Mira Jindal',
+        'phone': '+91 98102 66319',
+        'scope': '5BHK Turnkey Residence & Spa Deck',
+        'location': 'Vasant Vihar, New Delhi',
+        'estValue': '₹ 3,60,00,000',
+        'referralSource': 'Real Estate Consultant',
+        'referralBy': 'Sotheby’s Realty India',
+        'stage': 'BOQ',
+        'status': 'BOQ',
+        'nextCallDate': inThreeDays,
+        'nextCallTime': '12:00 PM',
+        'reminderNote':
+            'Present itemized FF&E BOQ, Italian marble slab schedule, and 4K renders.',
+        'isConverted': false,
+        'convertedToProject': null,
+        'createdAt': DateTime.now()
+            .subtract(const Duration(days: 6))
+            .toIso8601String(),
+        'notes': [
+          {
+            'date': DateFormat('dd MMM yyyy, hh:mm a')
+                .format(DateTime.now().subtract(const Duration(days: 6))),
+            'text':
+                'Site visit completed. Client shortlisted Calacatta Oro and fluted walnut joinery.',
+          }
+        ],
+      },
+      {
+        'id': 'lead_showcase_005',
+        'client': 'Vikramaditya & Rhea Birla',
+        'name': 'Vikramaditya & Rhea Birla',
+        'phone': '+91 98200 11888',
+        'scope': '6,800 sq ft Sky Penthouse Turnkey',
+        'location': 'Worli Sea Face, Mumbai',
+        'estValue': '₹ 3,40,00,000',
+        'referralSource': 'Client Referral',
+        'referralBy': 'Executive Studio Board',
+        'stage': 'Approved',
+        'status': 'Approved',
+        'nextCallDate': tomorrow,
+        'nextCallTime': '05:00 PM',
+        'reminderNote':
+            'Post-handover white-glove walkthrough and art curation sign-off.',
+        'isConverted': true,
+        'convertedToProject': 'Aurelia Sea-Facing Penthouse 42',
+        'createdAt': DateTime.now()
+            .subtract(const Duration(days: 15))
+            .toIso8601String(),
+        'notes': [
+          {
+            'date': DateFormat('dd MMM yyyy, hh:mm a')
+                .format(DateTime.now().subtract(const Duration(days: 15))),
+            'text':
+                'BOQ signed off and converted to turnkey execution project Aurelia Sea-Facing Penthouse 42.',
+          }
+        ],
+      },
+    ];
+
+    await saveLeads(defaultLeads);
   }
 
   static List<Map<String, dynamic>> _defaultDesignAssetsForProject(
     String projectName,
   ) {
-    if (projectName.contains('Magnolias')) {
+    if (projectName.contains('Aurelia') || projectName.contains('Magnolias')) {
       return [
         {
-          'id': 'asset_dlf_01',
-          'title': '2D Floor Plan & Structural Survey CAD',
-          'type': 'CAD Drawing',
+          'id': 'asset_aur_01',
+          'title': 'As-Built Architectural Floor Plan & LiDAR Grid CAD',
+          'type': 'CAD Plan',
+          'category': 'CAD Plan',
+          'project': projectName,
+          'format': '.DWG',
+          'version': 'v3.0',
+          'fileSize': '18.6 MB',
+          'status': 'Approved',
+          'date': '04 Nov 2026',
+          'designer': 'Vikram Malhotra',
+          'notes':
+              'Final verified dimensional survey with structural column grid and sea-facing terrace levels.',
+        },
+        {
+          'id': 'asset_aur_02',
+          'title': 'Double-Height Sea Lounge & Dining 4K Renders',
+          'type': '3D Render',
+          'category': '3D Render',
+          'project': projectName,
+          'format': '.MAX / .JPG',
+          'version': 'v4.1',
+          'fileSize': '84.5 MB',
+          'status': 'Approved',
+          'date': '06 Nov 2026',
+          'designer': 'Vikram Malhotra',
+          'notes':
+              'Photorealistic Corona renders showcasing bookmatched Statuario wall and bespoke glass chandelier.',
+        },
+        {
+          'id': 'asset_aur_03',
+          'title': 'Smoked Eucalyptus, Brushed Brass & Travertine Mood Board',
+          'type': 'Mood Board',
+          'category': 'Mood Board',
+          'project': projectName,
+          'format': '.PDF / .PNG',
+          'version': 'v2.0',
+          'fileSize': '24.2 MB',
+          'status': 'Approved',
+          'date': '02 Nov 2026',
+          'designer': 'Vikram Malhotra',
+          'notes':
+              'Approved material finish board for master suite, private spa deck, and cigar lounge.',
+        },
+        {
+          'id': 'asset_aur_04',
+          'title': 'Turnkey FF&E Master Schedule & BOQ Package',
+          'type': 'Material BOQ',
+          'category': 'Material BOQ',
+          'project': projectName,
+          'format': '.XLSX / .PDF',
+          'version': 'v3.2',
+          'fileSize': '5.4 MB',
+          'status': 'Approved',
+          'date': '08 Nov 2026',
+          'designer': 'Vikram Malhotra',
+          'notes':
+              'Signed-off line-item schedule for Italian loose furniture, Lutron automation, and sanitaryware.',
+        },
+      ];
+    } else if (projectName.contains('Veridian') ||
+        projectName.contains('Camellias')) {
+      return [
+        {
+          'id': 'asset_ver_01',
+          'title': 'Reflected Ceiling Plan (RCP) & DALI Lighting GFC Set',
+          'type': 'GFC Set',
+          'category': 'GFC Set',
+          'project': projectName,
+          'format': '.DWG / .PDF',
+          'version': 'v3.4',
+          'fileSize': '26.4 MB',
+          'status': 'Approved',
+          'date': '12 Nov 2026',
+          'designer': 'Vikram Malhotra',
+          'notes':
+              'Good-for-Construction ceiling cove profiles, linear magnetic track slots, and HVAC diffuser alignment.',
+        },
+        {
+          'id': 'asset_ver_02',
+          'title': 'Atrium Skylight & Dolby Atmos Screening Room 3D Renders',
+          'type': '3D Render',
+          'category': '3D Render',
+          'project': projectName,
+          'format': '.MAX / .JPG',
+          'version': 'v2.3',
+          'fileSize': '94.0 MB',
+          'status': 'Under Client Review',
+          'date': '15 Nov 2026',
+          'designer': 'Vikram Malhotra',
+          'notes':
+              'Updated renders reflecting acoustic timber slat absorbers and Calacatta Oro bookmatch pattern.',
+        },
+        {
+          'id': 'asset_ver_03',
+          'title': 'Chef Island Kitchen & Butler Pantry Millwork CAD',
+          'type': 'CAD Plan',
+          'category': 'CAD Plan',
           'project': projectName,
           'format': '.DWG',
           'version': 'v2.1',
-          'fileSize': '16.4 MB',
+          'fileSize': '19.1 MB',
           'status': 'Approved',
-          'date': '08 Oct 2026',
-          'designer': 'Priya Sharma',
+          'date': '10 Nov 2026',
+          'designer': 'Vikram Malhotra',
           'notes':
-              'Complete dimensional recce with structural column grid and partition boundaries.',
+              'Detailed carcass elevations for Blum Legrabox pull-outs and integrated Miele appliances.',
         },
         {
-          'id': 'asset_dlf_02',
-          'title': 'Living & Double-Height Dining 3D Max Renders',
-          'type': '3D Render',
-          'project': projectName,
-          'format': '.MAX / .JPG',
-          'version': 'v3.0',
-          'fileSize': '78.2 MB',
-          'status': 'Approved',
-          'date': '09 Oct 2026',
-          'designer': 'Priya Sharma',
-          'notes':
-              '4K Photorealistic renders with V-Ray lighting and bespoke chandelier placement.',
-        },
-        {
-          'id': 'asset_dlf_03',
-          'title': 'Italian Veneer, Marble & Brass Mood Board',
-          'type': 'Mood Board',
-          'project': projectName,
-          'format': '.PDF / .PNG',
-          'version': 'v1.4',
-          'fileSize': '22.5 MB',
-          'status': 'Approved',
-          'date': '07 Oct 2026',
-          'designer': 'Priya Sharma',
-          'notes':
-              'Tactile client presentation board featuring Statuario marble & fluted teak veneers.',
-        },
-        {
-          'id': 'asset_dlf_04',
-          'title': 'Complete FF&E Architectural BOQ & Schedule',
+          'id': 'asset_ver_04',
+          'title': 'Bespoke Joinery & Imported Stone BOQ',
           'type': 'Material BOQ',
-          'project': projectName,
-          'format': '.XLSX / .PDF',
-          'version': 'v2.0',
-          'fileSize': '4.1 MB',
-          'status': 'Approved',
-          'date': '10 Oct 2026',
-          'designer': 'Priya Sharma',
-          'notes':
-              'Detailed line-item quantities for loose furniture, sanitaryware, and automation.',
-        },
-      ];
-    } else if (projectName.contains('Camellias')) {
-      return [
-        {
-          'id': 'asset_cam_01',
-          'title': 'Reflected Ceiling Plan (RCP) & Lighting CAD',
-          'type': 'CAD Drawing',
-          'project': projectName,
-          'format': '.DWG',
-          'version': 'v3.4',
-          'fileSize': '24.8 MB',
-          'status': 'Under Client Review',
-          'date': '12 Oct 2026',
-          'designer': 'Priya Sharma',
-          'notes':
-              'Architectural lighting circuit design with DALI dimming and recessed cove details.',
-        },
-        {
-          'id': 'asset_cam_02',
-          'title': 'Master Suite & Private Lounge 4K 3D Renders',
-          'type': '3D Render',
-          'project': projectName,
-          'format': '.MAX / .JPG',
-          'version': 'v2.2',
-          'fileSize': '92.0 MB',
-          'status': 'Under Client Review',
-          'date': '11 Oct 2026',
-          'designer': 'Priya Sharma',
-          'notes':
-              'Bespoke walk-in wardrobe joinery with integrated LED backlighting and leather finishes.',
-        },
-        {
-          'id': 'asset_cam_03',
-          'title': 'HVAC Ducting & Home Automation Conduits',
-          'type': 'MEP Layout',
-          'project': projectName,
-          'format': '.DWG',
-          'version': 'v1.8',
-          'fileSize': '18.3 MB',
-          'status': 'Approved',
-          'date': '06 Oct 2026',
-          'designer': 'Priya Sharma',
-          'notes':
-              'VRV duct routing and low-voltage automation conduit distribution drawings.',
-        },
-        {
-          'id': 'asset_cam_04',
-          'title': 'Custom Joinery & Imported Veneer BOQ',
-          'type': 'Material BOQ',
+          'category': 'Material BOQ',
           'project': projectName,
           'format': '.PDF / .XLSX',
-          'version': 'v1.5',
-          'fileSize': '6.7 MB',
+          'version': 'v1.8',
+          'fileSize': '6.9 MB',
           'status': 'Approved',
-          'date': '09 Oct 2026',
-          'designer': 'Priya Sharma',
+          'date': '11 Nov 2026',
+          'designer': 'Vikram Malhotra',
           'notes':
-              'Specialty millwork specifications and vendor rate contract schedule.',
+              'Itemized slab count and hardware schedule approved for Phase 2 procurement.',
         },
       ];
-    } else if (projectName.contains('Oberoi')) {
+    } else if (projectName.contains('Solstice') ||
+        projectName.contains('Oberoi')) {
       return [
         {
-          'id': 'asset_obs_01',
-          'title': 'Acoustical Wall Paneling & Modular Layout CAD',
-          'type': 'CAD Drawing',
+          'id': 'asset_sol_01',
+          'title': 'Terrace Structural DGU Glazing & Pergola Shop Drawing',
+          'type': 'CAD Plan',
+          'category': 'CAD Plan',
           'project': projectName,
           'format': '.DWG',
-          'version': 'v1.2',
-          'fileSize': '19.5 MB',
+          'version': 'v1.4',
+          'fileSize': '21.0 MB',
           'status': 'Revision Requested',
-          'date': '13 Oct 2026',
-          'designer': 'Priya Sharma',
+          'date': '14 Nov 2026',
+          'designer': 'Vikram Malhotra',
           'notes':
-              'Acoustic baffle wall framing revisions requested by client for master bedroom soundproofing.',
+              'Revised mullion reinforcement detail for 19th-floor wind-load compliance.',
         },
         {
-          'id': 'asset_obs_02',
-          'title': 'Contemporary Suite 3D Photorealistic Render',
+          'id': 'asset_sol_02',
+          'title': 'Biophilic Double-Height Study & Bar 3D Render',
           'type': '3D Render',
+          'category': '3D Render',
           'project': projectName,
           'format': '.MAX / .PNG',
-          'version': 'v1.0',
-          'fileSize': '64.0 MB',
-          'status': 'Revision Requested',
-          'date': '12 Oct 2026',
-          'designer': 'Priya Sharma',
+          'version': 'v1.2',
+          'fileSize': '68.0 MB',
+          'status': 'Under Client Review',
+          'date': '13 Nov 2026',
+          'designer': 'Vikram Malhotra',
           'notes':
-              'Perspective views updated with charcoal oak finishes and brass inlay accents.',
+              'Perspective views with Saint-Gobain fluted acoustic glass partitions and microtopping floor.',
         },
         {
-          'id': 'asset_obs_03',
-          'title': 'Contemporary Textures & Finishes Mood Board',
+          'id': 'asset_sol_03',
+          'title': 'Microtopping, Fluted Glass & Charcoal Oak Mood Board',
           'type': 'Mood Board',
+          'category': 'Mood Board',
           'project': projectName,
           'format': '.PDF',
           'version': 'v1.1',
-          'fileSize': '15.0 MB',
-          'status': 'Under Client Review',
-          'date': '10 Oct 2026',
-          'designer': 'Priya Sharma',
+          'fileSize': '15.8 MB',
+          'status': 'Approved',
+          'date': '09 Nov 2026',
+          'designer': 'Vikram Malhotra',
           'notes':
-              'Curated palette of fabric acoustic panels, microtopping flooring, and matte black fixtures.',
+              'Tactile palette featuring matte black architectural hardware and acoustic felt baffles.',
         },
       ];
     } else {
       return [
         {
-          'id': 'asset_gen_01',
-          'title': '2D Architectural Layout & Civil CAD',
-          'type': 'CAD Drawing',
+          'id': 'asset_saf_01',
+          'title': 'Courtyard Colonade & Spatial Zoning Master CAD',
+          'type': 'CAD Plan',
+          'category': 'CAD Plan',
           'project': projectName,
           'format': '.DWG',
-          'version': 'v1.0',
-          'fileSize': '14.5 MB',
-          'status': 'Under Client Review',
-          'date': '12 Oct 2026',
-          'designer': 'Priya Sharma',
-          'notes': 'Initial architectural survey and partition alignment drawing.',
+          'version': 'v1.1',
+          'fileSize': '16.2 MB',
+          'status': 'Approved',
+          'date': '14 Nov 2026',
+          'designer': 'Vikram Malhotra',
+          'notes':
+              'Master layout integrating central open-to-sky courtyard with formal living and cantilevered bar.',
         },
         {
-          'id': 'asset_gen_02',
-          'title': 'Photorealistic 3D Concept Renders',
+          'id': 'asset_saf_02',
+          'title': 'Courtyard Villa & Backlit Honey Onyx Bar 4K Renders',
           'type': '3D Render',
+          'category': '3D Render',
           'project': projectName,
           'format': '.MAX / .JPG',
           'version': 'v1.0',
-          'fileSize': '45.0 MB',
+          'fileSize': '58.4 MB',
           'status': 'Under Client Review',
-          'date': '13 Oct 2026',
-          'designer': 'Priya Sharma',
-          'notes': 'Concept spatial visualization with realistic lighting simulation.',
+          'date': '16 Nov 2026',
+          'designer': 'Vikram Malhotra',
+          'notes':
+              'Warm twilight lighting study with Burma teak coffered ceilings and handcrafted Athangudi tiles.',
         },
       ];
+    }
+  }
+
+  // ==================== BACKEND RETENTION POLICIES ====================
+
+  /// Returns the active backend photo retention period in months (6 by default, or 12).
+  static int getPhotoRetentionMonths() {
+    final stored = _prefs?.getInt(_keyPhotoRetentionMonths);
+    if (stored != null && supportedPhotoRetentionMonths.contains(stored)) {
+      return stored;
+    }
+    return defaultPhotoRetentionMonths;
+  }
+
+  /// Updates the backend photo retention period (6 months default or 12 months extended)
+  /// and refreshes the reservation window across all stored project photos.
+  static Future<void> setPhotoRetentionMonths(int months) async {
+    final validMonths = supportedPhotoRetentionMonths.contains(months)
+        ? months
+        : defaultPhotoRetentionMonths;
+    await _prefs?.setInt(_keyPhotoRetentionMonths, validMonths);
+
+    final projects = getProjects();
+    if (projects.isNotEmpty) {
+      for (final proj in projects) {
+        final photos = proj['photos'];
+        if (photos is List) {
+          for (final ph in photos) {
+            if (ph is Map<String, dynamic>) {
+              final uploadedIso = ph['uploadedAt']?.toString() ??
+                  DateTime.now().toIso8601String();
+              final uploadedDate =
+                  DateTime.tryParse(uploadedIso) ?? DateTime.now();
+              final reservedUntil = uploadedDate.add(
+                Duration(days: validMonths * 30),
+              );
+              ph['retentionMonths'] = validMonths;
+              ph['reservedUntil'] =
+                  DateFormat('dd MMM yyyy').format(reservedUntil);
+            }
+          }
+        }
+      }
+      await saveProjects(projects);
+    }
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncStudioRetentionSettings(
+        photoRetentionMonths: validMonths,
+        cadRetentionMonths: getCadRetentionMonths(),
+      );
+    }
+  }
+
+  /// Returns the active CAD & 3D deliverable retention period in months (12 by default; supports 6, 12, 24).
+  static int getCadRetentionMonths() {
+    final stored = _prefs?.getInt(_keyCadRetentionMonths);
+    if (stored != null && supportedCadRetentionMonths.contains(stored)) {
+      return stored;
+    }
+    return defaultCadRetentionMonths;
+  }
+
+  /// Updates the backend CAD & 3D deliverable retention period (6, 12, or 24 months).
+  static Future<void> setCadRetentionMonths(int months) async {
+    final validMonths = supportedCadRetentionMonths.contains(months)
+        ? months
+        : defaultCadRetentionMonths;
+    await _prefs?.setInt(_keyCadRetentionMonths, validMonths);
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncStudioRetentionSettings(
+        photoRetentionMonths: getPhotoRetentionMonths(),
+        cadRetentionMonths: validMonths,
+      );
+    }
+  }
+
+  static dynamic _unwrapNestedLists(dynamic value) {
+    if (value is Map) {
+      if (value.length == 1 &&
+          value.containsKey('_nestedList') &&
+          value['_nestedList'] is List) {
+        return (value['_nestedList'] as List).map(_unwrapNestedLists).toList();
+      }
+      final map = <String, dynamic>{};
+      value.forEach((k, v) {
+        map[k.toString()] = _unwrapNestedLists(v);
+      });
+      return map;
+    }
+    if (value is List) {
+      return value.map(_unwrapNestedLists).toList();
+    }
+    return value;
+  }
+
+  /// Applies an incoming Firestore snapshot for [collection] to local storage
+  /// without echoing writes back to Firestore, then notifies all listening views.
+  static Future<void> applyRemoteCollection(
+    String collection,
+    List<Map<String, dynamic>> docs,
+  ) async {
+    if (docs.isEmpty) return;
+    _isApplyingRemoteUpdate = true;
+    try {
+      final hydrated = docs.map((d) {
+        final copy = Map<String, dynamic>.from(_unwrapNestedLists(d) as Map);
+        if (copy['color'] is int) {
+          copy['color'] = Color(copy['color'] as int);
+        }
+        if (copy['statusColor'] is int) {
+          copy['statusColor'] = Color(copy['statusColor'] as int);
+        }
+        return copy;
+      }).toList();
+
+      switch (collection) {
+        case 'projects':
+          await saveProjects(hydrated);
+          break;
+        case 'tasks':
+          await saveTasks(hydrated);
+          break;
+        case 'vendors':
+          await saveVendors(hydrated);
+          break;
+        case 'invoices':
+          await saveInvoices(hydrated);
+          break;
+        case 'expenses':
+          await saveExpenses(hydrated);
+          break;
+        case 'leads':
+          await saveLeads(hydrated);
+          break;
+        case 'design_items':
+          await saveDesignItems(hydrated);
+          break;
+        case 'material_requests':
+          await saveMaterialRequests(hydrated);
+          break;
+        case 'amendments':
+          await saveAmendments(hydrated);
+          break;
+        case 'custom_roles':
+          await saveCustomRoles(hydrated);
+          break;
+      }
+      cloudSyncNotifier.value = cloudSyncNotifier.value + 1;
+    } finally {
+      _isApplyingRemoteUpdate = false;
     }
   }
 }

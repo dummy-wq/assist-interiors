@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../localization/app_strings.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_sizes.dart';
 import '../theme/app_typography.dart';
@@ -25,21 +26,21 @@ class ScreenLayout {
 
   /// Horizontal page gutter. Shared with the screen action bar so that the
   /// action bar title and the page content line up on the same edge.
-  static const double gutter = 20.0;
-  static const double topPadding = 20.0;
-  static const double bottomPaddingWide = 40.0;
+  static const double gutter = 10.0;
+  static const double topPadding = 16.0;
+  static const double bottomPaddingWide = 44.0;
 
   /// Leaves room for the floating bottom navigation bar on mobile.
-  static const double bottomPaddingNarrow = 120.0;
+  static const double bottomPaddingNarrow = 124.0;
 
-  static const double headerGap = 12.0;
-  static const double noticeGap = 12.0;
-  static const double sectionGap = 20.0;
-  static const double controlGap = 12.0;
-  static const double listGap = 18.0;
+  static const double headerGap = 14.0;
+  static const double noticeGap = 14.0;
+  static const double sectionGap = 22.0;
+  static const double controlGap = 14.0;
+  static const double listGap = 20.0;
 
   /// Vertical spacing between cards in a list.
-  static const double itemGap = 14.0;
+  static const double itemGap = 16.0;
 
   static const Duration switchDuration = Duration(milliseconds: 160);
 
@@ -76,13 +77,39 @@ class ScreenScrollView extends StatelessWidget {
 /// Page title rendered at the top of every tab screen.
 class ScreenHeader extends StatelessWidget {
   final String title;
+  final String? subtitle;
 
-  const ScreenHeader(this.title, {super.key});
+  const ScreenHeader(this.title, {this.subtitle, super.key});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Text(title, style: AppTypography.displayMedium(isDark));
+    return ValueListenableBuilder<AppLanguage>(
+      valueListenable: AppStrings.languageNotifier,
+      builder: (context, _, _) {
+        final translatedTitle = AppStrings.tr(title);
+        if (subtitle == null || subtitle!.isEmpty) {
+          return Text(
+            translatedTitle,
+            style: AppTypography.displayMedium(isDark),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(translatedTitle, style: AppTypography.displayMedium(isDark)),
+            const SizedBox(height: 5),
+            Text(
+              AppStrings.tr(subtitle!),
+              style: AppTypography.bodySmall(isDark).copyWith(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -118,12 +145,9 @@ class ReadOnlyNotice extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: TextStyle(
+              style: AppTypography.bodySmall(isDark).copyWith(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                color: isDark
-                    ? AppColors.textLightMuted
-                    : AppColors.textDarkMuted,
               ),
             ),
           ),
@@ -156,6 +180,8 @@ class ScreenSearchField extends StatelessWidget {
         : AppColors.textDarkMuted;
 
     return Container(
+      height: 45,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : AppColors.lightCard,
         borderRadius: AppSizes.borderRadiusMd,
@@ -171,19 +197,24 @@ class ScreenSearchField extends StatelessWidget {
           return TextField(
             controller: controller,
             onChanged: (val) => onChanged(val.trim().toLowerCase()),
-            style: TextStyle(
-              fontSize: 13,
+            style: AppTypography.bodyMedium(isDark).copyWith(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
               color: isDark
                   ? AppColors.textLightPrimary
                   : AppColors.textDarkPrimary,
             ),
             decoration: InputDecoration(
               hintText: hintText,
-              hintStyle: TextStyle(fontSize: 12.5, color: mutedColor),
-              prefixIcon: Icon(
+              hintStyle: AppTypography.bodySmall(isDark).copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: mutedColor,
+              ),
+              prefixIcon: const Icon(
                 Icons.search_rounded,
                 size: 18,
-                color: mutedColor,
+                color: AppColors.brandPeach,
               ),
               suffixIcon: value.text.isNotEmpty
                   ? IconButton(
@@ -201,14 +232,62 @@ class ScreenSearchField extends StatelessWidget {
                     )
                   : null,
               border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 14,
-                vertical: 12,
+                vertical: 10,
               ),
               isDense: true,
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Shared compact bordered tag / metadata pill used across card headers.
+class StatusTagPill extends StatelessWidget {
+  final String label;
+  final Color? accentColor;
+
+  const StatusTagPill({
+    super.key,
+    required this.label,
+    this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = accentColor;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: (accent ??
+                (isDark
+                    ? AppColors.darkCardElevated
+                    : AppColors.lightBackground))
+            .withValues(alpha: accent != null ? 0.15 : 0.8),
+        borderRadius: BorderRadius.circular(4.0),
+        border: Border.all(
+          color: (accent ??
+                  (isDark ? AppColors.darkBorder : AppColors.lightBorder))
+              .withValues(alpha: 0.6),
+          width: 0.7,
+        ),
+      ),
+      child: Text(
+        label,
+        style: AppTypography.labelSmall(isDark).copyWith(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: accent ??
+              (isDark
+                  ? AppColors.textLightSecondary
+                  : AppColors.textDarkSecondary),
+        ),
       ),
     );
   }
@@ -234,7 +313,7 @@ class EmptyStateCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : AppColors.lightCard,
         borderRadius: AppSizes.borderRadiusMd,
@@ -246,24 +325,39 @@ class EmptyStateCard extends StatelessWidget {
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 44,
-            color: isDark ? AppColors.textLightMuted : AppColors.textDarkMuted,
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.brandPeach.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 36,
+              color: AppColors.brandPeach,
+            ),
           ),
           const SizedBox(height: 14),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: AppTypography.titleMedium(isDark),
+            style: AppTypography.titleMedium(isDark).copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: AppTypography.bodySmall(isDark),
+            style: AppTypography.bodySmall(isDark).copyWith(
+              fontSize: 12.5,
+              color: isDark
+                  ? AppColors.textLightMuted
+                  : AppColors.textDarkMuted,
+            ),
           ),
           if (action != null) ...[const SizedBox(height: 16), action!],
         ],

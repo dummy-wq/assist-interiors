@@ -2,32 +2,22 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_sizes.dart';
+import '../../utils/currency_utils.dart';
 
 /// Utilities for currency formatting, amount parsing, and PDF file operations.
 class PdfFileUtils {
   PdfFileUtils._();
 
   /// Formats currency safely for standard PDF Helvetica font (avoiding unicode symbol crashes).
-  static String formatInr(num amount) {
-    final formatter = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: 'INR ',
-      decimalDigits: 0,
-    );
-    return formatter.format(amount);
-  }
+  static String formatInr(num amount) =>
+      CurrencyUtils.formatInr(amount, symbol: 'INR ');
 
   /// Parses raw strings like "₹ 3,50,000" or "450000" into a safe double.
-  static double parseAmount(String? raw) {
-    if (raw == null) return 0.0;
-    final clean = raw.replaceAll(RegExp(r'[^0-9.]'), '');
-    return double.tryParse(clean) ?? 0.0;
-  }
+  static double parseAmount(String? raw) => CurrencyUtils.parseDouble(raw);
 
   /// Exports and saves the generated PDF bytes to the user's Downloads or Documents directory.
   static Future<File?> savePdfToDisk({

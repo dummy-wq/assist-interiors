@@ -25,10 +25,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   UserRole _selectedRole = UserRole.supervisor;
+  String? _selectedCustomRoleId;
+  String? _selectedCustomRoleName;
 
   bool _obscurePassword = true;
   String? _errorMessage;
@@ -37,38 +38,48 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     setState(() => _errorMessage = null);
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthProvider>();
 
     if (_isSignUp) {
-      final newUser = auth.signUp(
-        fullName: _nameController.text,
-        email: _emailController.text,
-        phone: _phoneController.text,
-        requestedRole: _selectedRole,
-      );
+      try {
+        final newUser = auth.signUp(
+          fullName: _nameController.text,
+          phone: _phoneController.text,
+          requestedRole: _selectedRole,
+          password: _passwordController.text,
+          customRoleId: _selectedCustomRoleId,
+          customRoleName: _selectedCustomRoleName,
+        );
 
-      setState(() {
-        _justRegisteredUser = newUser;
-      });
+        setState(() {
+          _justRegisteredUser = newUser;
+        });
+      } catch (e) {
+        setState(() {
+          _errorMessage = auth.lastAuthError ?? e.toString();
+        });
+      }
     } else {
-      final success = auth.login(
-        _emailController.text,
+      final success = await auth.loginAsync(
+        _phoneController.text,
         _passwordController.text,
       );
 
+      if (!mounted) return;
       if (!success) {
         setState(() {
-          _errorMessage = 'This account is pending approval by the Proprietor. Please wait for authorization.';
+          _errorMessage =
+              auth.lastAuthError ??
+              'This account is pending approval by the Proprietor. Please wait for authorization.';
         });
       }
     }
@@ -140,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           fontSize: 12.5,
                           fontWeight: isSelected
                               ? FontWeight.w700
-                              : FontWeight.w500,
+                              : FontWeight.w600,
                           color: isSelected ? AppColors.brandPeach : null,
                         ),
                       ),
@@ -260,7 +271,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: _justRegisteredUser != null
@@ -274,7 +285,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildAuthCard(BuildContext context, bool isDark, AuthProvider auth) {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : AppColors.lightCard,
         borderRadius: BorderRadius.circular(6.0),
@@ -467,60 +478,82 @@ class _LoginScreenState extends State<LoginScreen> {
                     : null,
               ),
               const SizedBox(height: 14),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9+\- ]')),
-                ],
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                ),
-                validator: (val) => val == null || val.trim().isEmpty
-                    ? 'Enter your phone number'
-                    : null,
+            ],
+
+            // Common Phone Number Field (Sign In & Sign Up)
+            TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9+\- ]')),
+              ],
+              decoration: const InputDecoration(
+                labelText: 'Phone Number',
+                hintText: 'e.g. 98100 12345',
+                prefixIcon: Icon(Icons.phone_outlined),
               ),
-              const SizedBox(height: 14),
-              QuickFadeDropdown<UserRole>(
-                initialValue: _selectedRole,
+              validator: (val) {
+                if (val == null ||
+                    AuthProvider.normalizePhone(val).length < 10) {
+                  return 'Enter a valid 10-digit phone number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 14),
+
+            if (_isSignUp) ...[
+              QuickFadeDropdown<String>(
+                initialValue: _selectedCustomRoleId != null
+                    ? 'custom:$_selectedCustomRoleId'
+                    : 'builtin:${_selectedRole.name}',
                 decoration: const InputDecoration(
                   labelText: 'Requested Department / Role',
                   prefixIcon: Icon(Icons.badge_outlined),
                 ),
-                items: UserRole.values
-                    .where((r) => r != UserRole.proprietor)
-                    .map((role) {
-                      return DropdownMenuItem(
-                        value: role,
-                        child: Text(role.title),
-                      );
-                    })
-                    .toList(),
+                items: [
+                  ...UserRole.values
+                      .where((r) => r != UserRole.proprietor)
+                      .map((role) {
+                        return DropdownMenuItem<String>(
+                          value: 'builtin:${role.name}',
+                          child: Text(role.title),
+                        );
+                      }),
+                  ...auth.customRoles.map((custom) {
+                    return DropdownMenuItem<String>(
+                      value: 'custom:${custom.id}',
+                      child: Text('${custom.name} (Custom)'),
+                    );
+                  }),
+                ],
                 onChanged: (val) {
-                  if (val != null) setState(() => _selectedRole = val);
+                  if (val == null) return;
+                  setState(() {
+                    if (val.startsWith('custom:')) {
+                      final id = val.substring('custom:'.length);
+                      final match = auth.customRoles
+                          .where((r) => r.id == id)
+                          .toList();
+                      if (match.isNotEmpty) {
+                        _selectedCustomRoleId = match.first.id;
+                        _selectedCustomRoleName = match.first.name;
+                        _selectedRole = UserRole.supervisor;
+                      }
+                    } else if (val.startsWith('builtin:')) {
+                      final name = val.substring('builtin:'.length);
+                      _selectedCustomRoleId = null;
+                      _selectedCustomRoleName = null;
+                      _selectedRole = UserRole.values.firstWhere(
+                        (r) => r.name == name,
+                        orElse: () => UserRole.supervisor,
+                      );
+                    }
+                  });
                 },
               ),
               const SizedBox(height: 14),
             ],
-
-            // Common Fields (Email & Password)
-            TextFormField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
-              decoration: InputDecoration(
-                labelText: _isSignUp ? 'Work Email' : 'Email Address',
-                hintText: _isSignUp
-                    ? 'name@assistinteriors.in'
-                    : 'rajesh@assistinteriors.in',
-                prefixIcon: const Icon(Icons.email_outlined),
-              ),
-              validator: (val) => val == null || !val.contains('@')
-                  ? 'Enter a valid email'
-                  : null,
-            ),
-            const SizedBox(height: 14),
             TextFormField(
               controller: _passwordController,
               keyboardType: TextInputType.visiblePassword,
@@ -543,7 +576,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   ? 'Password must be at least 4 characters'
                   : null,
             ),
-            const SizedBox(height: 24),
+            if (!_isSignUp) ...[
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    AppNotification.show(
+                      context,
+                      message:
+                          'Please contact the Proprietor to reset your password.',
+                    );
+                  },
+                  child: const Text('Forgot Password?'),
+                ),
+              ),
+            ],
+            const SizedBox(height: 18),
 
             // Submit Button
             ElevatedButton(
@@ -554,84 +603,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     : 'Sign In to Dashboard',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-            ),
-            const SizedBox(height: 28),
-
-            // One-Click Demo Logins Section
-            Row(
-              children: [
-                Expanded(
-                  child: Divider(
-                    color: isDark
-                        ? AppColors.darkDivider
-                        : AppColors.lightDivider,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    'OR QUICK DEMO LOGIN AS',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                      color: isDark
-                          ? AppColors.textLightMuted
-                          : AppColors.textDarkMuted,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Divider(
-                    color: isDark
-                        ? AppColors.darkDivider
-                        : AppColors.lightDivider,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: UserRole.values.map((role) {
-                return InkWell(
-                  onTap: () => auth.quickLoginAs(role),
-                  borderRadius: BorderRadius.circular(AppSizes.chipRadius),
-                  child: Container(
-                    height: AppSizes.chipHeight,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: role.color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(AppSizes.chipRadius),
-                      border: Border.all(
-                        color: role.color.withValues(alpha: 0.35),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          role.icon,
-                          size: AppSizes.chipIconSize,
-                          color: role.color,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          role.shortCode,
-                          style: TextStyle(
-                            fontSize: AppSizes.chipFontSize,
-                            fontWeight: FontWeight.w700,
-                            color: role.color,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
             ),
           ],
         ),
@@ -668,13 +639,13 @@ class _LoginScreenState extends State<LoginScreen> {
           Text('Request Submitted!', style: AppTypography.displaySmall(isDark)),
           const SizedBox(height: 10),
           Text(
-            'Your account for ${user.fullName} (${user.role.title}) has been created.',
+            'Your account request for ${user.fullName} (${user.effectiveRoleTitle}) has been submitted.',
             textAlign: TextAlign.center,
             style: AppTypography.titleMedium(isDark),
           ),
           const SizedBox(height: 8),
           Text(
-            'Security Policy Notice: To protect client financials and site operations, all staff accounts must be verified and approved by the Proprietor before login permissions are activated.',
+            'Proprietor Notified: Your request has been sent to the Proprietor for role & permission approval before login access is activated.',
             textAlign: TextAlign.center,
             style: AppTypography.bodySmall(isDark),
           ),

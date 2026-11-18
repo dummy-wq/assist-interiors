@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
 class LabourAttendanceSheet {
@@ -11,7 +12,7 @@ class LabourAttendanceSheet {
   static void show(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
       shape: const RoundedRectangleBorder(

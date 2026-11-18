@@ -5,6 +5,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
 class ProjectFilterSheet {
@@ -67,7 +68,7 @@ class ProjectFilterSheet {
       },
     ];
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
@@ -204,7 +205,7 @@ class ProjectFilterSheet {
                                   fontSize: 13,
                                   fontWeight: isSelected
                                       ? FontWeight.w700
-                                      : FontWeight.w500,
+                                      : FontWeight.w600,
                                   color: isSelected
                                       ? (isDark
                                             ? AppColors.textLightPrimary

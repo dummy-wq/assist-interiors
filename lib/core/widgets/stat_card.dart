@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../localization/app_strings.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_sizes.dart';
 import '../theme/app_typography.dart';
@@ -49,18 +50,21 @@ class StatCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Text(
-                  title.toUpperCase(),
-                  style: AppTypography.bodySmall(isDark).copyWith(
-                    fontSize: 9.0,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: isDark
-                        ? AppColors.textLightMuted
-                        : AppColors.textDarkMuted,
+                child: ValueListenableBuilder<AppLanguage>(
+                  valueListenable: AppStrings.languageNotifier,
+                  builder: (context, _, _) => Text(
+                    AppStrings.tr(title).toUpperCase(),
+                    style: AppTypography.bodySmall(isDark).copyWith(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: isDark
+                          ? AppColors.textLightMuted
+                          : AppColors.textDarkMuted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 4),

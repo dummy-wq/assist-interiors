@@ -39,6 +39,7 @@ class ProjectStageModel {
 class ProjectModel {
   final String id;
   final String name;
+  final String? client;
   final String location;
   final String category;
   final String status;
@@ -51,13 +52,16 @@ class ProjectModel {
   final String handover;
   final Color color;
   final bool isChecklistOpen;
+  final String? originLeadId;
   final List<ProjectStageModel> stages;
   final List<Map<String, dynamic>> photos;
+  final Map<String, dynamic>? timelineSpreadsheet;
   final DateTime createdAt;
 
   const ProjectModel({
     required this.id,
     required this.name,
+    this.client,
     required this.location,
     this.category = 'Residential',
     this.status = 'Design and Planning',
@@ -70,8 +74,10 @@ class ProjectModel {
     this.handover = 'TBD',
     this.color = AppColors.brandPeach,
     this.isChecklistOpen = false,
+    this.originLeadId,
     this.stages = const [],
     this.photos = const [],
+    this.timelineSpreadsheet,
     required this.createdAt,
   });
 
@@ -82,6 +88,7 @@ class ProjectModel {
   ProjectModel copyWith({
     String? id,
     String? name,
+    String? client,
     String? location,
     String? category,
     String? status,
@@ -94,13 +101,16 @@ class ProjectModel {
     String? handover,
     Color? color,
     bool? isChecklistOpen,
+    String? originLeadId,
     List<ProjectStageModel>? stages,
     List<Map<String, dynamic>>? photos,
+    Map<String, dynamic>? timelineSpreadsheet,
     DateTime? createdAt,
   }) {
     return ProjectModel(
       id: id ?? this.id,
       name: name ?? this.name,
+      client: client ?? this.client,
       location: location ?? this.location,
       category: category ?? this.category,
       status: status ?? this.status,
@@ -113,8 +123,10 @@ class ProjectModel {
       handover: handover ?? this.handover,
       color: color ?? this.color,
       isChecklistOpen: isChecklistOpen ?? this.isChecklistOpen,
+      originLeadId: originLeadId ?? this.originLeadId,
       stages: stages ?? this.stages,
       photos: photos ?? this.photos,
+      timelineSpreadsheet: timelineSpreadsheet ?? this.timelineSpreadsheet,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -153,6 +165,7 @@ class ProjectModel {
           map['id']?.toString() ??
           'proj_${DateTime.now().millisecondsSinceEpoch}',
       name: map['name']?.toString() ?? 'New Project',
+      client: map['client']?.toString(),
       location: map['location']?.toString() ?? 'Site Location',
       category: map['category']?.toString() ?? 'Residential',
       status: map['status']?.toString() ?? 'Design and Planning',
@@ -165,8 +178,12 @@ class ProjectModel {
       handover: map['handover']?.toString() ?? 'TBD',
       color: resolvedColor,
       isChecklistOpen: map['isChecklistOpen'] as bool? ?? false,
+      originLeadId: map['originLeadId']?.toString(),
       stages: stagesList,
       photos: photosList,
+      timelineSpreadsheet: map['timelineSpreadsheet'] is Map
+          ? Map<String, dynamic>.from(map['timelineSpreadsheet'] as Map)
+          : null,
       createdAt: created,
     );
   }
@@ -175,6 +192,7 @@ class ProjectModel {
     return {
       'id': id,
       'name': name,
+      if (client != null) 'client': client,
       'location': location,
       'category': category,
       'status': status,
@@ -187,8 +205,11 @@ class ProjectModel {
       'handover': handover,
       'color': color.toARGB32(),
       'isChecklistOpen': isChecklistOpen,
+      if (originLeadId != null) 'originLeadId': originLeadId,
       'stages': stages.map((s) => s.toMap()).toList(),
       'photos': photos,
+      if (timelineSpreadsheet != null)
+        'timelineSpreadsheet': timelineSpreadsheet,
       'createdAt': createdAt.toIso8601String(),
     };
   }

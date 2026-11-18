@@ -1,0 +1,44 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isApprovedStaff() {
+      return isAuthenticated();
+    }
+
+    function isProprietor() {
+      return isAuthenticated() &&
+        (!firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) ||
+         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'proprietor');
+    }
+
+    // Site inspection photos (reserved 6M default / 12M extended)
+    match /projects/{projectId}/photos/{fileName} {
+      allow read, delete: if isApprovedStaff();
+      allow create, update: if isApprovedStaff() &&
+        request.resource.size < 25 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // Architectural CAD plans, GFC packages, and 3D renders
+    match /projects/{projectId}/design_assets/{fileName} {
+      allow read, delete: if isApprovedStaff();
+      allow create, update: if isApprovedStaff() &&
+        request.resource.size < 50 * 1024 * 1024;
+    }
+
+    // Allow authenticated staff to list/read project media folders
+    match /projects/{allPaths=**} {
+      allow read: if isApprovedStaff();
+    }
+
+    // Default deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

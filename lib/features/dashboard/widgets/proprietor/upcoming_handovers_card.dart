@@ -26,7 +26,10 @@ class UpcomingHandoversCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final auth = Provider.of<AuthProvider>(context);
-    final canCreateProject = AppPermissions.canCreateProject(auth.currentRole);
+    final canCreateProject = AppPermissions.canCreateProject(
+      auth.currentRole,
+      user: auth.currentUser,
+    );
 
     final card = Container(
       width: double.infinity,
@@ -73,10 +76,10 @@ class UpcomingHandoversCard extends StatelessWidget {
                   ],
                 ),
                 Container(
-                  constraints: const BoxConstraints(minHeight: 36.0),
+                  constraints: const BoxConstraints(minHeight: 32.0),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+                    horizontal: 10,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: isDark
@@ -95,16 +98,15 @@ class UpcomingHandoversCard extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.calendar_month_rounded,
-                        size: 14,
+                        size: 13,
                         color: AppColors.brandPeach,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         '${projects.length} Sites Scheduled',
                         style: AppTypography.labelLarge(isDark).copyWith(
-                          fontSize: 12.5,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w700,
-                          height: 1.2,
                         ),
                       ),
                       if (onTap != null) ...[

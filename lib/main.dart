@@ -12,6 +12,7 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/state/auth_provider.dart';
 import 'features/auth/views/login_screen.dart';
 import 'features/dashboard/views/main_dashboard_screen.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,7 +49,9 @@ void main() async {
   await StorageService.seedFillerProjectsIfEmpty();
   try {
     if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
     }
   } catch (e) {
     debugPrint('Firebase not initialized or credentials missing: $e');
@@ -57,7 +60,11 @@ void main() async {
 
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => AuthProvider())],
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(autoDemoLogin: false),
+        ),
+      ],
       child: const AssistInteriorsApp(),
     ),
   );

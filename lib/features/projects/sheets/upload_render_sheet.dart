@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -6,27 +8,33 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/widgets/quick_fade_dropdown.dart';
+import '../../../core/services/cloud_storage_service.dart';
+import '../../../core/services/permission_service.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
 class UploadRenderSheet extends StatefulWidget {
   final String? preselectedProject;
+  final String? initialType;
   final ValueChanged<Map<String, dynamic>>? onUploaded;
 
   const UploadRenderSheet({
     super.key,
     this.preselectedProject,
+    this.initialType,
     this.onUploaded,
   });
 
   static void show(
     BuildContext context, {
     String? preselectedProject,
+    String? initialType,
     ValueChanged<Map<String, dynamic>>? onUploaded,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
@@ -36,6 +44,7 @@ class UploadRenderSheet extends StatefulWidget {
       builder: (context) {
         return UploadRenderSheet(
           preselectedProject: preselectedProject,
+          initialType: initialType,
           onUploaded: onUploaded,
         );
       },
@@ -53,6 +62,7 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
   final _notesController = TextEditingController();
 
   PlatformFile? _pickedFile;
+  Uint8List? _pickedFileBytes;
   int _pickedFileSize = 0;
   bool _isPickingFile = false;
 
@@ -93,6 +103,13 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
       final projects = StorageService.getProjects();
       if (projects.isNotEmpty) {
         _selectedProject = projects.first['name'] as String?;
+      }
+    }
+    if (widget.initialType != null && _types.contains(widget.initialType)) {
+      _selectedType = widget.initialType!;
+      if (_selectedType == 'Material BOQ') {
+        _selectedFormat = '.XLSX';
+        _titleController.text = 'Architectural Material Specification & BOQ';
       }
     }
   }
@@ -140,6 +157,8 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
 
   Future<void> _pickDeliverableFile() async {
     try {
+      final allowed = await PermissionService.requestMediaOrStorage(context);
+      if (!allowed) return;
       setState(() => _isPickingFile = true);
       PlatformFile? file;
       try {
@@ -175,9 +194,11 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
 
       final selectedFile = file;
       if (selectedFile != null) {
-        final length = selectedFile.lengthSync() ?? (await selectedFile.length()) ?? 0;
+        final bytes = await selectedFile.readAsBytes();
+        final length = selectedFile.lengthSync() ?? bytes.length;
         setState(() {
           _pickedFile = selectedFile;
+          _pickedFileBytes = bytes;
           _pickedFileSize = length;
 
           final ext = (selectedFile.extension ?? '').toLowerCase();
@@ -294,13 +315,59 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
     // 2. Attach to project if matching
     final allProjects = StorageService.getProjects();
     final projIdx = allProjects.indexWhere((p) => p['name'] == proj);
+    String projId = '';
     if (projIdx != -1) {
+      projId = (allProjects[projIdx]['id'] ?? '').toString();
       final assets = List<Map<String, dynamic>>.from(
         (allProjects[projIdx]['designAssets'] as List?) ?? [],
       );
       assets.insert(0, newAsset);
       allProjects[projIdx]['designAssets'] = assets;
       StorageService.saveProjects(allProjects);
+    }
+
+    if (_pickedFile != null && CloudStorageService.isAvailable) {
+      final assetId = newAsset['id'];
+      CloudStorageService.uploadDesignAsset(
+        projectId: projId,
+        projectName: proj,
+        filePath: _pickedFile?.path,
+        bytes: _pickedFileBytes,
+        originalFileName: _pickedFile?.name,
+        title: title,
+        assetType: _selectedType,
+        retentionMonths: StorageService.getCadRetentionMonths(),
+      ).then((uploadRes) {
+        if (uploadRes == null) return;
+        final items = StorageService.getDesignItems();
+        final iIdx = items.indexWhere((i) => i['id'] == assetId);
+        if (iIdx != -1) {
+          items[iIdx]['storagePath'] = uploadRes.storagePath;
+          items[iIdx]['downloadUrl'] = uploadRes.downloadUrl;
+          items[iIdx]['fileUrl'] = uploadRes.downloadUrl;
+          StorageService.saveDesignItems(items);
+        }
+
+        final projects = StorageService.getProjects();
+        final pIdx = projects.indexWhere((p) => p['name'] == proj);
+        if (pIdx != -1 && projects[pIdx]['designAssets'] is List) {
+          final assets = List<Map<String, dynamic>>.from(
+            (projects[pIdx]['designAssets'] as List).map(
+              (e) => Map<String, dynamic>.from(e as Map),
+            ),
+          );
+          final aIdx = assets.indexWhere((a) => a['id'] == assetId);
+          if (aIdx != -1) {
+            assets[aIdx]['storagePath'] = uploadRes.storagePath;
+            assets[aIdx]['downloadUrl'] = uploadRes.downloadUrl;
+            assets[aIdx]['fileUrl'] = uploadRes.downloadUrl;
+            projects[pIdx]['designAssets'] = assets;
+            StorageService.saveProjects(projects);
+          }
+        }
+        StorageService.cloudSyncNotifier.value =
+            StorageService.cloudSyncNotifier.value + 1;
+      });
     }
 
     MobileActionSheets.renderCreatedNotifier.value = newAsset;
@@ -438,7 +505,7 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
                                     'Upload .DWG, .DXF, .MAX, .PDF, .XLSX, or Renders',
                                     style: TextStyle(
                                       fontSize: 10,
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: FontWeight.w600,
                                       color: isDark
                                           ? AppColors.textLightMuted
                                           : AppColors.textDarkMuted,
@@ -629,7 +696,7 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
                         items: _types.map((t) {
                           return DropdownMenuItem<String>(
                             value: t,
-                            child: Text(t, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                            child: Text(t, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -664,7 +731,7 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
                         items: _formats.map((f) {
                           return DropdownMenuItem<String>(
                             value: f,
-                            child: Text(f, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                            child: Text(f, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -740,7 +807,7 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
               items: _statuses.map((s) {
                 return DropdownMenuItem<String>(
                   value: s,
-                  child: Text(s, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                  child: Text(s, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 );
               }).toList(),
               onChanged: (val) {

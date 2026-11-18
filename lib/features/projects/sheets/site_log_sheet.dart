@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
 class SiteLogSheet {
@@ -16,7 +17,7 @@ class SiteLogSheet {
     final logController = TextEditingController();
     final workersController = TextEditingController(text: '26');
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
@@ -302,7 +303,7 @@ class SiteLogSheet {
       'Main Foyer Teak Veneer Panelling',
     ];
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
       shape: const RoundedRectangleBorder(
@@ -355,7 +356,7 @@ class SiteLogSheet {
                     item,
                     style: TextStyle(
                       fontSize: 12.5,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       color: isDark
                           ? AppColors.textLightPrimary
                           : AppColors.textDarkPrimary,

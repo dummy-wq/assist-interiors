@@ -72,32 +72,46 @@ class LocalDatabaseService implements DatabaseService {
 
   @override
   Future<void> createProject(ProjectModel project) async {
-    final index = _projects.indexWhere((p) => p.id == project.id);
+    final index = _projects.indexWhere(
+      (p) => p.id == project.id || p.name == project.name,
+    );
     if (index >= 0) {
       _projects[index] = project;
     } else {
       _projects.add(project);
     }
-    await _persistProjects();
+    final stored = StorageService.getProjects();
+    final sIdx = stored.indexWhere(
+      (p) => p['id'] == project.id || p['name'] == project.name,
+    );
+    if (sIdx == -1) {
+      stored.add(project.toMap());
+      await StorageService.saveProjects(stored);
+    }
+    if (!_projectsController.isClosed) {
+      _projectsController.add(List.unmodifiable(_projects));
+    }
   }
 
   @override
   Future<void> updateProject(ProjectModel project) async {
-    final index = _projects.indexWhere((p) => p.id == project.id);
+    final index = _projects.indexWhere(
+      (p) => p.id == project.id || p.name == project.name,
+    );
     if (index >= 0) {
       _projects[index] = project;
-      await _persistProjects();
+    }
+    if (!_projectsController.isClosed) {
+      _projectsController.add(List.unmodifiable(_projects));
     }
   }
 
   @override
   Future<void> deleteProject(String id) async {
     _projects.removeWhere((p) => p.id == id);
-    await _persistProjects();
-  }
-
-  Future<void> _persistProjects() async {
-    await StorageService.saveProjects(_projects.map((p) => p.toMap()).toList());
+    final stored = StorageService.getProjects();
+    stored.removeWhere((p) => p['id'] == id || p['name'] == id);
+    await StorageService.saveProjects(stored);
     if (!_projectsController.isClosed) {
       _projectsController.add(List.unmodifiable(_projects));
     }

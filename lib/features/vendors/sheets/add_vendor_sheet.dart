@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
+import '../../../core/utils/currency_utils.dart';
 import '../../../core/widgets/quick_fade_dropdown.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
 class AddVendorSheet {
@@ -24,7 +25,7 @@ class AddVendorSheet {
     final amountDueController = TextEditingController();
     final notesController = TextEditingController();
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
@@ -278,16 +279,10 @@ class AddVendorSheet {
                             : cityController.text.trim();
                         final paymentStatus = selectedPaymentStatus;
 
-                        final rawDue = amountDueController.text
-                            .trim()
-                            .replaceAll(RegExp(r'[^0-9]'), '');
-                        final dueNum = int.tryParse(rawDue) ?? 0;
+                        final dueNum =
+                            CurrencyUtils.parseAmount(amountDueController.text);
                         final amountDueStr = dueNum > 0
-                            ? NumberFormat.currency(
-                                locale: 'en_IN',
-                                symbol: '₹ ',
-                                decimalDigits: 0,
-                              ).format(dueNum)
+                            ? CurrencyUtils.formatInr(dueNum)
                             : (paymentStatus == 'Complete'
                                   ? '₹ 0'
                                   : (amountDueController.text.trim().isNotEmpty

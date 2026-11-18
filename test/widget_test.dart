@@ -17,6 +17,7 @@ import 'package:assist_interiors_dashboard/core/models/invoice_model.dart';
 import 'package:assist_interiors_dashboard/features/dashboard/widgets/mobile_action_sheets.dart';
 import 'package:assist_interiors_dashboard/features/dashboard/widgets/role_bottom_bar.dart';
 import 'package:assist_interiors_dashboard/features/tasks/views/tasks_view.dart';
+import 'package:assist_interiors_dashboard/features/vendors/views/vendors_view.dart';
 import 'package:assist_interiors_dashboard/features/dashboard/views/main_dashboard_screen.dart';
 
 Future<void> _addNewProject(WidgetTester tester, String name) async {
@@ -62,16 +63,17 @@ Future<void> _addNewVendor(
     if (textBtn.evaluate().isNotEmpty) {
       await tester.tap(textBtn.first);
     } else {
-      final addBtn = find.widgetWithText(ElevatedButton, 'Onboard Vendor');
-      if (addBtn.evaluate().isNotEmpty) {
-        await tester.ensureVisible(addBtn.first);
-        await tester.tap(addBtn.first);
+      final vendorsViewFinder = find.byType(VendorsView);
+      if (vendorsViewFinder.evaluate().isNotEmpty) {
+        MobileActionSheets.showAddVendorSheet(
+          tester.element(vendorsViewFinder.first),
+        );
       }
     }
   }
   await tester.pumpAndSettle();
 
-  final nameField = find.widgetWithText(TextField, 'Company / Firm Name');
+  final nameField = find.widgetWithText(TextField, 'Vendor Name');
   await tester.enterText(nameField, name);
   await tester.pumpAndSettle();
 
@@ -180,54 +182,86 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // 1. Check BottomNavigationBar items: Hub, Projects, Vendors, Tasks, Accounts, Team
+      // 1. Check primary BottomNavigationBar items: Hub, Sales, Projects, Accounts, More
       expect(find.text('Hub'), findsWidgets);
+      expect(find.text('Sales'), findsWidgets);
       expect(find.text('Projects'), findsWidgets);
-      expect(find.text('Vendors'), findsWidgets);
-      expect(find.text('Tasks'), findsWidgets);
       expect(find.text('Accounts'), findsWidgets);
-      expect(find.text('Team'), findsWidgets);
+      expect(find.text('More'), findsWidgets);
 
-      // Top options: only Language, Colour switch, Role switch, and Sign Out
+      // Open Left Side Pane to verify Language, Theme switch, Role swap, Retention, and Sign Out
+      await tester.tap(find.byKey(const Key('left_side_pane_btn')));
+      await tester.pumpAndSettle();
       expect(find.byTooltip('Toggle Theme'), findsOneWidget);
       expect(find.byTooltip('Switch Demo Role'), findsOneWidget);
       expect(find.byTooltip('Sign Out'), findsOneWidget);
       expect(find.text('EN'), findsWidgets);
+      expect(find.text('6 Months (Default)'), findsOneWidget);
+      expect(find.text('12 Months'), findsOneWidget);
+
+      // Close Left Side Pane before navigating tabs
+      Navigator.of(
+        tester.element(find.byKey(const Key('studio_left_side_pane'))),
+      ).pop();
+      await tester.pumpAndSettle();
 
       // Verify screen-dependent action icons are NOT present on top
       expect(find.byTooltip('Export P&L'), findsNothing);
       expect(find.byTooltip('New Project'), findsNothing);
 
-      // 2. Switch to Projects tab
+      // 2. Switch to Sales tab
+      await tester.tap(find.text('Sales').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Sales Pipeline'), findsOneWidget);
+      expect(find.text('Project Status Report'), findsOneWidget);
+      expect(find.text('Add Lead'), findsWidgets);
+
+      // 3. Switch to Projects tab
       await tester.tap(find.text('Projects').last);
       await tester.pumpAndSettle();
       expect(find.text('Projects Portfolio'), findsOneWidget);
       expect(find.text('Add Project'), findsWidgets);
       expect(find.byTooltip('Filter Projects'), findsNothing);
 
-      // 3. Switch to Vendors tab
-      await tester.tap(find.text('Vendors').last);
+      // 4. Switch to Design tab via More sheet
+      await tester.tap(find.text('More').last);
       await tester.pumpAndSettle();
-      expect(find.text('Vendors & Suppliers'), findsOneWidget);
-      expect(find.text('Add Vendor'), findsWidgets);
-      expect(find.byTooltip('Track POs'), findsNothing);
-
-      // 4. Switch to Tasks tab
-      await tester.tap(find.text('Tasks').last);
+      expect(find.text('Design Studio'), findsOneWidget);
+      await tester.tap(find.text('Design Studio').last);
       await tester.pumpAndSettle();
-      expect(find.text('Tasks & Milestones'), findsOneWidget);
-      expect(find.text('Add Task'), findsOneWidget);
-      expect(find.byTooltip('Urgent Only'), findsNothing);
+      expect(find.text('Design Studio & Technical Drawings'), findsOneWidget);
+      expect(find.text('Upload Drawing'), findsWidgets);
 
-      // 5. Switch to Accounts tab
+      // 5. Switch to Materials tab via More sheet
+      await tester.tap(find.text('Design').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Materials'), findsOneWidget);
+      await tester.tap(find.text('Materials').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Material Requests & Indents'), findsOneWidget);
+      expect(find.text('New Request'), findsWidgets);
+
+      // 6. Switch to Amendments tab via More sheet
+      await tester.tap(find.text('Materials').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Amendments'), findsOneWidget);
+      await tester.tap(find.text('Amendments').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Amendments & Scope Variations'), findsOneWidget);
+      expect(find.text('Add Amendment'), findsWidgets);
+
+      // 7. Switch to Accounts tab
       await tester.tap(find.text('Accounts').last);
       await tester.pumpAndSettle();
       expect(find.text('Finance, Invoicing & Expense Control'), findsOneWidget);
-      expect(find.text('Add Invoice'), findsOneWidget);
+      expect(find.text('Add Invoice'), findsWidgets);
       expect(find.text('Record Expense'), findsOneWidget);
 
-      // 6. Switch to Team tab (with Team Overview)
-      await tester.tap(find.text('Team').last);
+      // 8. Switch to Team tab via More sheet
+      await tester.tap(find.text('More').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Team & Staff'), findsOneWidget);
+      await tester.tap(find.text('Team & Staff').last);
       await tester.pumpAndSettle();
       expect(find.text('Team & Workforce'), findsOneWidget);
       expect(find.text('28 Field Staff'), findsOneWidget);
@@ -282,6 +316,10 @@ void main() {
           child: const AssistInteriorsApp(),
         ),
       );
+      await tester.pumpAndSettle();
+
+      // Open Left Side Pane to access the Theme switch
+      await tester.tap(find.byKey(const Key('left_side_pane_btn')));
       await tester.pumpAndSettle();
 
       final iconFinder = find.byIcon(Icons.light_mode_outlined);
@@ -515,7 +553,7 @@ void main() {
   });
 
   testWidgets(
-    'Add Task sheet shows dropdown of pre-existing projects and adds task to TasksView',
+    'Add Amendment modal shows dropdown of pre-existing projects and adds amendment to AmendmentsView',
     (WidgetTester tester) async {
       tester.view.physicalSize = const Size(420, 900);
       tester.view.devicePixelRatio = 1.0;
@@ -537,37 +575,33 @@ void main() {
       await tester.pumpAndSettle();
       await _addNewProject(tester, 'Villa Riviera');
 
-      // Navigate to Tasks tab
-      await tester.tap(find.text('Tasks').last);
+      // Navigate to Amendments tab (via More sheet)
+      await tester.tap(find.text('More').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Amendments').last);
       await tester.pumpAndSettle();
 
-      // Tap 'Add Task' action button
-      final newTaskBtn = find.byTooltip('+ New Task');
-      if (newTaskBtn.evaluate().isNotEmpty) {
-        await tester.tap(newTaskBtn.first);
-      } else {
-        final addTaskBtn = find.text('Add Task');
-        if (addTaskBtn.evaluate().isNotEmpty) {
-          await tester.tap(addTaskBtn.first);
-        } else {
-          await tester.tap(find.text('+ New Task'));
-        }
-      }
+      // Tap 'Add Amendment' action button
+      final addAmdBtn = find.byKey(const Key('action_bar_add_amendment'));
+      await tester.tap(addAmdBtn);
       await tester.pumpAndSettle();
 
       // Verify modal sheet is opened
-      expect(find.text('Create Project Task'), findsOneWidget);
+      expect(find.text('Log Scope Amendment / Variation'), findsOneWidget);
 
-      // Enter task title
+      // Enter amendment title
       final titleField = find.widgetWithText(
         TextField,
-        'Task Description / Deliverable',
+        'e.g. Master Bedroom Motorized Curtain Tracks',
       );
       await tester.enterText(titleField, 'Install Acoustic Wall Cladding');
       await tester.pumpAndSettle();
 
-      // Find and tap the Associated Project dropdown
-      final dropdownFinder = find.byType(DropdownButtonFormField<String>).first;
+      // Find and tap the Associated Project Site dropdown
+      final dropdownFinder = find.widgetWithText(
+        DropdownButtonFormField<String>,
+        'Associated Project Site *',
+      );
       expect(dropdownFinder, findsOneWidget);
       await tester.tap(dropdownFinder);
       await tester.pumpAndSettle();
@@ -579,19 +613,30 @@ void main() {
       await tester.tap(find.text('Villa Riviera').last);
       await tester.pumpAndSettle();
 
-      // Tap Add Task submit button in bottom sheet
-      final submitBtn = find.widgetWithText(ElevatedButton, 'Add Task').last;
+      // Enter cost impact
+      final costField = find.widgetWithText(
+        TextField,
+        'Cost Impact (INR ₹)',
+      );
+      if (costField.evaluate().isNotEmpty) {
+        await tester.enterText(costField, '185000');
+        await tester.pumpAndSettle();
+      }
+
+      // Tap submit button in modal
+      final submitBtn = find.widgetWithText(ElevatedButton, 'Log & Publish Amendment');
+      await tester.ensureVisible(submitBtn);
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
-      // Verify task is added to TasksView list with selected project
+      // Verify amendment is added to AmendmentsView list with selected project
       expect(find.text('Install Acoustic Wall Cladding'), findsOneWidget);
       expect(find.text('Villa Riviera'), findsWidgets);
     },
   );
 
   testWidgets(
-    'Cleared entries verification across Projects, Tasks, Vendors, Accounts with preserved Team data',
+    'Cleared entries verification across Projects, Design, Materials, Amendments, Accounts with preserved Team data',
     (WidgetTester tester) async {
       tester.view.physicalSize = const Size(420, 900);
       tester.view.devicePixelRatio = 1.0;
@@ -621,25 +666,36 @@ void main() {
       expect(find.text('No Projects Listed'), findsOneWidget);
       expect(find.text('0 Sites'), findsWidgets);
 
-      // 3. Tasks tab shows cleared empty state
-      await tester.tap(find.text('Tasks').last);
+      // 3. Design tab shows cleared empty state (via More sheet)
+      await tester.tap(find.text('More').last);
       await tester.pumpAndSettle();
-      expect(find.text('No Tasks Logged'), findsOneWidget);
-      expect(find.text('0 Tasks'), findsWidgets);
-
-      // 4. Vendors tab shows cleared empty state
-      await tester.tap(find.text('Vendors').last);
+      await tester.tap(find.text('Design Studio').last);
       await tester.pumpAndSettle();
-      expect(find.text('No Vendors Registered'), findsOneWidget);
-      expect(find.text('0 Partners'), findsOneWidget);
+      expect(find.text('No Technical Drawings or Renders Found'), findsOneWidget);
 
-      // 5. Accounts tab shows cleared empty state
+      // 4. Materials tab shows cleared empty state (via More sheet)
+      await tester.tap(find.text('Design').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Materials').last);
+      await tester.pumpAndSettle();
+      expect(find.text('No Material Requests Found'), findsOneWidget);
+
+      // 5. Amendments tab shows cleared empty state (via More sheet)
+      await tester.tap(find.text('Materials').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Amendments').last);
+      await tester.pumpAndSettle();
+      expect(find.text('No Scope Amendments Found'), findsOneWidget);
+
+      // 6. Accounts tab shows cleared empty state
       await tester.tap(find.text('Accounts').last);
       await tester.pumpAndSettle();
       expect(find.text('No Invoices Generated'), findsOneWidget);
 
-      // 6. Team tab is preserved intact ("save for the team section")
-      await tester.tap(find.text('Team').last);
+      // 7. Team tab is preserved intact (via More sheet)
+      await tester.tap(find.text('More').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Team & Staff').last);
       await tester.pumpAndSettle();
       expect(find.text('Team & Workforce'), findsOneWidget);
       expect(find.text('28 Field Staff'), findsOneWidget);
@@ -660,13 +716,9 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: [ChangeNotifierProvider(create: (_) => AuthProvider())],
-          child: const AssistInteriorsApp(),
+          child: const MaterialApp(home: Scaffold(body: VendorsView())),
         ),
       );
-      await tester.pumpAndSettle();
-
-      // Navigate to Vendors tab
-      await tester.tap(find.text('Vendors').last);
       await tester.pumpAndSettle();
       expect(find.text('No Vendors Registered'), findsOneWidget);
 
@@ -728,7 +780,7 @@ void main() {
   );
 
   testWidgets(
-    'Offline persistent storage restores projects, tasks, vendors, and invoices upon app restart',
+    'Offline persistent storage restores projects, material requests, amendments, and invoices upon app restart',
     (WidgetTester tester) async {
       tester.view.physicalSize = const Size(420, 900);
       tester.view.devicePixelRatio = 1.0;
@@ -759,33 +811,37 @@ void main() {
         },
       ]);
 
-      await StorageService.saveTasks([
+      await StorageService.saveMaterialRequests([
         {
-          'id': 'task_1',
-          'title': 'Acoustic Wall Paneling',
+          'id': 'MR-2026-999',
+          'itemName': 'Greenply 19mm Marine Ply Club First',
+          'category': 'Carpentry & Joinery',
           'project': 'The Camellias Penthouse',
-          'assignee': 'Vikram Rathore',
-          'deadline': 'Tomorrow',
-          'status': 'In Progress',
-          'completed': false,
-          'priority': 'Urgent',
-          'color': const Color(0xFFE63946),
+          'quantity': '45 Sheets',
+          'urgency': 'Urgent',
+          'status': 'Pending Approval',
+          'requestedBy': 'Vikram Rathore',
+          'assignedSupplier': 'Bhagwati Plywood',
+          'estimatedCost': '₹ 1,57,500',
+          'requestDate': '18 Oct 2026',
+          'requiredDate': '22 Oct 2026',
+          'notes': 'Living room panelling',
         },
       ]);
 
-      await StorageService.saveVendors([
+      await StorageService.saveAmendments([
         {
-          'name': 'DecoWood Veneers',
-          'category': 'Plywood & Veneer',
-          'contactPerson': 'Rajesh Sharma',
-          'phone': '+91 98111 22233',
-          'rating': '4.9',
-          'onTime': '98%',
-          'activeOrders': '2 Active Purchase Orders',
-          'status': 'Active',
-          'openPOs': 2,
-          'outstanding': '₹ 0',
-          'color': const Color(0xFF2A9D8F),
+          'id': 'AMD-2026-999',
+          'title': 'Motorized Acoustic Blinds',
+          'project': 'The Camellias Penthouse',
+          'initiatedBy': 'Client Request',
+          'costImpact': '₹ 1,85,000',
+          'timelineImpact': '+3 Days',
+          'priority': 'Medium',
+          'status': 'Under Review',
+          'requestedBy': 'Client',
+          'description': 'Motorized Somfy channels',
+          'clientSignOffDate': 'Pending',
         },
       ]);
 
@@ -815,22 +871,28 @@ void main() {
       expect(find.text('The Camellias Penthouse'), findsOneWidget);
       expect(find.text('1 Sites'), findsWidgets);
 
-      // 2. Tasks tab restores saved task
-      await tester.tap(find.text('Tasks').last);
+      // 2. Materials tab restores saved material request (via More sheet)
+      await tester.tap(find.text('More').last);
       await tester.pumpAndSettle();
-      expect(find.text('Acoustic Wall Paneling'), findsOneWidget);
+      await tester.tap(find.text('Materials').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Greenply 19mm Marine Ply Club First'), findsOneWidget);
 
-      // 3. Vendors tab restores saved vendor
-      await tester.tap(find.text('Vendors').last);
+      // 3. Amendments tab restores saved amendment (via More sheet)
+      await tester.tap(find.text('Materials').last);
       await tester.pumpAndSettle();
-      expect(find.text('DecoWood Veneers'), findsOneWidget);
-      expect(find.text('1 Partners'), findsWidgets);
+      await tester.tap(find.text('Amendments').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Motorized Acoustic Blinds'), findsOneWidget);
 
       // 4. Accounts tab restores saved invoice
       await tester.tap(find.text('Accounts').last);
       await tester.pumpAndSettle();
       expect(find.text('Camellias Phase 1 Advance'), findsOneWidget);
       expect(find.text('₹ 5,00,000'), findsWidgets);
+
+      expect(StorageService.getMaterialRequests().length, 1);
+      expect(StorageService.getAmendments().length, 1);
     },
   );
 
@@ -1113,29 +1175,15 @@ void main() {
       await tester.pumpWidget(
         MultiProvider(
           providers: [ChangeNotifierProvider(create: (_) => AuthProvider())],
-          child: const AssistInteriorsApp(),
+          child: const MaterialApp(home: Scaffold(body: VendorsView())),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Navigate to Vendors tab
-      await tester.tap(find.text('Vendors').last);
-      await tester.pumpAndSettle();
-
-      // Tap Onboard Vendor / Add Vendor button
-      final actionBtn = find.byKey(const Key('action_bar_add_vendor'));
-      if (actionBtn.evaluate().isNotEmpty) {
-        await tester.tap(actionBtn.first);
-      } else {
-        final addBtn = find.widgetWithText(ElevatedButton, 'Onboard Vendor');
-        if (addBtn.evaluate().isNotEmpty) {
-          await tester.tap(addBtn.first);
-        } else {
-          await tester.tap(
-            find.widgetWithText(ElevatedButton, 'Add Vendor').first,
-          );
-        }
-      }
+      // Open Add Vendor sheet
+      MobileActionSheets.showAddVendorSheet(
+        tester.element(find.byType(VendorsView)),
+      );
       await tester.pumpAndSettle();
 
       // Fill in all 9 fields
@@ -1168,7 +1216,8 @@ void main() {
 
       // 7. Payment Status Dropdown
       final paymentStatusFinder = find.byType(DropdownButtonFormField<String>);
-      await tester.tap(paymentStatusFinder);
+      await tester.ensureVisible(paymentStatusFinder);
+      await tester.tap(paymentStatusFinder, warnIfMissed: false);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Partial').last);
       await tester.pumpAndSettle();
@@ -1270,7 +1319,7 @@ void main() {
       // 4. Department dropdown (second dropdown)
       final deptDropdown = find.byType(DropdownButtonFormField<String>).at(1);
       await tester.ensureVisible(deptDropdown);
-      await tester.tap(deptDropdown);
+      await tester.tap(deptDropdown, warnIfMissed: false);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Design & Architecture').last);
       await tester.pumpAndSettle();
@@ -1280,7 +1329,7 @@ void main() {
           .byType(DropdownButtonFormField<String>)
           .at(2);
       await tester.ensureVisible(priorityDropdown);
-      await tester.tap(priorityDropdown);
+      await tester.tap(priorityDropdown, warnIfMissed: false);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Urgent (Critical / Blocker)').last);
       await tester.pumpAndSettle();
@@ -1298,7 +1347,7 @@ void main() {
           .byType(DropdownButtonFormField<String>)
           .at(3);
       await tester.ensureVisible(assigneeDropdown);
-      await tester.tap(assigneeDropdown);
+      await tester.tap(assigneeDropdown, warnIfMissed: false);
       await tester.pumpAndSettle();
       expect(find.textContaining('Vikram Malhotra'), findsWidgets);
       await tester.tap(find.textContaining('Vikram Malhotra').last);

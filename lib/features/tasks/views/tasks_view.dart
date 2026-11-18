@@ -6,6 +6,7 @@ import '../../dashboard/widgets/mobile_action_sheets.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/expanded_detail_dialog.dart';
 import '../../../core/widgets/pill_box.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/stat_strip.dart';
@@ -37,13 +38,25 @@ class _TasksViewState extends State<TasksView> {
     super.initState();
     _tasks.addAll(StorageService.getTasks());
     MobileActionSheets.taskCreatedNotifier.addListener(_onTaskCreated);
+    StorageService.cloudSyncNotifier.addListener(_onCloudSync);
   }
 
   @override
   void dispose() {
+    StorageService.cloudSyncNotifier.removeListener(_onCloudSync);
     MobileActionSheets.taskCreatedNotifier.removeListener(_onTaskCreated);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onCloudSync() {
+    if (mounted) {
+      setState(() {
+        _tasks
+          ..clear()
+          ..addAll(StorageService.getTasks());
+      });
+    }
   }
 
   void _onTaskCreated() {
@@ -62,8 +75,12 @@ class _TasksViewState extends State<TasksView> {
     final auth = Provider.of<AuthProvider>(context);
     final canUpdateStatus = AppPermissions.canUpdateTaskStatus(
       auth.currentRole,
+      user: auth.currentUser,
     );
-    final canCreateTask = AppPermissions.canCreateTask(auth.currentRole);
+    final canCreateTask = AppPermissions.canCreateTask(
+      auth.currentRole,
+      user: auth.currentUser,
+    );
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -216,8 +233,19 @@ class _TasksViewState extends State<TasksView> {
                     final String description =
                         (t['description'] as String?) ?? '';
 
-                    return Container(
-                      padding: const EdgeInsets.all(16),
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(6.0),
+                        onTap: () => _showTaskExpandedBox(
+                          context,
+                          t,
+                          isDark,
+                          canUpdateStatus,
+                          auth,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: isUrgent && !completed
                             ? (isDark
@@ -426,7 +454,7 @@ class _TasksViewState extends State<TasksView> {
                                             department,
                                             style: TextStyle(
                                               fontSize: 10.5,
-                                              fontWeight: FontWeight.w500,
+                                              fontWeight: FontWeight.w600,
                                               color: isDark
                                                   ? AppColors.textLightMuted
                                                   : AppColors.textDarkMuted,
@@ -512,7 +540,7 @@ class _TasksViewState extends State<TasksView> {
                                           photoRef,
                                           style: TextStyle(
                                             fontSize: 11,
-                                            fontWeight: FontWeight.w500,
+                                            fontWeight: FontWeight.w600,
                                             color: isDark
                                                 ? AppColors.textLightPrimary
                                                 : AppColors.textDarkPrimary,
@@ -601,9 +629,149 @@ class _TasksViewState extends State<TasksView> {
                           ),
                         ],
                       ),
+                    ),
+                    ),
                     );
                   },
                 ),
+        ),
+      ],
+    );
+  }
+
+  void _showTaskExpandedBox(
+    BuildContext context,
+    Map<String, dynamic> t,
+    bool isDark,
+    bool canUpdateStatus,
+    AuthProvider auth,
+  ) {
+    final bool completed = t['completed'] as bool? ?? false;
+    final Color color = t['color'] as Color? ?? AppColors.brandPeach;
+    final String priority = t['priority'] as String? ?? 'Normal';
+    final bool isUrgent = priority == 'Urgent';
+    final String title = t['title'] as String? ?? 'Project Milestone';
+    final String project = t['project'] as String? ?? 'General Site';
+    final String department =
+        (t['department'] as String?)?.isNotEmpty == true
+        ? t['department'] as String
+        : 'Site & Execution';
+    final String assignee = t['assignee'] as String? ?? 'Unassigned';
+    final String deadline =
+        t['deadline'] as String? ?? (t['dueDate'] as String? ?? 'Today');
+    final String description = (t['description'] as String?) ?? '';
+    final String status = completed ? 'Completed' : 'In Progress';
+    final accent = isUrgent && !completed ? AppColors.error : color;
+
+    showExpandedDetailBox(
+      context: context,
+      title: title,
+      subtitle: '$project • $department',
+      headerIcon: Icons.task_alt_rounded,
+      accentColor: accent,
+      badgeLabel: isUrgent && !completed ? 'URGENT' : status,
+      badgeColor: completed ? AppColors.success : accent,
+      bodyBuilder: (dialogCtx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DetailMetricGrid(
+            isDark: isDark,
+            metrics: [
+              DetailMetric(
+                label: 'Priority',
+                value: priority,
+                color: isUrgent ? AppColors.error : AppColors.brandPeach,
+                icon: Icons.flag_rounded,
+              ),
+              DetailMetric(
+                label: 'Due Date',
+                value: deadline,
+                color: isUrgent && !completed ? AppColors.error : null,
+                icon: Icons.calendar_today_outlined,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          DetailSectionTitle(label: 'Milestone Details', isDark: isDark),
+          DetailInfoRow(
+            icon: Icons.apartment_rounded,
+            label: 'Project Site',
+            value: project,
+            isDark: isDark,
+          ),
+          DetailInfoRow(
+            icon: Icons.workspaces_outlined,
+            label: 'Department',
+            value: department,
+            isDark: isDark,
+          ),
+          DetailInfoRow(
+            icon: Icons.person_outline_rounded,
+            label: 'Assignee',
+            value: assignee,
+            isDark: isDark,
+          ),
+          DetailInfoRow(
+            icon: Icons.check_circle_outline_rounded,
+            label: 'Status',
+            value: status,
+            isDark: isDark,
+            valueColor: completed ? AppColors.success : AppColors.warning,
+          ),
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            DetailNoteBox(
+              label: 'SCOPE OF WORK',
+              text: description,
+              isDark: isDark,
+            ),
+          ],
+        ],
+      ),
+      actionsBuilder: (dialogCtx) => [
+        OutlinedButton.icon(
+          icon: const Icon(Icons.close_rounded, size: 15),
+          label: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('Close', maxLines: 1),
+          ),
+          onPressed: () => Navigator.of(dialogCtx).pop(),
+        ),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: completed ? AppColors.warning : AppColors.brandPeach,
+            foregroundColor: Colors.black,
+          ),
+          icon: Icon(
+            completed ? Icons.replay_rounded : Icons.check_circle_rounded,
+            size: 15,
+          ),
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              completed ? 'Reopen Task' : 'Mark Completed',
+              maxLines: 1,
+            ),
+          ),
+          onPressed: () {
+            if (!canUpdateStatus) {
+              Navigator.of(dialogCtx).pop();
+              AppNotification.show(
+                context,
+                message:
+                    'Action restricted: Signed in as ${auth.currentRole.title}. Updating milestone deliverables requires Supervisor or PM permissions.',
+              );
+              return;
+            }
+            Navigator.of(dialogCtx).pop();
+            setState(() {
+              t['completed'] = !completed;
+              t['status'] = !completed ? 'Completed' : 'In Progress';
+            });
+            StorageService.saveTasks(_tasks);
+            final model = TaskModel.fromMap(t);
+            BackendManager.instance.updateTask(model);
+          },
         ),
       ],
     );

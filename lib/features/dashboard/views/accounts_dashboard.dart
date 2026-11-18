@@ -10,12 +10,16 @@ import '../../../core/widgets/stat_strip.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/backend_manager.dart';
 import '../../../core/models/invoice_model.dart';
+import '../../../core/widgets/expanded_detail_dialog.dart';
 import '../../../core/widgets/pill_box.dart';
 import '../../../core/widgets/screen_layout.dart';
 import '../../../core/services/pdf_service.dart';
 import '../../../core/permissions/app_permissions.dart';
+import '../../../core/utils/currency_utils.dart';
 import '../../auth/state/auth_provider.dart';
 import '../widgets/mobile_action_sheets.dart';
+import '../../accounts/dialogs/invoice_qr_payment_dialog.dart';
+import '../../accounts/dialogs/upload_invoice_qr_sheet.dart';
 
 class AccountsDashboard extends StatefulWidget {
   const AccountsDashboard({super.key});
@@ -35,24 +39,65 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
     _invoices.addAll(StorageService.getInvoices());
     _expenses.addAll(StorageService.getExpenses());
     MobileActionSheets.invoiceCreatedNotifier.addListener(_onInvoiceCreated);
+    MobileActionSheets.invoiceUpdatedNotifier.addListener(_onInvoiceUpdated);
     MobileActionSheets.expenseCreatedNotifier.addListener(_onExpenseCreated);
+    MobileActionSheets.projectCreatedNotifier.addListener(_onProjectCreated);
+    StorageService.cloudSyncNotifier.addListener(_onCloudSync);
   }
 
   @override
   void dispose() {
+    StorageService.cloudSyncNotifier.removeListener(_onCloudSync);
     MobileActionSheets.invoiceCreatedNotifier.removeListener(_onInvoiceCreated);
+    MobileActionSheets.invoiceUpdatedNotifier.removeListener(_onInvoiceUpdated);
     MobileActionSheets.expenseCreatedNotifier.removeListener(_onExpenseCreated);
+    MobileActionSheets.projectCreatedNotifier.removeListener(_onProjectCreated);
     super.dispose();
+  }
+
+  void _onCloudSync() {
+    if (mounted) {
+      setState(() {
+        _invoices
+          ..clear()
+          ..addAll(StorageService.getInvoices());
+        _expenses
+          ..clear()
+          ..addAll(StorageService.getExpenses());
+      });
+    }
   }
 
   void _onInvoiceCreated() {
     final invoice = MobileActionSheets.invoiceCreatedNotifier.value;
     if (invoice != null && mounted) {
+      if (!_invoices.any((i) => i['id'] == invoice['id'])) {
+        setState(() {
+          _invoices.insert(0, Map<String, dynamic>.from(invoice));
+        });
+        StorageService.saveInvoices(_invoices);
+        BackendManager.instance.createInvoice(InvoiceModel.fromMap(invoice));
+      }
+    }
+  }
+
+  void _onInvoiceUpdated() {
+    final updated = MobileActionSheets.invoiceUpdatedNotifier.value;
+    if (updated != null && mounted) {
       setState(() {
-        _invoices.insert(0, Map<String, dynamic>.from(invoice));
+        final idx = _invoices.indexWhere(
+          (i) => i['id'] == updated['id'] || i['invoiceNumber'] == updated['id'],
+        );
+        if (idx != -1) {
+          _invoices[idx] = {
+            ..._invoices[idx],
+            ...updated,
+          };
+        } else {
+          _invoices.clear();
+          _invoices.addAll(StorageService.getInvoices());
+        }
       });
-      StorageService.saveInvoices(_invoices);
-      BackendManager.instance.createInvoice(InvoiceModel.fromMap(invoice));
     }
   }
 
@@ -66,11 +111,80 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
     }
   }
 
+  void _onProjectCreated() {
+    final newProj = MobileActionSheets.projectCreatedNotifier.value;
+    if (newProj != null && mounted) {
+      // Auto-generate mobilization advance invoice if originating from sales lead conversion
+      final originLeadId = newProj['originLeadId'];
+      if (originLeadId == null || originLeadId.toString().isEmpty) {
+        return;
+      }
+
+      final projName = newProj['name'] as String? ?? 'Turnkey Site';
+      final clientName =
+          (newProj['client'] ?? newProj['location'] ?? 'Client') as String;
+      final budgetStr = (newProj['budget'] ?? '₹ 0') as String;
+      final rawBudget = CurrencyUtils.parseAmount(budgetStr);
+
+      // Auto-generate 10% mobilization advance invoice for the newly created turnkey project
+      final advanceAmount =
+          rawBudget > 0 ? (rawBudget * 0.10).round() : 100000;
+      final advanceFormatted = CurrencyUtils.formatInr(advanceAmount);
+
+      final invId =
+          'INV-${DateTime.now().millisecondsSinceEpoch % 100000}';
+      final autoInvoice = {
+        'id': invId,
+        'invoiceNumber': invId,
+        'title': '$projName - Mobilization Advance (10%)',
+        'client': clientName,
+        'project': projName,
+        'projectId': newProj['id'],
+        'leadId': originLeadId.toString(),
+        'leadName': clientName,
+        'amount': advanceFormatted,
+        'status': 'Pending Payment',
+        'dueDate': DateFormat('dd MMM yyyy')
+            .format(DateTime.now().add(const Duration(days: 7))),
+        'date': DateFormat('dd MMM yyyy').format(DateTime.now()),
+        'color': AppColors.warning,
+        'statusColor': AppColors.warning,
+        'qrCodeBase64': AppConstants.samplePaymentQrBase64,
+        'upiId': AppConstants.defaultUpiId,
+        'items': [
+          {
+            'desc': 'Turnkey mobilization & procurement advance (10%)',
+            'amount': advanceFormatted,
+          }
+        ],
+        'createdAt': DateTime.now().toIso8601String(),
+      };
+
+      if (!_invoices.any(
+        (inv) =>
+            inv['project'] == projName &&
+            (inv['title'] ?? '')
+                .toString()
+                .contains('Mobilization Advance'),
+      )) {
+        setState(() {
+          _invoices.insert(0, autoInvoice);
+        });
+        StorageService.saveInvoices(_invoices);
+        BackendManager.instance.createInvoice(
+          InvoiceModel.fromMap(autoInvoice),
+        );
+        MobileActionSheets.invoiceCreatedNotifier.value = autoInvoice;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
     final canManageAccounts = AppPermissions.canManageAccounts(
       auth.currentRole,
+      user: auth.currentUser,
     );
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -78,30 +192,18 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
     int totalReceivables = 0;
     for (final inv in _invoices) {
       if (inv['status'] != 'Settled') {
-        final raw = (inv['amount'] as String).replaceAll(RegExp(r'[^0-9]'), '');
-        totalReceivables += int.tryParse(raw) ?? 0;
+        totalReceivables += CurrencyUtils.parseAmount(inv['amount']);
       }
     }
-    final receivablesStr = totalReceivables > 0
-        ? NumberFormat.currency(
-            locale: 'en_IN',
-            symbol: '₹ ',
-            decimalDigits: 0,
-          ).format(totalReceivables)
-        : '₹ 0';
+    final receivablesStr =
+        totalReceivables > 0 ? CurrencyUtils.formatInr(totalReceivables) : '₹ 0';
 
     int totalDisbursed = 0;
     for (final exp in _expenses) {
-      final raw = (exp['amount'] as String).replaceAll(RegExp(r'[^0-9]'), '');
-      totalDisbursed += int.tryParse(raw) ?? 0;
+      totalDisbursed += CurrencyUtils.parseAmount(exp['amount']);
     }
-    final disbursedStr = totalDisbursed > 0
-        ? NumberFormat.currency(
-            locale: 'en_IN',
-            symbol: '₹ ',
-            decimalDigits: 0,
-          ).format(totalDisbursed)
-        : '₹ 0';
+    final disbursedStr =
+        totalDisbursed > 0 ? CurrencyUtils.formatInr(totalDisbursed) : '₹ 0';
 
     return ScreenScrollView(
       children: [
@@ -224,26 +326,30 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
                           separatorBuilder: (context, index) => const Divider(),
                           itemBuilder: (context, index) {
                             final inv = _invoices[index];
-                            final color = inv['statusColor'] as Color;
+                            final color = (inv['statusColor'] as Color?) ?? AppColors.warning;
+                            final hasQr = (inv['qrCodePath'] != null &&
+                                    inv['qrCodePath'].toString().isNotEmpty) ||
+                                (inv['qrCodeBase64'] != null &&
+                                    inv['qrCodeBase64'].toString().isNotEmpty);
+                            final projName = (inv['project'] ?? inv['projectName'] ?? '') as String;
+                            final leadName = (inv['leadName'] ?? '') as String;
+
                             return InkWell(
-                              onTap: () {
-                                PdfService.showPdfViewer(
-                                  context,
-                                  title: 'Tax Invoice ${inv['id']}',
-                                  documentBuilder: () =>
-                                      PdfService.generateInvoicePdf(inv),
-                                );
-                              },
+                              onTap: () => _showInvoiceExpandedBox(
+                                context,
+                                inv,
+                                isDark,
+                              ),
                               borderRadius: BorderRadius.circular(4.0),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 14,
+                                  horizontal: 14,
+                                  vertical: 12,
                                 ),
                                 child: Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.all(10),
+                                      padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
                                         color: color.withValues(alpha: 0.12),
                                         borderRadius: BorderRadius.circular(
@@ -253,31 +359,116 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
                                       child: Icon(
                                         Icons.description_rounded,
                                         color: color,
-                                        size: 22,
+                                        size: 20,
                                       ),
                                     ),
-                                    const SizedBox(width: 16),
+                                    const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            inv['client'] as String,
+                                            inv['title'] != null &&
+                                                    (inv['title'] as String)
+                                                        .isNotEmpty
+                                                ? inv['title'] as String
+                                                : inv['client'] as String,
                                             style: AppTypography.titleMedium(
                                               isDark,
                                             ),
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            '${inv['id']} • ${inv['date']}',
+                                            '${inv['client']} • ${inv['id']} • ${inv['date']}',
                                             style: AppTypography.bodySmall(
                                               isDark,
                                             ),
                                           ),
+                                          if (projName.isNotEmpty || leadName.isNotEmpty) ...[
+                                            const SizedBox(height: 4),
+                                            Wrap(
+                                              spacing: 6,
+                                              runSpacing: 4,
+                                              children: [
+                                                if (projName.isNotEmpty)
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.info.withValues(alpha: 0.12),
+                                                      borderRadius: BorderRadius.circular(3.0),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.business_rounded,
+                                                          size: 10,
+                                                          color: AppColors.info,
+                                                        ),
+                                                        const SizedBox(width: 3),
+                                                        Flexible(
+                                                          child: Text(
+                                                            projName,
+                                                            maxLines: 1,
+                                                            overflow: TextOverflow.ellipsis,
+                                                            style: const TextStyle(
+                                                              fontSize: 10,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: AppColors.info,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                if (leadName.isNotEmpty &&
+                                                    leadName != projName &&
+                                                    leadName != inv['title'] &&
+                                                    leadName != inv['client'])
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.brandOrange.withValues(alpha: 0.12),
+                                                      borderRadius: BorderRadius.circular(3.0),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.person_pin_circle_rounded,
+                                                          size: 10,
+                                                          color: AppColors.brandOrange,
+                                                        ),
+                                                        const SizedBox(width: 3),
+                                                        Flexible(
+                                                          child: Text(
+                                                            leadName,
+                                                            maxLines: 1,
+                                                            overflow: TextOverflow.ellipsis,
+                                                            style: const TextStyle(
+                                                              fontSize: 10,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: AppColors.brandOrange,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ),
+                                    const SizedBox(width: 8),
                                     Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.end,
@@ -291,21 +482,21 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
                                         const SizedBox(height: 4),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 5,
+                                            horizontal: 7,
+                                            vertical: 2.5,
                                           ),
                                           decoration: BoxDecoration(
                                             color: color.withValues(
                                               alpha: 0.15,
                                             ),
                                             borderRadius: BorderRadius.circular(
-                                              6.0,
+                                              4.0,
                                             ),
                                           ),
                                           child: Text(
                                             inv['status'] as String,
                                             style: TextStyle(
-                                              fontSize: 11.5,
+                                              fontSize: 10.5,
                                               fontWeight: FontWeight.w700,
                                               color: color,
                                             ),
@@ -313,11 +504,66 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 2),
                                     IconButton(
+                                      style: IconButton.styleFrom(
+                                        minimumSize: Size.zero,
+                                        padding: const EdgeInsets.all(4),
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      icon: Icon(
+                                        hasQr
+                                            ? Icons.qr_code_2_rounded
+                                            : Icons.add_photo_alternate_outlined,
+                                        size: 19,
+                                      ),
+                                      tooltip: hasQr
+                                          ? 'Scan & Pay via QR'
+                                          : 'Upload Payment QR Code',
+                                      color: hasQr
+                                          ? AppColors.brandPeach
+                                          : (isDark
+                                              ? AppColors.textLightMuted
+                                              : AppColors.textDarkMuted),
+                                      onPressed: () {
+                                        if (hasQr) {
+                                          InvoiceQrPaymentDialog.show(
+                                            context,
+                                            invoice: inv,
+                                            onStatusChanged: () {
+                                              setState(() {
+                                                _invoices.clear();
+                                                _invoices.addAll(
+                                                  StorageService.getInvoices(),
+                                                );
+                                              });
+                                            },
+                                          );
+                                        } else {
+                                          UploadInvoiceQrSheet.show(
+                                            context,
+                                            invoiceId: inv['id'] as String?,
+                                            currentUpiId: inv['upiId'] as String?,
+                                            onQrSelected: (path, b64, upi) {
+                                              setState(() {
+                                                inv['qrCodePath'] = path;
+                                                inv['qrCodeBase64'] = b64;
+                                                inv['upiId'] = upi;
+                                              });
+                                            },
+                                          );
+                                        }
+                                      },
+                                    ),
+                                    IconButton(
+                                      style: IconButton.styleFrom(
+                                        minimumSize: Size.zero,
+                                        padding: const EdgeInsets.all(4),
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
                                       icon: const Icon(
                                         Icons.picture_as_pdf_rounded,
-                                        size: 20,
+                                        size: 18,
                                       ),
                                       tooltip: 'View & Print Tax Invoice PDF',
                                       color: AppColors.brandPeach,
@@ -372,11 +618,18 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
                             final color =
                                 (exp['statusColor'] as Color?) ??
                                 AppColors.brandPeach;
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 14,
+                            return InkWell(
+                              onTap: () => _showExpenseExpandedBox(
+                                context,
+                                exp,
+                                isDark,
                               ),
+                              borderRadius: BorderRadius.circular(4.0),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 14,
+                                ),
                               child: Row(
                                 children: [
                                   Container(
@@ -449,10 +702,235 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
                                   ),
                                 ],
                               ),
+                            ),
                             );
                           },
                         )),
           ),
+        ),
+      ],
+    );
+  }
+
+  void _showInvoiceExpandedBox(
+    BuildContext context,
+    Map<String, dynamic> inv,
+    bool isDark,
+  ) {
+    final color = (inv['statusColor'] as Color?) ?? AppColors.warning;
+    final hasQr = (inv['qrCodePath'] != null &&
+            inv['qrCodePath'].toString().isNotEmpty) ||
+        (inv['qrCodeBase64'] != null &&
+            inv['qrCodeBase64'].toString().isNotEmpty);
+    final invTitle = (inv['title'] != null && (inv['title'] as String).isNotEmpty)
+        ? inv['title'] as String
+        : (inv['client'] as String? ?? 'Tax Invoice');
+    final invId = inv['id']?.toString() ?? 'INV';
+    final client = inv['client']?.toString() ?? 'Client';
+    final amount = inv['amount']?.toString() ?? '₹ 0';
+    final status = inv['status']?.toString() ?? 'Payment Pending';
+    final date = inv['date']?.toString() ?? '';
+    final projName = (inv['project'] ?? inv['projectName'] ?? '').toString();
+    final leadName = (inv['leadName'] ?? '').toString();
+    final upiId = inv['upiId']?.toString() ?? AppConstants.defaultUpiId;
+
+    showExpandedDetailBox(
+      context: context,
+      title: invTitle,
+      subtitle: '$invId • $client',
+      headerIcon: Icons.description_rounded,
+      accentColor: color,
+      badgeLabel: status,
+      badgeColor: color,
+      bodyBuilder: (dialogCtx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DetailMetricGrid(
+            isDark: isDark,
+            metrics: [
+              DetailMetric(
+                label: 'Invoice Amount',
+                value: amount,
+                color: AppColors.brandPeach,
+                icon: Icons.currency_rupee_rounded,
+              ),
+              DetailMetric(
+                label: 'Invoice Date',
+                value: date.isNotEmpty ? date : 'Current',
+                icon: Icons.calendar_today_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          DetailSectionTitle(label: 'Mapping & Payment Info', isDark: isDark),
+          DetailInfoRow(
+            icon: Icons.person_outline_rounded,
+            label: 'Client',
+            value: client,
+            isDark: isDark,
+          ),
+          if (projName.isNotEmpty)
+            DetailInfoRow(
+              icon: Icons.apartment_rounded,
+              label: 'Linked Project',
+              value: projName,
+              isDark: isDark,
+              valueColor: AppColors.info,
+            ),
+          if (leadName.isNotEmpty)
+            DetailInfoRow(
+              icon: Icons.person_pin_circle_rounded,
+              label: 'Linked Lead',
+              value: leadName,
+              isDark: isDark,
+              valueColor: AppColors.brandOrange,
+            ),
+          DetailInfoRow(
+            icon: Icons.qr_code_2_rounded,
+            label: 'UPI / QR Code',
+            value: hasQr ? 'Attached ($upiId)' : 'Not Uploaded Yet',
+            isDark: isDark,
+            valueColor: hasQr ? AppColors.success : AppColors.warning,
+          ),
+        ],
+      ),
+      actionsBuilder: (dialogCtx) => [
+        OutlinedButton.icon(
+          icon: const Icon(Icons.picture_as_pdf_rounded, size: 15),
+          label: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('Print PDF', maxLines: 1),
+          ),
+          onPressed: () {
+            Navigator.of(dialogCtx).pop();
+            PdfService.showPdfViewer(
+              context,
+              title: 'Tax Invoice $invId',
+              documentBuilder: () => PdfService.generateInvoicePdf(inv),
+            );
+          },
+        ),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.brandPeach,
+            foregroundColor: Colors.black,
+          ),
+          icon: Icon(
+            hasQr ? Icons.qr_code_2_rounded : Icons.add_photo_alternate_outlined,
+            size: 15,
+          ),
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              hasQr ? 'Pay via QR' : 'Upload QR',
+              maxLines: 1,
+            ),
+          ),
+          onPressed: () {
+            Navigator.of(dialogCtx).pop();
+            if (hasQr) {
+              InvoiceQrPaymentDialog.show(
+                context,
+                invoice: inv,
+                onStatusChanged: () {
+                  setState(() {
+                    _invoices.clear();
+                    _invoices.addAll(StorageService.getInvoices());
+                  });
+                },
+              );
+            } else {
+              UploadInvoiceQrSheet.show(
+                context,
+                invoiceId: inv['id'] as String?,
+                currentUpiId: inv['upiId'] as String?,
+                onQrSelected: (path, b64, upi) {
+                  setState(() {
+                    inv['qrCodePath'] = path;
+                    inv['qrCodeBase64'] = b64;
+                    inv['upiId'] = upi;
+                  });
+                },
+              );
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  void _showExpenseExpandedBox(
+    BuildContext context,
+    Map<String, dynamic> exp,
+    bool isDark,
+  ) {
+    final color = (exp['statusColor'] as Color?) ?? AppColors.brandPeach;
+    final title = (exp['title'] as String?) ?? 'Expense Item';
+    final project = (exp['project'] as String?) ?? 'General Site';
+    final category = (exp['category'] as String?) ?? 'Site Expense';
+    final date = (exp['date'] as String?) ?? '';
+    final amount = (exp['amount'] as String?) ?? '₹ 0';
+    final status = (exp['status'] as String?) ?? 'Approved';
+    final vendor = (exp['vendor'] as String?) ?? '';
+
+    showExpandedDetailBox(
+      context: context,
+      title: title,
+      subtitle: project,
+      headerIcon: Icons.payments_outlined,
+      accentColor: color,
+      badgeLabel: status,
+      badgeColor: color,
+      bodyBuilder: (dialogCtx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DetailMetricGrid(
+            isDark: isDark,
+            metrics: [
+              DetailMetric(
+                label: 'Disbursed Amount',
+                value: amount,
+                color: color,
+                icon: Icons.currency_rupee_rounded,
+              ),
+              DetailMetric(
+                label: 'Voucher Date',
+                value: date.isNotEmpty ? date : 'Recorded',
+                icon: Icons.calendar_today_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          DetailSectionTitle(label: 'Voucher Breakdown', isDark: isDark),
+          DetailInfoRow(
+            icon: Icons.apartment_rounded,
+            label: 'Project Site',
+            value: project,
+            isDark: isDark,
+          ),
+          DetailInfoRow(
+            icon: Icons.category_outlined,
+            label: 'Category',
+            value: category,
+            isDark: isDark,
+          ),
+          if (vendor.isNotEmpty)
+            DetailInfoRow(
+              icon: Icons.storefront_rounded,
+              label: 'Payee / Vendor',
+              value: vendor,
+              isDark: isDark,
+            ),
+        ],
+      ),
+      actionsBuilder: (dialogCtx) => [
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.brandPeach,
+            foregroundColor: Colors.black,
+          ),
+          onPressed: () => Navigator.of(dialogCtx).pop(),
+          child: const Text('Done'),
         ),
       ],
     );

@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
@@ -5,9 +9,11 @@ import '../models/project_model.dart';
 import '../models/task_model.dart';
 import '../models/vendor_model.dart';
 import '../models/invoice_model.dart';
+import 'cloud_storage_service.dart';
 import 'database_service.dart';
 import 'local_database_service.dart';
 import 'firestore_database_service.dart';
+import 'storage_service.dart';
 
 class BackendManager {
   static final BackendManager instance = BackendManager._();
@@ -15,6 +21,8 @@ class BackendManager {
 
   final LocalDatabaseService _localDb = LocalDatabaseService();
   final FirestoreDatabaseService _firestoreDb = FirestoreDatabaseService();
+  final List<StreamSubscription<dynamic>> _realtimeSubscriptions = [];
+  bool _realtimeSyncActive = false;
 
   DatabaseService get activeService {
     if (Firebase.apps.isNotEmpty) {
@@ -24,15 +32,45 @@ class BackendManager {
   }
 
   bool get isCloudConnected => Firebase.apps.isNotEmpty;
+  bool get isAuthenticatedCloud =>
+      isCloudConnected && FirebaseAuth.instance.currentUser != null;
 
   Future<void> init() async {
     await _localDb.init();
     if (Firebase.apps.isNotEmpty) {
       try {
         await _firestoreDb.init();
+        final authed = await CloudStorageService.ensureAuthenticated();
+        if (authed) {
+          await _ensureFirestoreUserBootstrap();
+          unawaited(syncLocalToCloud());
+        }
       } catch (e) {
         debugPrint('Firestore initialization error: $e');
       }
+    }
+  }
+
+  Future<void> _ensureFirestoreUserBootstrap() async {
+    final fbUser = FirebaseAuth.instance.currentUser;
+    if (fbUser == null) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(fbUser.uid)
+          .set({
+        'id': fbUser.uid,
+        'fullName': 'Rajesh Sharma',
+        'email': fbUser.email ?? 'rajesh@assistinteriors.in',
+        'phone': '+91 98100 12345',
+        'role': 'proprietor',
+        'status': 'approved',
+        'seenByProprietor': true,
+        'createdAt': DateTime(2025, 1, 1).toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Firestore user bootstrap note: $e');
     }
   }
 
@@ -125,45 +163,223 @@ class BackendManager {
     }
   }
 
-  /// Sync all existing local records to Firestore when connecting
+  // --- Extended Collection Sync Delegates (Leads, Design, Materials, Amendments, Expenses, Roles, Settings) ---
+
+  Future<void> upsertCollectionRecord(
+    String collection,
+    String docId,
+    Map<String, dynamic> data,
+  ) async {
+    if (!isCloudConnected) return;
+    if (!await CloudStorageService.ensureAuthenticated()) return;
+    await _firestoreDb.upsertDocument(collection, docId, data);
+  }
+
+  Future<void> deleteDocument(String collection, String docId) async {
+    if (!isCloudConnected) return;
+    if (!await CloudStorageService.ensureAuthenticated()) return;
+    await _firestoreDb.deleteDocument(collection, docId);
+  }
+
+  Future<void> syncCollection(
+    String collection,
+    List<Map<String, dynamic>> records,
+  ) async {
+    if (!isCloudConnected) return;
+    if (!await CloudStorageService.ensureAuthenticated()) return;
+    await _firestoreDb.syncCollection(collection, records);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCollection(String collection) async {
+    if (!isCloudConnected) return const [];
+    if (!await CloudStorageService.ensureAuthenticated()) return const [];
+    return _firestoreDb.fetchCollection(collection);
+  }
+
+  Future<void> syncStudioRetentionSettings({
+    required int photoRetentionMonths,
+    required int cadRetentionMonths,
+  }) async {
+    if (!isCloudConnected) return;
+    if (!await CloudStorageService.ensureAuthenticated()) return;
+    await _firestoreDb.upsertDocument('studio_settings', 'retention_policy', {
+      'id': 'retention_policy',
+      'photoRetentionMonths': photoRetentionMonths,
+      'cadRetentionMonths': cadRetentionMonths,
+    });
+  }
+
+  /// Sync all existing local records with Firestore when connecting with an authenticated session.
+  /// - When a Firestore collection is empty, seeds it from local storage.
+  /// - When Firestore already has documents, Firestore is treated as the single source of truth
+  ///   so photos or records deleted on one device are never resurrected from another device's local cache.
   Future<void> syncLocalToCloud() async {
     if (!isCloudConnected) return;
+    final authed = await CloudStorageService.ensureAuthenticated();
+    if (!authed) return;
     try {
-      // Projects
-      final projectsStream = _localDb.streamProjects();
-      final projects = await projectsStream.first;
-      for (final p in projects) {
-        await _firestoreDb.createProject(p);
+      await CloudStorageService.syncPendingLocalPhotos();
+
+      final collectionsToSync = <String, List<Map<String, dynamic>>>{
+        'projects': StorageService.getProjects(),
+        'tasks': StorageService.getTasks(),
+        'vendors': StorageService.getVendors(),
+        'invoices': StorageService.getInvoices(),
+        'leads': StorageService.getLeads(),
+        'design_items': StorageService.getDesignItems(),
+        'material_requests': StorageService.getMaterialRequests(),
+        'amendments': StorageService.getAmendments(),
+        'expenses': StorageService.getExpenses(),
+        'custom_roles': StorageService.getCustomRoles(),
+      };
+
+      for (final entry in collectionsToSync.entries) {
+        final col = entry.key;
+        final localDocs = entry.value;
+        final remoteDocs = await fetchCollection(col);
+        if (remoteDocs.isEmpty) {
+          if (localDocs.isNotEmpty) {
+            await syncCollection(col, localDocs);
+          }
+        } else {
+          await StorageService.applyRemoteCollection(col, remoteDocs);
+        }
       }
 
-      // Tasks
-      final tasks = await _localDb.streamTasks().first;
-      for (final t in tasks) {
-        await _firestoreDb.createTask(t);
-      }
+      await syncStudioRetentionSettings(
+        photoRetentionMonths: StorageService.getPhotoRetentionMonths(),
+        cadRetentionMonths: StorageService.getCadRetentionMonths(),
+      );
 
-      // Vendors
-      final vendors = await _localDb.streamVendors().first;
-      for (final v in vendors) {
-        await _firestoreDb.createVendor(v);
-      }
-
-      // Invoices
-      final invoices = await _localDb.streamInvoices().first;
-      for (final i in invoices) {
-        await _firestoreDb.createInvoice(i);
-      }
       debugPrint(
-        'Local database synchronized to Cloud Firestore successfully.',
+        'Local database synchronized with Cloud Firestore successfully.',
       );
     } catch (e) {
       debugPrint('Sync error: $e');
     }
   }
 
+  /// Subscribes to real-time Firestore snapshot streams across all studio
+  /// collections so changes made on any device appear on open screens without
+  /// requiring an app restart.
+  void startRealtimeSync({
+    void Function(List<Map<String, dynamic>> users)? onUsersSnapshot,
+    void Function(List<Map<String, dynamic>> roles)? onCustomRolesSnapshot,
+    void Function(int photoMonths, int cadMonths)? onRetentionSnapshot,
+  }) {
+    if (!isCloudConnected || _realtimeSyncActive) return;
+    if (!isAuthenticatedCloud) {
+      CloudStorageService.ensureAuthenticated().then((authed) {
+        if (authed) {
+          startRealtimeSync(
+            onUsersSnapshot: onUsersSnapshot,
+            onCustomRolesSnapshot: onCustomRolesSnapshot,
+            onRetentionSnapshot: onRetentionSnapshot,
+          );
+        }
+      });
+      return;
+    }
+    _realtimeSyncActive = true;
+
+    final db = FirebaseFirestore.instance;
+    const syncedCollections = [
+      'projects',
+      'tasks',
+      'vendors',
+      'invoices',
+      'leads',
+      'design_items',
+      'material_requests',
+      'amendments',
+      'expenses',
+    ];
+
+    for (final col in syncedCollections) {
+      final sub = db.collection(col).snapshots().listen(
+        (snapshot) {
+          if (snapshot.docs.isEmpty) return;
+          final docs = snapshot.docs
+              .map((d) => <String, dynamic>{'id': d.id, ...d.data()})
+              .toList();
+          StorageService.applyRemoteCollection(col, docs);
+        },
+        onError: (Object e) {
+          debugPrint('Realtime sync listener($col) notice: $e');
+        },
+      );
+      _realtimeSubscriptions.add(sub);
+    }
+
+    if (onUsersSnapshot != null) {
+      final userSub = db.collection('users').snapshots().listen(
+        (snapshot) {
+          if (snapshot.docs.isEmpty) return;
+          final docs = snapshot.docs
+              .map((d) => <String, dynamic>{'id': d.id, ...d.data()})
+              .toList();
+          onUsersSnapshot(docs);
+        },
+        onError: (Object e) {
+          debugPrint('Realtime sync listener(users) notice: $e');
+        },
+      );
+      _realtimeSubscriptions.add(userSub);
+    }
+
+    if (onCustomRolesSnapshot != null) {
+      final rolesSub = db.collection('custom_roles').snapshots().listen(
+        (snapshot) {
+          if (snapshot.docs.isEmpty) return;
+          final docs = snapshot.docs
+              .map((d) => <String, dynamic>{'id': d.id, ...d.data()})
+              .toList();
+          StorageService.applyRemoteCollection('custom_roles', docs);
+          onCustomRolesSnapshot(docs);
+        },
+        onError: (Object e) {
+          debugPrint('Realtime sync listener(custom_roles) notice: $e');
+        },
+      );
+      _realtimeSubscriptions.add(rolesSub);
+    }
+
+    if (onRetentionSnapshot != null) {
+      final retentionSub = db
+          .collection('studio_settings')
+          .doc('retention_policy')
+          .snapshots()
+          .listen(
+        (doc) {
+          if (!doc.exists) return;
+          final data = doc.data();
+          if (data == null) return;
+          final photoM = (data['photoRetentionMonths'] as num?)?.toInt() ??
+              StorageService.defaultPhotoRetentionMonths;
+          final cadM = (data['cadRetentionMonths'] as num?)?.toInt() ??
+              StorageService.defaultCadRetentionMonths;
+          onRetentionSnapshot(photoM, cadM);
+        },
+        onError: (Object e) {
+          debugPrint('Realtime sync listener(studio_settings) notice: $e');
+        },
+      );
+      _realtimeSubscriptions.add(retentionSub);
+    }
+  }
+
+  /// Cancels all active Firestore real-time listeners (e.g., on sign-out).
+  Future<void> stopRealtimeSync() async {
+    _realtimeSyncActive = false;
+    for (final sub in _realtimeSubscriptions) {
+      await sub.cancel();
+    }
+    _realtimeSubscriptions.clear();
+  }
+
   Future<void> clearAll() async {
     await _localDb.clearAll();
-    if (isCloudConnected) {
+    if (isAuthenticatedCloud) {
       await _firestoreDb.clearAll();
     }
   }

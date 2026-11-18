@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 
 import 'package:provider/provider.dart';
 
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/currency_utils.dart';
+import '../../../core/widgets/expanded_detail_dialog.dart';
 import '../../../core/widgets/pill_box.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/stat_strip.dart';
@@ -37,13 +38,25 @@ class _VendorsViewState extends State<VendorsView> {
     super.initState();
     _vendors.addAll(StorageService.getVendors());
     MobileActionSheets.vendorCreatedNotifier.addListener(_onVendorCreated);
+    StorageService.cloudSyncNotifier.addListener(_onCloudSync);
   }
 
   @override
   void dispose() {
+    StorageService.cloudSyncNotifier.removeListener(_onCloudSync);
     MobileActionSheets.vendorCreatedNotifier.removeListener(_onVendorCreated);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onCloudSync() {
+    if (mounted) {
+      setState(() {
+        _vendors
+          ..clear()
+          ..addAll(StorageService.getVendors());
+      });
+    }
   }
 
   void _onVendorCreated() {
@@ -60,25 +73,21 @@ class _VendorsViewState extends State<VendorsView> {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final canManageVendors = AppPermissions.canManageVendors(auth.currentRole);
+    final canManageVendors = AppPermissions.canManageVendors(
+      auth.currentRole,
+      user: auth.currentUser,
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     int totalOpenPOs = 0;
     int totalOutstanding = 0;
     for (final v in _vendors) {
       totalOpenPOs += (v['openPOs'] as num?)?.toInt() ?? 0;
-      final raw =
-          (v['amountDue'] as String? ?? v['outstanding'] as String? ?? '')
-              .replaceAll(RegExp(r'[^0-9]'), '');
-      totalOutstanding += int.tryParse(raw) ?? 0;
+      totalOutstanding +=
+          CurrencyUtils.parseAmount(v['amountDue'] ?? v['outstanding']);
     }
-    final outstandingStr = totalOutstanding > 0
-        ? NumberFormat.currency(
-            locale: 'en_IN',
-            symbol: '₹ ',
-            decimalDigits: 0,
-          ).format(totalOutstanding)
-        : '₹ 0';
+    final outstandingStr =
+        totalOutstanding > 0 ? CurrencyUtils.formatInr(totalOutstanding) : '₹ 0';
 
     final filteredVendors = _vendors.where((v) {
       if (_selectedCategory != 'All' && v['category'] != _selectedCategory) {
@@ -248,8 +257,18 @@ class _VendorsViewState extends State<VendorsView> {
                       statusIcon = Icons.hourglass_top_rounded;
                     }
 
-                    return Container(
-                      padding: const EdgeInsets.all(16),
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(6.0),
+                        onTap: () => _showVendorExpandedBox(
+                          context,
+                          v,
+                          statusColor,
+                          isDark,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppColors.darkCard
@@ -669,10 +688,130 @@ class _VendorsViewState extends State<VendorsView> {
                           ],
                         ],
                       ),
+                    ),
+                    ),
                     );
                   },
                 ),
         ),
+      ],
+    );
+  }
+
+  void _showVendorExpandedBox(
+    BuildContext context,
+    Map<String, dynamic> v,
+    Color statusColor,
+    bool isDark,
+  ) {
+    final name = (v['name'] as String?) ?? 'Trade Partner';
+    final category = (v['category'] as String?) ?? 'General Works';
+    final contactPerson = (v['contactPerson'] as String?) ?? 'Site Rep';
+    final phone = (v['phone'] as String?) ?? '';
+    final email = (v['email'] as String?) ?? '';
+    final city = (v['city'] as String?) ?? '';
+    final paymentStatus =
+        (v['paymentStatus'] as String?) ?? (v['status'] as String?) ?? 'Pending';
+    final amountDue =
+        (v['amountDue'] as String?) ?? (v['outstanding'] as String?) ?? '₹ 0';
+    final notes = (v['notes'] as String?) ?? '';
+
+    showExpandedDetailBox(
+      context: context,
+      title: name,
+      subtitle: city.isNotEmpty ? '$category • $city' : category,
+      headerIcon: Icons.storefront_rounded,
+      accentColor: statusColor,
+      badgeLabel: paymentStatus,
+      badgeColor: statusColor,
+      bodyBuilder: (dialogCtx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DetailMetricGrid(
+            isDark: isDark,
+            metrics: [
+              DetailMetric(
+                label: 'Amount Due / Outstanding',
+                value: amountDue,
+                color: statusColor,
+                icon: Icons.currency_rupee_rounded,
+              ),
+              DetailMetric(
+                label: 'Payment Status',
+                value: paymentStatus,
+                color: statusColor,
+                icon: Icons.account_balance_wallet_outlined,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          DetailSectionTitle(label: 'Vendor Directory Details', isDark: isDark),
+          DetailInfoRow(
+            icon: Icons.person_outline_rounded,
+            label: 'Contact Person',
+            value: contactPerson,
+            isDark: isDark,
+          ),
+          if (phone.isNotEmpty)
+            DetailInfoRow(
+              icon: Icons.phone_rounded,
+              label: 'Phone',
+              value: phone,
+              isDark: isDark,
+            ),
+          if (email.isNotEmpty)
+            DetailInfoRow(
+              icon: Icons.email_outlined,
+              label: 'Email',
+              value: email,
+              isDark: isDark,
+            ),
+          if (city.isNotEmpty)
+            DetailInfoRow(
+              icon: Icons.place_outlined,
+              label: 'Location',
+              value: city,
+              isDark: isDark,
+            ),
+          if (notes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            DetailNoteBox(
+              label: 'VENDOR NOTES',
+              text: notes,
+              isDark: isDark,
+            ),
+          ],
+        ],
+      ),
+      actionsBuilder: (dialogCtx) => [
+        OutlinedButton.icon(
+          icon: const Icon(Icons.close_rounded, size: 15),
+          label: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('Close', maxLines: 1),
+          ),
+          onPressed: () => Navigator.of(dialogCtx).pop(),
+        ),
+        if (phone.isNotEmpty)
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.brandPeach,
+              foregroundColor: Colors.black,
+            ),
+            icon: const Icon(Icons.phone_rounded, size: 15),
+            label: const FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('Call Partner', maxLines: 1),
+            ),
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              PhoneCallService.dialNumber(
+                context,
+                phoneNumber: phone,
+                contactName: '$name ($contactPerson)',
+              );
+            },
+          ),
       ],
     );
   }

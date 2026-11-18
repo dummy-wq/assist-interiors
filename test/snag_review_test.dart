@@ -52,9 +52,9 @@ void main() {
 
       // Check header
       expect(find.text('Site Snags & Delay Bottlenecks'), findsOneWidget);
-      expect(find.text('Oberoi Sky City Suite'), findsOneWidget);
+      expect(find.text('Solstice Terrace Duplex 19B'), findsOneWidget);
       expect(find.text('DELAYED SITE'), findsOneWidget);
-      expect(find.text('Snag Rectification & Deep Clean Handover'), findsOneWidget);
+      expect(find.text('Snag Rectification & Acoustic Glazing Handover'), findsOneWidget);
       expect(find.text('Clear Delay Flag'), findsOneWidget);
     });
 
@@ -70,7 +70,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      final stageFinder = find.text('Snag Rectification & Deep Clean Handover');
+      final stageFinder = find.text('Snag Rectification & Acoustic Glazing Handover');
       expect(stageFinder, findsOneWidget);
 
       // Tap on the stage to mark it as done
@@ -78,9 +78,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final projects = StorageService.getProjects();
-      final delayedProject = projects.firstWhere((p) => p['name'] == 'Oberoi Sky City Suite');
+      final delayedProject = projects.firstWhere((p) => p['name'] == 'Solstice Terrace Duplex 19B');
       final stages = delayedProject['stages'] as List<dynamic>;
-      final targetStage = stages.firstWhere((s) => s['title'] == 'Snag Rectification & Deep Clean Handover');
+      final targetStage = stages.firstWhere((s) => s['title'] == 'Snag Rectification & Acoustic Glazing Handover');
       expect(targetStage['isDone'], true);
     });
 
@@ -113,7 +113,7 @@ void main() {
       expect(find.text('Touchup PU polish on hallway credenza'), findsOneWidget);
 
       final projects = StorageService.getProjects();
-      final delayedProject = projects.firstWhere((p) => p['name'] == 'Oberoi Sky City Suite');
+      final delayedProject = projects.firstWhere((p) => p['name'] == 'Solstice Terrace Duplex 19B');
       final stages = delayedProject['stages'] as List<dynamic>;
       expect(stages.any((s) => s['title'] == 'Touchup PU polish on hallway credenza'), true);
     });
@@ -135,7 +135,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final projects = StorageService.getProjects();
-      final project = projects.firstWhere((p) => p['name'] == 'Oberoi Sky City Suite');
+      final project = projects.firstWhere((p) => p['name'] == 'Solstice Terrace Duplex 19B');
       expect(project['isDelayed'], false);
       expect(project['status'], 'On Track');
     });
@@ -173,7 +173,7 @@ void main() {
 
       // Verify sheet opens
       expect(find.text('Site Snags & Delay Bottlenecks'), findsOneWidget);
-      expect(find.text('Oberoi Sky City Suite'), findsOneWidget);
+      expect(find.text('Solstice Terrace Duplex 19B'), findsOneWidget);
     });
   });
 }

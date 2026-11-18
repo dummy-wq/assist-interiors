@@ -437,7 +437,7 @@ class _SnappyReorderableStagesListState
                       : (isDark
                             ? AppColors.textLightPrimary
                             : AppColors.textDarkPrimary),
-                  fontWeight: isDone ? FontWeight.w500 : FontWeight.w600,
+                  fontWeight: isDone ? FontWeight.w600 : FontWeight.w600,
                 ),
               ),
             ),

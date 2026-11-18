@@ -7,6 +7,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
 import '../../../core/widgets/quick_fade_dropdown.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
 import '../../../core/services/storage_service.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
@@ -81,7 +82,7 @@ class CreateTaskSheet {
     String? attachedPhotoName;
     String? attachedPhotoUrl;
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
@@ -179,7 +180,7 @@ class CreateTaskSheet {
                               color: isDark
                                   ? AppColors.textLightPrimary
                                   : AppColors.textDarkPrimary,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -325,7 +326,7 @@ class CreateTaskSheet {
                                   style: TextStyle(
                                     fontWeight: p == 'Urgent'
                                         ? FontWeight.w700
-                                        : FontWeight.w500,
+                                        : FontWeight.w600,
                                     color: p == 'Urgent'
                                         ? AppColors.error
                                         : null,
@@ -477,7 +478,7 @@ class CreateTaskSheet {
                           DateFormat('dd MMM yyyy').format(selectedDueDate),
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                             color: isDark
                                 ? AppColors.textLightPrimary
                                 : AppColors.textDarkPrimary,
@@ -719,7 +720,7 @@ class CreateTaskSheet {
       },
     ];
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
       shape: const RoundedRectangleBorder(

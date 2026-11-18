@@ -26,22 +26,20 @@ class PnlPdfBuilder {
     if (totalContractRevenue == 0.0) totalContractRevenue = 4850000.0;
 
     double totalInvoiced = 0.0;
-    double totalCollected = 0.0;
     double totalOverdue = 0.0;
 
     for (final inv in invoices) {
       final amt = PdfFileUtils.parseAmount(inv['amount']?.toString());
       totalInvoiced += amt;
       final st = inv['status']?.toString().toLowerCase() ?? '';
-      if (st.contains('settled')) {
-        totalCollected += amt;
-      } else {
+      if (!st.contains('settled')) {
         totalOverdue += amt;
       }
     }
-    if (totalInvoiced == 0.0) totalInvoiced = 3450000.0;
-    if (totalCollected == 0.0) totalCollected = 2650000.0;
-    if (totalOverdue == 0.0) totalOverdue = 800000.0;
+    if (invoices.isEmpty && totalInvoiced == 0.0) {
+      totalInvoiced = 3450000.0;
+      totalOverdue = 800000.0;
+    }
 
     double totalDirectExpenses = 0.0;
     final Map<String, double> categoryBreakdown = {};
@@ -272,9 +270,21 @@ class PnlPdfBuilder {
                         ]
                       : projects.take(5).toList())
                   .map((p) {
-                    final progressVal = p['progress'] is num
-                        ? '${((p['progress'] as num) * 100).toInt()}%'
-                        : (p['progress']?.toString() ?? '50%');
+                    final stages = p['stages'];
+                    String progressVal;
+                    if (stages is List && stages.isNotEmpty) {
+                      final done = stages
+                          .where((s) => s is Map && s['isDone'] == true)
+                          .length;
+                      progressVal = '${((done / stages.length) * 100).round()}%';
+                    } else if (p['progress'] is num) {
+                      final num raw = p['progress'] as num;
+                      final pct =
+                          raw > 1.0 ? raw.round() : (raw * 100).round();
+                      progressVal = '$pct%';
+                    } else {
+                      progressVal = p['progress']?.toString() ?? '50%';
+                    }
                     return pw.TableRow(
                       children: [
                         PdfWidgets.tableCell(

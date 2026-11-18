@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/widgets/instant_press_feedback.dart';
 
 /// Hub element representing the Sales & Client Acquisition screen.
@@ -23,11 +24,7 @@ class SalesSnapshotCard extends StatelessWidget {
     final now = DateTime.now();
 
     for (final l in leads) {
-      final raw = (l['estValue'] as String? ?? '').replaceAll(
-        RegExp(r'[^0-9]'),
-        '',
-      );
-      totalPipelineValue += int.tryParse(raw) ?? 0;
+      totalPipelineValue += CurrencyUtils.parseAmount(l['estValue']);
 
       final nextCall = l['nextCallDate'] as String?;
       if (nextCall != null && nextCall.isNotEmpty) {
@@ -43,11 +40,7 @@ class SalesSnapshotCard extends StatelessWidget {
     }
 
     final pipelineStr = totalPipelineValue > 0
-        ? NumberFormat.currency(
-            locale: 'en_IN',
-            symbol: '₹ ',
-            decimalDigits: 0,
-          ).format(totalPipelineValue)
+        ? CurrencyUtils.formatInr(totalPipelineValue)
         : '₹ 0';
 
     final previewLeads = leads.take(2).toList();
@@ -285,36 +278,49 @@ class SalesSnapshotCard extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            if (est.isNotEmpty) ...[
-                              Text(
-                                est,
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.brandPeach,
+                            const SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (est.isNotEmpty)
+                                  Text(
+                                    est,
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.brandPeach,
+                                    ),
+                                  ),
+                                const SizedBox(height: 2),
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 105,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.brandOrange.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4.0),
+                                    ),
+                                    child: Text(
+                                      stage,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.brandOrange,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.brandOrange.withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(4.0),
-                              ),
-                              child: Text(
-                                stage,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.brandOrange,
-                                ),
-                              ),
+                              ],
                             ),
                           ],
                         ),
@@ -355,7 +361,7 @@ class SalesSnapshotCard extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 10.5,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
             color: isDark ? AppColors.textLightMuted : AppColors.textDarkMuted,
           ),
           maxLines: 1,

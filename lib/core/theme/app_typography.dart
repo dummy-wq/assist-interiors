@@ -49,24 +49,20 @@ class AppTypography {
     );
 
     // Enhance stroke clarity and legibility across all display devices:
-    // 1. Any light/regular weight (w100–w400, normal) is elevated to w500 (Medium) for body/UI text,
-    //    preventing hairline stroke decay, fuzziness, and antialiasing fringing on dark backgrounds.
-    // 2. Micro-text (fontSize <= 11.5) is elevated to w600 (SemiBold) for solid subpixel glyph clarity.
+    // Any light/regular/medium weight (w100–w500) is elevated to w600 (SemiBold)
+    // so text is crisp, prominent, and easy to read for all users without semi-light strokes.
     FontWeight resolvedWeight = fontWeight;
-    if (resolvedWeight.value <= FontWeight.w400.value) {
-      resolvedWeight = FontWeight.w500;
-    }
-    if (!isDisplay && fontSize <= 11.5 && resolvedWeight.value < FontWeight.w600.value) {
+    if (resolvedWeight.value <= FontWeight.w500.value) {
       resolvedWeight = FontWeight.w600;
     }
 
     // Default letterSpacing:
-    // Open tracking (+0.05 to +0.25) on smaller font sizes prevents glyph crowding and improves readability.
+    // Open tracking (+0.05 to +0.2) on smaller font sizes prevents glyph crowding and improves readability.
     final defaultSpacing = isDisplay
         ? (activeTheme == AppFontTheme.syne || activeTheme == AppFontTheme.oswaldInter ? 0.3 : -0.2)
-        : (fontSize <= 11.5 ? 0.2 : (fontSize <= 13 ? 0.1 : 0.05));
+        : (fontSize <= 11.5 ? 0.15 : (fontSize <= 13 ? 0.08 : 0.04));
     final resolvedSpacing = letterSpacing ?? defaultSpacing;
-    final resolvedHeight = height ?? (isDisplay ? 1.25 : 1.38);
+    final resolvedHeight = height ?? (isDisplay ? 1.26 : 1.40);
 
     switch (activeTheme) {
       case AppFontTheme.plusJakartaSans:
@@ -152,7 +148,7 @@ class AppTypography {
 
   static TextStyle displaySmall(bool isDark) => _resolve(
     fontSize: 18,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     color: isDark ? AppColors.textLightPrimary : AppColors.textDarkPrimary,
     isDisplay: true,
   );
@@ -160,26 +156,26 @@ class AppTypography {
   // Body & Titles
   static TextStyle titleLarge(bool isDark) => _resolve(
     fontSize: 16,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     color: isDark ? AppColors.textLightPrimary : AppColors.textDarkPrimary,
     isDisplay: true,
   );
 
   static TextStyle titleMedium(bool isDark) => _resolve(
     fontSize: 14,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     color: isDark ? AppColors.textLightPrimary : AppColors.textDarkPrimary,
   );
 
   static TextStyle bodyLarge(bool isDark) => _resolve(
     fontSize: 14,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w600,
     color: isDark ? AppColors.textLightPrimary : AppColors.textDarkPrimary,
   );
 
   static TextStyle bodyMedium(bool isDark) => _resolve(
     fontSize: 13,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w600,
     color: isDark ? AppColors.textLightSecondary : AppColors.textDarkSecondary,
   );
 
@@ -191,14 +187,14 @@ class AppTypography {
 
   static TextStyle labelLarge(bool isDark) => _resolve(
     fontSize: 13,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     letterSpacing: 0.2,
     color: isDark ? AppColors.textLightPrimary : AppColors.textDarkPrimary,
   );
 
   static TextStyle labelSmall(bool isDark) => _resolve(
     fontSize: 11,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     letterSpacing: 0.25,
     color: isDark ? AppColors.textLightMuted : AppColors.textDarkMuted,
   );

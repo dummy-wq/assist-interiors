@@ -10,12 +10,15 @@ import '../../../core/permissions/app_permissions.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/cloud_network_image.dart';
+import '../../../core/widgets/expanded_detail_dialog.dart';
 import '../../../core/widgets/pill_box.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/stat_strip.dart';
 import '../../../core/widgets/screen_layout.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/services/cloud_storage_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/backend_manager.dart';
 import '../../../core/models/project_model.dart';
@@ -24,6 +27,7 @@ import '../sheets/edit_project_sheet.dart';
 import '../sheets/take_site_photo_sheet.dart';
 import '../dialogs/project_photo_viewer_dialog.dart';
 import '../dialogs/design_asset_viewer_dialog.dart';
+import '../dialogs/project_timeline_sheet_dialog.dart';
 import '../../auth/state/auth_provider.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
@@ -52,18 +56,28 @@ class _ProjectsViewState extends State<ProjectsView> {
     MobileActionSheets.projectCreatedNotifier.addListener(_onProjectCreated);
     MobileActionSheets.projectUpdatedNotifier.addListener(_onProjectUpdated);
     MobileActionSheets.projectFilterNotifier.addListener(_onFilterChanged);
+    MobileActionSheets.invoiceCreatedNotifier.addListener(_onInvoiceChanged);
+    MobileActionSheets.invoiceUpdatedNotifier.addListener(_onInvoiceChanged);
+    StorageService.cloudSyncNotifier.addListener(_onProjectUpdated);
   }
 
   @override
   void dispose() {
+    StorageService.cloudSyncNotifier.removeListener(_onProjectUpdated);
     MobileActionSheets.projectCreatedNotifier.removeListener(_onProjectCreated);
     MobileActionSheets.projectUpdatedNotifier.removeListener(_onProjectUpdated);
     MobileActionSheets.projectFilterNotifier.removeListener(_onFilterChanged);
+    MobileActionSheets.invoiceCreatedNotifier.removeListener(_onInvoiceChanged);
+    MobileActionSheets.invoiceUpdatedNotifier.removeListener(_onInvoiceChanged);
     _searchController.dispose();
     for (final controller in _newStageControllers.values) {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  void _onInvoiceChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onFilterChanged() {
@@ -103,9 +117,24 @@ class _ProjectsViewState extends State<ProjectsView> {
     );
   }
 
+  void _persistAndNotifyProject(int projectIndex) {
+    if (projectIndex >= 0 && projectIndex < _projects.length) {
+      StorageService.syncProjectProgressAndStatus(_projects[projectIndex]);
+    }
+    StorageService.saveProjects(_projects);
+    if (projectIndex >= 0 && projectIndex < _projects.length) {
+      final updated = Map<String, dynamic>.from(_projects[projectIndex]);
+      MobileActionSheets.projectUpdatedNotifier.value = updated;
+      BackendManager.instance.updateProject(ProjectModel.fromMap(updated));
+    }
+  }
+
   void _toggleStage(int projectIndex, int stageIndex) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canToggleOrReorderStages(auth.currentRole)) {
+    if (!AppPermissions.canToggleOrReorderStages(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message: 'Stage updates restricted: Only Site Supervisors, Designers, and Project Managers can update stages.',
@@ -116,16 +145,17 @@ class _ProjectsViewState extends State<ProjectsView> {
       final stages =
           _projects[projectIndex]['stages'] as List<Map<String, dynamic>>;
       stages[stageIndex]['isDone'] = !(stages[stageIndex]['isDone'] as bool);
+      StorageService.syncProjectProgressAndStatus(_projects[projectIndex]);
     });
-    StorageService.saveProjects(_projects);
-    BackendManager.instance.updateProject(
-      ProjectModel.fromMap(_projects[projectIndex]),
-    );
+    _persistAndNotifyProject(projectIndex);
   }
 
   void _reorderStage(int projectIndex, int oldIndex, int newIndex) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canToggleOrReorderStages(auth.currentRole)) {
+    if (!AppPermissions.canToggleOrReorderStages(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message: 'Stage reordering restricted: Only operations leads can change stage sequence.',
@@ -137,16 +167,17 @@ class _ProjectsViewState extends State<ProjectsView> {
           _projects[projectIndex]['stages'] as List<Map<String, dynamic>>;
       final item = stages.removeAt(oldIndex);
       stages.insert(newIndex, item);
+      StorageService.syncProjectProgressAndStatus(_projects[projectIndex]);
     });
-    StorageService.saveProjects(_projects);
-    BackendManager.instance.updateProject(
-      ProjectModel.fromMap(_projects[projectIndex]),
-    );
+    _persistAndNotifyProject(projectIndex);
   }
 
   void _addNewStage(int projectIndex) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canToggleOrReorderStages(auth.currentRole)) {
+    if (!AppPermissions.canToggleOrReorderStages(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message: 'Stage creation restricted: Only operations leads can define new stages.',
@@ -165,17 +196,18 @@ class _ProjectsViewState extends State<ProjectsView> {
         'title': title,
         'isDone': false,
       });
+      StorageService.syncProjectProgressAndStatus(_projects[projectIndex]);
       controller.clear();
     });
-    StorageService.saveProjects(_projects);
-    BackendManager.instance.updateProject(
-      ProjectModel.fromMap(_projects[projectIndex]),
-    );
+    _persistAndNotifyProject(projectIndex);
   }
 
   void _removeStage(int projectIndex, int stageIndex) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canToggleOrReorderStages(auth.currentRole)) {
+    if (!AppPermissions.canToggleOrReorderStages(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message: 'Stage removal restricted to project management leads.',
@@ -188,16 +220,17 @@ class _ProjectsViewState extends State<ProjectsView> {
       if (stageIndex >= 0 && stageIndex < stages.length) {
         stages.removeAt(stageIndex);
       }
+      StorageService.syncProjectProgressAndStatus(_projects[projectIndex]);
     });
-    StorageService.saveProjects(_projects);
-    BackendManager.instance.updateProject(
-      ProjectModel.fromMap(_projects[projectIndex]),
-    );
+    _persistAndNotifyProject(projectIndex);
   }
 
   void _takeSitePhoto(int projectIndex) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canAddProjectPhotos(auth.currentRole)) {
+    if (!AppPermissions.canAddProjectPhotos(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message: 'Photo upload restricted: Only Site Supervisors, Designers, and Project Managers can capture site photos.',
@@ -217,9 +250,6 @@ class _ProjectsViewState extends State<ProjectsView> {
           _projects[projectIndex]['photos'] = list;
         });
         StorageService.saveProjects(_projects);
-        BackendManager.instance.updateProject(
-          ProjectModel.fromMap(_projects[projectIndex]),
-        );
         AppNotification.show(
           context,
           message:
@@ -231,7 +261,10 @@ class _ProjectsViewState extends State<ProjectsView> {
 
   void _uploadSitePhoto(int projectIndex) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canAddProjectPhotos(auth.currentRole)) {
+    if (!AppPermissions.canAddProjectPhotos(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message:
@@ -253,9 +286,6 @@ class _ProjectsViewState extends State<ProjectsView> {
           _projects[projectIndex]['photos'] = list;
         });
         StorageService.saveProjects(_projects);
-        BackendManager.instance.updateProject(
-          ProjectModel.fromMap(_projects[projectIndex]),
-        );
         AppNotification.show(
           context,
           message:
@@ -267,33 +297,86 @@ class _ProjectsViewState extends State<ProjectsView> {
 
   void _deleteSitePhoto(int projectIndex, int photoIndex) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canAddProjectPhotos(auth.currentRole)) {
+    if (!AppPermissions.canAddProjectPhotos(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message: 'Photo deletion restricted: Only operations leads can remove site photos.',
       );
       return;
     }
+    Map<String, dynamic>? removedPhoto;
     setState(() {
       final photosRaw = (_projects[projectIndex]['photos'] as List?) ?? [];
       final list = photosRaw
           .map((p) => Map<String, dynamic>.from(p as Map))
           .toList();
       if (photoIndex >= 0 && photoIndex < list.length) {
-        list.removeAt(photoIndex);
+        removedPhoto = list.removeAt(photoIndex);
       }
       _projects[projectIndex]['photos'] = list;
+
+      if (removedPhoto != null &&
+          _projects[projectIndex]['sitePhotos'] is List) {
+        final removedId = removedPhoto!['id'];
+        final removedUrl =
+            removedPhoto!['downloadUrl'] ?? removedPhoto!['imageUrl'];
+        final siteList = List<Map<String, dynamic>>.from(
+          (_projects[projectIndex]['sitePhotos'] as List).whereType<Map>().map(
+            (m) => Map<String, dynamic>.from(m),
+          ),
+        );
+        siteList.removeWhere(
+          (sp) =>
+              (removedId != null && sp['id'] == removedId) ||
+              (removedUrl != null &&
+                  (sp['downloadUrl'] == removedUrl ||
+                      sp['imageUrl'] == removedUrl)),
+        );
+        _projects[projectIndex]['sitePhotos'] = siteList;
+      }
     });
+
+    if (removedPhoto != null) {
+      final storagePath = removedPhoto!['storagePath']?.toString();
+      final downloadUrl =
+          (removedPhoto!['downloadUrl'] ?? removedPhoto!['imageUrl'])
+              ?.toString();
+      CloudStorageService.deleteFile(
+        storagePath: storagePath,
+        downloadUrl: downloadUrl,
+      );
+
+      if (!kIsWeb) {
+        for (final key in const ['localPath', 'imageUrl', 'path']) {
+          final p = removedPhoto![key]?.toString().trim() ?? '';
+          if (p.isNotEmpty &&
+              !p.startsWith('http://') &&
+              !p.startsWith('https://') &&
+              !p.startsWith('assets/')) {
+            try {
+              final f = File(p);
+              if (f.existsSync()) {
+                f.deleteSync();
+              }
+            } catch (_) {}
+          }
+        }
+      }
+    }
+
     StorageService.saveProjects(_projects);
-    BackendManager.instance.updateProject(
-      ProjectModel.fromMap(_projects[projectIndex]),
-    );
     AppNotification.show(context, message: 'Site inspection photo removed');
   }
 
-  void _openUploadDesignAsset(int projectIndex) {
+  void _openUploadDesignAsset(int projectIndex, {String? initialType}) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canManageDesignAssets(auth.currentRole)) {
+    if (!AppPermissions.canManageDesignAssets(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message: 'Upload restricted: Only Designers, Project Managers, and Proprietors can upload CAD drawings or 3D renders.',
@@ -305,6 +388,7 @@ class _ProjectsViewState extends State<ProjectsView> {
     UploadRenderSheet.show(
       context,
       preselectedProject: projectName,
+      initialType: initialType,
       onUploaded: (newAsset) {
         setState(() {
           final assetsRaw =
@@ -327,13 +411,17 @@ class _ProjectsViewState extends State<ProjectsView> {
 
   void _deleteDesignAsset(int projectIndex, int assetIndex) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canManageDesignAssets(auth.currentRole)) {
+    if (!AppPermissions.canManageDesignAssets(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message: 'Deletion restricted: Only authorized design leads can remove design assets.',
       );
       return;
     }
+    Map<String, dynamic>? removedAsset;
     setState(() {
       final assetsRaw =
           (_projects[projectIndex]['designAssets'] as List?) ?? [];
@@ -341,10 +429,18 @@ class _ProjectsViewState extends State<ProjectsView> {
           .map((a) => Map<String, dynamic>.from(a as Map))
           .toList();
       if (assetIndex >= 0 && assetIndex < list.length) {
-        list.removeAt(assetIndex);
+        removedAsset = list.removeAt(assetIndex);
       }
       _projects[projectIndex]['designAssets'] = list;
     });
+    if (removedAsset != null) {
+      CloudStorageService.deleteFile(
+        storagePath: removedAsset!['storagePath']?.toString(),
+        downloadUrl:
+            (removedAsset!['downloadUrl'] ?? removedAsset!['fileUrl'])
+                ?.toString(),
+      );
+    }
     StorageService.saveProjects(_projects);
     AppNotification.show(context, message: 'Design deliverable removed');
   }
@@ -465,15 +561,30 @@ class _ProjectsViewState extends State<ProjectsView> {
 
     final auth = Provider.of<AuthProvider>(context);
     final currentRole = auth.currentRole;
-    final canCreateProject = AppPermissions.canCreateProject(currentRole);
-    final canEditProject = AppPermissions.canEditProjectDetails(currentRole);
-    final canModifyStatus = AppPermissions.canModifyProjectStatus(currentRole);
+    final currentUser = auth.currentUser;
+    final canCreateProject = AppPermissions.canCreateProject(
+      currentRole,
+      user: currentUser,
+    );
+    final canEditProject = AppPermissions.canEditProjectDetails(
+      currentRole,
+      user: currentUser,
+    );
+    final canModifyStatus = AppPermissions.canModifyProjectStatus(
+      currentRole,
+      user: currentUser,
+    );
     final canModifyStages = AppPermissions.canToggleOrReorderStages(
       currentRole,
+      user: currentUser,
     );
-    final canAddPhotos = AppPermissions.canAddProjectPhotos(currentRole);
+    final canAddPhotos = AppPermissions.canAddProjectPhotos(
+      currentRole,
+      user: currentUser,
+    );
     final canManageDesignAssets = AppPermissions.canManageDesignAssets(
       currentRole,
+      user: currentUser,
     );
 
     final filteredProjects = _projects.where((p) {
@@ -699,7 +810,19 @@ class _ProjectsViewState extends State<ProjectsView> {
                       alignment: Alignment.topCenter,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(6.0),
-                      child: Container(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(6.0),
+                          onTap: () => _showProjectExpandedBox(
+                            context,
+                            p,
+                            projectAccent,
+                            statusColor,
+                            currentStatus,
+                            isDark,
+                          ),
+                          child: Container(
                         decoration: BoxDecoration(
                           color: isDark
                               ? AppColors.darkCard
@@ -881,17 +1004,20 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                                     _projects[rawIndex] =
                                                                         updated;
                                                                   }
-                                                                });
-                                                                StorageService.saveProjects(
-                                                                  _projects,
-                                                                );
-                                                                BackendManager
-                                                                    .instance
-                                                                    .updateProject(
-                                                                      ProjectModel.fromMap(
-                                                                        updated,
-                                                                      ),
+                                                                  if (rawIndex >=
+                                                                          0 &&
+                                                                      rawIndex <
+                                                                          _projects
+                                                                              .length) {
+                                                                    StorageService
+                                                                        .syncProjectProgressAndStatus(
+                                                                      _projects[rawIndex],
                                                                     );
+                                                                  }
+                                                                });
+                                                                _persistAndNotifyProject(
+                                                                  rawIndex,
+                                                                );
                                                               },
                                                             );
                                                           } else if (val ==
@@ -899,25 +1025,77 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                             setState(() {
                                                               p['isDelayed'] =
                                                                   !isDelayed;
+                                                              StorageService
+                                                                  .syncProjectProgressAndStatus(
+                                                                p,
+                                                              );
                                                             });
-                                                            StorageService.saveProjects(
-                                                              _projects,
+                                                            _persistAndNotifyProject(
+                                                              rawIndex,
                                                             );
-                                                            BackendManager
-                                                                .instance
-                                                                .updateProject(
-                                                                  ProjectModel.fromMap(
-                                                                    p,
-                                                                  ),
-                                                                );
                                                           } else if (val ==
                                                               'upload_asset') {
                                                             _openUploadDesignAsset(
                                                               rawIndex,
                                                             );
+                                                          } else if (val ==
+                                                              'timeline') {
+                                                            ProjectTimelineSheetDialog.show(
+                                                              context,
+                                                              project: p,
+                                                              projectAccent: projectAccent,
+                                                              onSheetUpdated: (updated) async {
+                                                                final allProjects = StorageService.getProjects();
+                                                                final pIdx = allProjects.indexWhere(
+                                                                  (proj) => proj['id'] == p['id'] || proj['name'] == p['name'],
+                                                                );
+                                                                if (pIdx != -1) {
+                                                                  allProjects[pIdx]['timelineSpreadsheet'] = p['timelineSpreadsheet'];
+                                                                  await StorageService.saveProjects(allProjects);
+                                                                }
+                                                                if (mounted) setState(() {});
+                                                              },
+                                                              onSheetRemoved: () async {
+                                                                p['timelineSpreadsheet'] = {'removed': true};
+                                                                final allProjects = StorageService.getProjects();
+                                                                final pIdx = allProjects.indexWhere(
+                                                                  (proj) => proj['id'] == p['id'] || proj['name'] == p['name'],
+                                                                );
+                                                                if (pIdx != -1) {
+                                                                  allProjects[pIdx]['timelineSpreadsheet'] = {'removed': true};
+                                                                  await StorageService.saveProjects(allProjects);
+                                                                }
+                                                                if (mounted) setState(() {});
+                                                              },
+                                                            );
                                                           }
                                                         },
                                                         itemBuilder: (context) => [
+                                                          PopupMenuItem<String>(
+                                                            value: 'timeline',
+                                                            height: 40,
+                                                            child: Row(
+                                                              children: [
+                                                                const Icon(
+                                                                  Icons.table_chart_rounded,
+                                                                  size: 16,
+                                                                  color: Color(0xFF107C41),
+                                                                ),
+                                                                const SizedBox(width: 10),
+                                                                Text(
+                                                                  'Excel Timeline Sheet',
+                                                                  style: TextStyle(
+                                                                    fontSize: 13,
+                                                                    fontWeight: FontWeight.w600,
+                                                                    color: isDark
+                                                                        ? AppColors.textLightPrimary
+                                                                        : AppColors.textDarkPrimary,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          const PopupMenuDivider(height: 1),
                                                           if (canAddPhotos) ...[
                                                             PopupMenuItem<
                                                               String
@@ -1242,6 +1420,134 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                     ),
                                                   ),
                                                 ),
+                                                InstantPressFeedback(
+                                                  child: InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(4.0),
+                                                    onTap: () {
+                                                      HapticFeedback
+                                                          .selectionClick();
+                                                      ProjectTimelineSheetDialog
+                                                          .show(
+                                                        context,
+                                                        project: p,
+                                                        projectAccent:
+                                                            projectAccent,
+                                                        onSheetUpdated:
+                                                            (updated) async {
+                                                          final allProjects =
+                                                              StorageService
+                                                                  .getProjects();
+                                                          final pIdx =
+                                                              allProjects
+                                                                  .indexWhere(
+                                                            (proj) =>
+                                                                proj['id'] ==
+                                                                    p['id'] ||
+                                                                proj['name'] ==
+                                                                    p['name'],
+                                                          );
+                                                          if (pIdx != -1) {
+                                                            allProjects[pIdx][
+                                                                    'timelineSpreadsheet'] =
+                                                                p['timelineSpreadsheet'];
+                                                            await StorageService
+                                                                .saveProjects(
+                                                                    allProjects);
+                                                          }
+                                                          if (mounted) {
+                                                            setState(() {});
+                                                          }
+                                                        },
+                                                        onSheetRemoved: () async {
+                                                          p['timelineSpreadsheet'] =
+                                                              {'removed': true};
+                                                          final allProjects =
+                                                              StorageService
+                                                                  .getProjects();
+                                                          final pIdx =
+                                                              allProjects
+                                                                  .indexWhere(
+                                                            (proj) =>
+                                                                proj['id'] ==
+                                                                    p['id'] ||
+                                                                proj['name'] ==
+                                                                    p['name'],
+                                                          );
+                                                          if (pIdx != -1) {
+                                                            allProjects[pIdx][
+                                                                    'timelineSpreadsheet'] =
+                                                                {'removed': true};
+                                                            await StorageService
+                                                                .saveProjects(
+                                                                    allProjects);
+                                                          }
+                                                          if (mounted) {
+                                                            setState(() {});
+                                                          }
+                                                        },
+                                                      );
+                                                    },
+                                                    child: Container(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                        horizontal: 7,
+                                                        vertical: 2.5,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                                0xFF107C41)
+                                                            .withValues(
+                                                          alpha: isDark
+                                                              ? 0.22
+                                                              : 0.12,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(4.0),
+                                                        border: Border.all(
+                                                          color: const Color(
+                                                                  0xFF107C41)
+                                                              .withValues(
+                                                            alpha: 0.5,
+                                                          ),
+                                                          width: 0.8,
+                                                        ),
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          const Icon(
+                                                            Icons
+                                                                .table_chart_rounded,
+                                                            size: 11,
+                                                            color: Color(
+                                                                0xFF107C41),
+                                                          ),
+                                                          const SizedBox(width: 4),
+                                                          Flexible(
+                                                            child: Text(
+                                                              'Excel Timeline Schedule',
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                              style: const TextStyle(
+                                                                fontSize: 10.5,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                color: Color(
+                                                                    0xFF107C41),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ],
@@ -1341,7 +1647,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                   'Handover: ${p['handover']}',
                                                   style: TextStyle(
                                                     fontSize: 12,
-                                                    fontWeight: FontWeight.w500,
+                                                    fontWeight: FontWeight.w600,
                                                     color: isDark
                                                         ? AppColors
                                                               .textLightMuted
@@ -1451,14 +1757,14 @@ class _ProjectsViewState extends State<ProjectsView> {
                                             onPressed: () {
                                               setState(() {
                                                 p['isDelayed'] = !isDelayed;
+                                                StorageService
+                                                    .syncProjectProgressAndStatus(
+                                                  p,
+                                                );
                                               });
-                                              StorageService.saveProjects(
-                                                _projects,
+                                              _persistAndNotifyProject(
+                                                rawIndex,
                                               );
-                                              BackendManager.instance
-                                                  .updateProject(
-                                                    ProjectModel.fromMap(p),
-                                                  );
                                             },
                                             icon: Icon(
                                               isDelayed
@@ -1630,6 +1936,125 @@ class _ProjectsViewState extends State<ProjectsView> {
                                           ),
                                         ],
                                       ),
+                                    ),
+                                    // Project Billing & Invoices (QR Payment Mapped)
+                                    Builder(
+                                      builder: (context) {
+                                        final projId =
+                                            p['id']?.toString() ?? '';
+                                        final allInvoices =
+                                            StorageService.getInvoices();
+                                        final mappedInvoices =
+                                            allInvoices.where((inv) {
+                                          if (projId.isNotEmpty &&
+                                              inv['projectId'] == projId) {
+                                            return true;
+                                          }
+                                          if (inv['project'] != null &&
+                                              inv['project']
+                                                      .toString()
+                                                      .toLowerCase() ==
+                                                  projectName.toLowerCase()) {
+                                            return true;
+                                          }
+                                          return false;
+                                        }).toList();
+
+                                        if (mappedInvoices.isEmpty) {
+                                          return const SizedBox.shrink();
+                                        }
+
+                                        final latestInv =
+                                            mappedInvoices.first;
+                                        final invStatus =
+                                            latestInv['status'] as String? ??
+                                                'Pending';
+                                        final isSettled =
+                                            invStatus.toLowerCase() ==
+                                                    'settled' ||
+                                                invStatus.toLowerCase() ==
+                                                    'paid';
+                                        final statusColor = isSettled
+                                            ? AppColors.success
+                                            : AppColors.warning;
+                                        final invAmount =
+                                            latestInv['amount'] as String? ??
+                                                '';
+                                        final invTitle =
+                                            latestInv['title'] as String? ??
+                                                'Milestone Billing';
+
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 12,
+                                          ),
+                                          child: Container(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 9,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: isDark
+                                                  ? AppColors.darkCardElevated
+                                                  : AppColors.lightBackground,
+                                              borderRadius:
+                                                  BorderRadius.circular(4.0),
+                                              border: Border.all(
+                                                color: (isDark
+                                                        ? AppColors.darkBorder
+                                                        : AppColors
+                                                            .lightBorder)
+                                                    .withValues(alpha: 0.7),
+                                                width: 0.8,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.receipt_long_rounded,
+                                                  size: 16,
+                                                  color: AppColors.brandPeach,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        invTitle,
+                                                        style:
+                                                            const TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 2,
+                                                      ),
+                                                      Text(
+                                                        '$invAmount • Status: $invStatus',
+                                                        style: TextStyle(
+                                                          fontSize: 10.5,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: statusColor,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
                                     ),
                                     // Site Photos & Inspection Gallery
                                     Builder(
@@ -1912,6 +2337,40 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                                               .cover,
                                                                         ),
                                                                       )
+                                                                    : (((photo['downloadUrl'] ??
+                                                                                photo['imageUrl']) !=
+                                                                            null &&
+                                                                        ((photo['downloadUrl'] ??
+                                                                                photo['imageUrl'])
+                                                                                as String)
+                                                                            .isNotEmpty))
+                                                                    ? ClipRRect(
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(
+                                                                              3.0,
+                                                                            ),
+                                                                        child: CloudNetworkImage(
+                                                                          url: (photo['downloadUrl'] ??
+                                                                                  photo['imageUrl'])
+                                                                              as String,
+                                                                          width:
+                                                                              36,
+                                                                          height:
+                                                                              double.infinity,
+                                                                          fit: BoxFit
+                                                                              .cover,
+                                                                          errorBuilder:
+                                                                              (
+                                                                                _,
+                                                                                _,
+                                                                                _,
+                                                                              ) => Icon(
+                                                                                Icons.camera_alt_rounded,
+                                                                                size: 16,
+                                                                                color: projectAccent,
+                                                                              ),
+                                                                        ),
+                                                                      )
                                                                     : Icon(
                                                                         Icons
                                                                             .camera_alt_rounded,
@@ -1982,7 +2441,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                                         time,
                                                                         style: TextStyle(
                                                                           fontSize: 9.5,
-                                                                          fontWeight: FontWeight.w500,
+                                                                          fontWeight: FontWeight.w600,
                                                                           color:
                                                                               isDark
                                                                               ? AppColors.textLightMuted
@@ -2220,56 +2679,123 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                     ],
                                                   ),
                                                   if (canManageDesignAssets)
-                                                    InstantPressFeedback(
-                                                      child: OutlinedButton.icon(
-                                                        onPressed: () =>
-                                                            _openUploadDesignAsset(
+                                                    Wrap(
+                                                      spacing: 6,
+                                                      runSpacing: 6,
+                                                      children: [
+                                                        InstantPressFeedback(
+                                                          child: OutlinedButton.icon(
+                                                            onPressed: () =>
+                                                                _openUploadDesignAsset(
+                                                              rawIndex,
+                                                              initialType:
+                                                                  'Material BOQ',
+                                                            ),
+                                                            icon: const Icon(
+                                                              Icons
+                                                                  .table_view_rounded,
+                                                              size: 13,
+                                                              color: AppColors
+                                                                  .brandPeach,
+                                                            ),
+                                                            label: Text(
+                                                              AppStrings.tr(
+                                                                'Upload BOQ',
+                                                              ),
+                                                              style: const TextStyle(
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                color: AppColors
+                                                                    .brandPeach,
+                                                              ),
+                                                            ),
+                                                            style: OutlinedButton.styleFrom(
+                                                              side: BorderSide(
+                                                                color: AppColors
+                                                                    .brandPeach
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.6,
+                                                                    ),
+                                                                width: 0.8,
+                                                              ),
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        10,
+                                                                    vertical: 5,
+                                                                  ),
+                                                              minimumSize:
+                                                                  Size.zero,
+                                                              tapTargetSize:
+                                                                  MaterialTapTargetSize
+                                                                      .shrinkWrap,
+                                                              shape: RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      4.0,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        InstantPressFeedback(
+                                                          child: OutlinedButton.icon(
+                                                            onPressed: () =>
+                                                                _openUploadDesignAsset(
                                                               rawIndex,
                                                             ),
-                                                        icon: const Icon(
-                                                          Icons
-                                                              .cloud_upload_outlined,
-                                                          size: 13,
-                                                          color: AppColors
-                                                              .brandPeach,
-                                                        ),
-                                                        label: const Text(
-                                                          'Add Deliverable',
-                                                          style: TextStyle(
-                                                            fontSize: 11,
-                                                            fontWeight:
-                                                                FontWeight.w700,
-                                                            color: AppColors
-                                                                .brandPeach,
-                                                          ),
-                                                        ),
-                                                        style: OutlinedButton.styleFrom(
-                                                          side: BorderSide(
-                                                            color: AppColors
-                                                                .brandPeach
-                                                                .withValues(
-                                                                  alpha: 0.6,
-                                                                ),
-                                                            width: 0.8,
-                                                          ),
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 10,
-                                                                vertical: 5,
+                                                            icon: const Icon(
+                                                              Icons
+                                                                  .cloud_upload_outlined,
+                                                              size: 13,
+                                                              color: AppColors
+                                                                  .brandPeach,
+                                                            ),
+                                                            label: const Text(
+                                                              'Add Deliverable',
+                                                              style: TextStyle(
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                color: AppColors
+                                                                    .brandPeach,
                                                               ),
-                                                          minimumSize:
-                                                              Size.zero,
-                                                          tapTargetSize:
-                                                              MaterialTapTargetSize
-                                                                  .shrinkWrap,
-                                                          shape: RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  4.0,
-                                                                ),
+                                                            ),
+                                                            style: OutlinedButton.styleFrom(
+                                                              side: BorderSide(
+                                                                color: AppColors
+                                                                    .brandPeach
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.6,
+                                                                    ),
+                                                                width: 0.8,
+                                                              ),
+                                                              padding:
+                                                                  const EdgeInsets.symmetric(
+                                                                    horizontal:
+                                                                        10,
+                                                                    vertical: 5,
+                                                                  ),
+                                                              minimumSize:
+                                                                  Size.zero,
+                                                              tapTargetSize:
+                                                                  MaterialTapTargetSize
+                                                                      .shrinkWrap,
+                                                              shape: RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      4.0,
+                                                                    ),
+                                                              ),
+                                                            ),
                                                           ),
                                                         ),
-                                                      ),
+                                                      ],
                                                     ),
                                                 ],
                                               ),
@@ -2736,7 +3262,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                     style: TextStyle(
                                                       fontSize: 11,
                                                       fontWeight:
-                                                          FontWeight.w500,
+                                                          FontWeight.w600,
                                                       color: isDark
                                                           ? AppColors
                                                                 .textLightMuted
@@ -2764,7 +3290,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                           ? AppColors.success
                                                           : null,
                                                       fontWeight:
-                                                          FontWeight.w500,
+                                                          FontWeight.w600,
                                                     ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -2927,7 +3453,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                         style: TextStyle(
                                                           fontSize: 10,
                                                           fontWeight:
-                                                              FontWeight.w500,
+                                                              FontWeight.w600,
                                                           color: isDark
                                                               ? AppColors
                                                                     .textLightMuted
@@ -3230,9 +3756,162 @@ class _ProjectsViewState extends State<ProjectsView> {
                         ),
                       ),
                     ),
+                    ),
+                    ),
                   );
                 },
                 ),
+        ),
+      ],
+    );
+  }
+
+  void _showProjectExpandedBox(
+    BuildContext context,
+    Map<String, dynamic> p,
+    Color projectAccent,
+    Color statusColor,
+    String currentStatus,
+    bool isDark,
+  ) {
+    final projName = p['name'] as String? ?? 'Turnkey Project';
+    final client = p['client'] as String? ?? 'Client';
+    final location = p['location'] as String? ?? 'Site Location';
+    final budget = p['budget'] as String? ?? '₹ 0';
+    final spent = p['spent'] as String? ?? '₹ 0';
+    final pm = p['pm'] as String? ?? 'Project Lead';
+    final supervisor = p['supervisor'] as String? ?? 'Site Supervisor';
+    final handover = p['handover'] as String? ?? 'TBD';
+    final stages = (p['stages'] as List<dynamic>?) ?? [];
+    final doneCount = stages.where((s) => s['isDone'] == true).length;
+    final progress = stages.isEmpty ? 0.0 : doneCount / stages.length;
+
+    final projectInvoices = StorageService.getInvoices().where((inv) {
+      if (inv['projectId'] != null && inv['projectId'] == p['id']) return true;
+      if (inv['project'] != null && inv['project'] == projName) return true;
+      return false;
+    }).toList();
+
+    showExpandedDetailBox(
+      context: context,
+      title: projName,
+      subtitle: '$client • $location',
+      headerIcon: Icons.apartment_rounded,
+      accentColor: projectAccent,
+      badgeLabel: currentStatus,
+      badgeColor: statusColor,
+      bodyBuilder: (dialogCtx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DetailMetricGrid(
+            isDark: isDark,
+            metrics: [
+              DetailMetric(
+                label: 'Project Budget',
+                value: budget,
+                color: projectAccent,
+                icon: Icons.account_balance_wallet_rounded,
+              ),
+              DetailMetric(
+                label: 'Amount Spent',
+                value: spent,
+                icon: Icons.payments_outlined,
+              ),
+              DetailMetric(
+                label: 'Completion',
+                value: '${(progress * 100).round()}% ($doneCount/${stages.length})',
+                color: statusColor,
+                icon: Icons.pie_chart_rounded,
+              ),
+              DetailMetric(
+                label: 'Target Handover',
+                value: handover,
+                icon: Icons.event_available_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          DetailSectionTitle(label: 'Site & Team Assignment', isDark: isDark),
+          DetailInfoRow(
+            icon: Icons.engineering_rounded,
+            label: 'Project Lead',
+            value: pm,
+            isDark: isDark,
+          ),
+          DetailInfoRow(
+            icon: Icons.supervisor_account_rounded,
+            label: 'Site Supervisor',
+            value: supervisor,
+            isDark: isDark,
+          ),
+          DetailInfoRow(
+            icon: Icons.receipt_long_rounded,
+            label: 'Mapped Invoices',
+            value: '${projectInvoices.length} Invoice(s)',
+            isDark: isDark,
+          ),
+          if (stages.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            DetailSectionTitle(label: 'Execution Stages', isDark: isDark),
+            ...stages.take(8).map((s) {
+              final isDone = s['isDone'] == true;
+              final title = s['title'] as String? ??
+                  (s['name'] as String? ?? 'Stage');
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Icon(
+                      isDone
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      size: 15,
+                      color: isDone ? AppColors.success : AppColors.brandPeach,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight:
+                              isDone ? FontWeight.w600 : FontWeight.w600,
+                          decoration:
+                              isDone ? TextDecoration.lineThrough : null,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+      actionsBuilder: (dialogCtx) => [
+        OutlinedButton.icon(
+          icon: const Icon(Icons.close_rounded, size: 15),
+          label: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('Close', maxLines: 1),
+          ),
+          onPressed: () => Navigator.of(dialogCtx).pop(),
+        ),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.brandPeach,
+            foregroundColor: Colors.black,
+          ),
+          icon: const Icon(Icons.unfold_more_rounded, size: 15),
+          label: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('Open Full Controls', maxLines: 1),
+          ),
+          onPressed: () {
+            Navigator.of(dialogCtx).pop();
+            final projectKey = p['id']?.toString() ?? p['name'] as String? ?? '';
+            setState(() => _expandedProjects.add(projectKey));
+          },
         ),
       ],
     );

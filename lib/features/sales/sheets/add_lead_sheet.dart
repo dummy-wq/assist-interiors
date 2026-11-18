@@ -7,7 +7,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/widgets/quick_fade_dropdown.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/services/spreadsheet_service.dart';
+import '../../dashboard/views/main_dashboard_screen.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
 class AddLeadSheet {
@@ -24,12 +27,13 @@ class AddLeadSheet {
     final reminderNoteController = TextEditingController();
 
     String selectedReferralSource = 'Client Referral';
-    String selectedStage = 'New Inquiry';
+    String selectedStage = 'Lead';
     DateTime selectedNextCallDate = DateTime.now().add(const Duration(days: 1));
     TimeOfDay selectedNextCallTime = const TimeOfDay(hour: 11, minute: 30);
     bool hasReminder = true;
+    bool autoCreateProject = true;
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
@@ -214,7 +218,7 @@ class AddLeadSheet {
                                 value: source,
                                 child: Text(
                                   source,
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                                 ),
                               );
                             }).toList(),
@@ -297,7 +301,7 @@ class AddLeadSheet {
                                 value: stg,
                                 child: Text(
                                   stg,
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                                 ),
                               );
                             }).toList(),
@@ -399,7 +403,72 @@ class AddLeadSheet {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.darkBackground
+                            : AppColors.lightBackground,
+                        borderRadius: BorderRadius.circular(6.0),
+                        border: Border.all(
+                          color: autoCreateProject
+                              ? AppColors.brandPeach.withValues(alpha: 0.5)
+                              : (isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.apartment_rounded,
+                            size: 18,
+                            color: AppColors.brandPeach,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Auto-initialize Turnkey Project',
+                                  style: AppTypography.bodySmall(isDark).copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: autoCreateProject
+                                        ? AppColors.brandPeach
+                                        : null,
+                                  ),
+                                ),
+                                Text(
+                                  'Provisions project, moodboard & 10% advance invoice',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: isDark
+                                        ? AppColors.textLightSecondary
+                                        : AppColors.textDarkSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: autoCreateProject,
+                            activeThumbColor: AppColors.brandPeach,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            onChanged: (val) {
+                              setModalState(() => autoCreateProject = val);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.brandPeach,
@@ -411,7 +480,7 @@ class AddLeadSheet {
                       ),
                       icon: const Icon(Icons.check_circle_outline, size: 18),
                       label: const Text('Save Lead to Pipeline'),
-                      onPressed: () {
+                      onPressed: () async {
                         final name = nameController.text.trim();
                         if (name.isEmpty) return;
 
@@ -422,8 +491,97 @@ class AddLeadSheet {
                                   : '₹ $budgetRaw')
                             : '₹ 25L';
 
+                        final leadId =
+                            'lead_${DateTime.now().millisecondsSinceEpoch}';
+
+                        String projName = '';
+                        Map<String, dynamic>? newProj;
+
+                        if (autoCreateProject) {
+                          projName = '$name Residence';
+                          final swatch = AppColors.getProjectSwatch(projName);
+                          final chosenColor = swatch['color'] as Color;
+
+                          newProj = {
+                            'id':
+                                'proj_${DateTime.now().millisecondsSinceEpoch}',
+                            'name': projName,
+                            'location': locationController.text.trim().isNotEmpty
+                                ? locationController.text.trim()
+                                : 'Site Location',
+                            'client': name,
+                            'category': 'Residential',
+                            'type': scopeController.text.trim().isNotEmpty
+                                ? scopeController.text.trim()
+                                : 'Turnkey Site',
+                            'area': locationController.text.trim().isNotEmpty
+                                ? locationController.text.trim()
+                                : 'Site Measurement Pending',
+                            'budget': budgetStr,
+                            'status': 'Design and Planning',
+                            'isDelayed': false,
+                            'startDate': DateFormat('dd MMM yyyy')
+                                .format(DateTime.now()),
+                            'endDate': 'TBD',
+                            'progress': 0.05,
+                            'spent': '₹ 0',
+                            'pm': 'Unassigned',
+                            'supervisor': 'Unassigned',
+                            'handover': 'TBD',
+                            'color': chosenColor,
+                            'swatchName': swatch['name'],
+                            'material': swatch['material'],
+                            'isChecklistOpen': false,
+                            'originLeadId': leadId,
+                            'stages': <Map<String, dynamic>>[
+                              {
+                                'title':
+                                    'Site Measurement & As-Built CAD',
+                                'isDone': false,
+                              },
+                              {
+                                'title':
+                                    'Concept 3D & Moodboard Sign-off',
+                                'isDone': false,
+                              },
+                              {
+                                'title':
+                                    'Civil Demolition & Wet Masonry',
+                                'isDone': false,
+                              },
+                              {
+                                'title':
+                                    'False Ceiling Framing & Laser Alignment',
+                                'isDone': false,
+                              },
+                              {
+                                'title':
+                                    'Modular Joinery & PU Finishing',
+                                'isDone': false,
+                              },
+                            ],
+                            'photos': <Map<String, dynamic>>[],
+                            'designAssets': <Map<String, dynamic>>[],
+                            'timelineSpreadsheet': SpreadsheetService
+                                .generateDefaultTimelineForProject(projName)
+                                .toMap(),
+                          };
+
+                          final currentProjects = StorageService.getProjects();
+                          if (!currentProjects
+                              .any((p) => p['name'] == projName)) {
+                            currentProjects.insert(0, newProj);
+                            await StorageService.saveProjects(currentProjects);
+                          }
+
+                          if (!AppConstants.preExistingProjects
+                              .contains(projName)) {
+                            AppConstants.preExistingProjects.insert(0, projName);
+                          }
+                        }
+
                         final newLead = {
-                          'id': 'lead_${DateTime.now().millisecondsSinceEpoch}',
+                          'id': leadId,
                           'client': name,
                           'name': name,
                           'phone': phoneController.text.trim().isNotEmpty
@@ -445,12 +603,19 @@ class AddLeadSheet {
                           'reminderNote': reminderNoteController.text.trim(),
                           'hasReminder': hasReminder,
                           'isReminderDismissed': false,
+                          'isConverted': autoCreateProject,
+                          'convertedToProject':
+                              autoCreateProject ? projName : null,
+                          'convertedAt': autoCreateProject
+                              ? DateTime.now().toIso8601String()
+                              : null,
                           'notes': <Map<String, dynamic>>[
                             {
                               'date': DateFormat('dd MMM yyyy, hh:mm a')
                                   .format(DateTime.now()),
-                              'text':
-                                  'Lead captured via $selectedReferralSource${referrerController.text.trim().isNotEmpty ? " (Ref: ${referrerController.text.trim()})" : ""}. Initial status: $selectedStage.',
+                              'text': autoCreateProject
+                                  ? 'Lead captured via $selectedReferralSource${referrerController.text.trim().isNotEmpty ? " (Ref: ${referrerController.text.trim()})" : ""}. Turnkey Project "$projName" automatically initialized in studio pipeline.'
+                                  : 'Lead captured via $selectedReferralSource${referrerController.text.trim().isNotEmpty ? " (Ref: ${referrerController.text.trim()})" : ""}. Initial status: $selectedStage.',
                             },
                           ],
                           'color': AppColors.brandPeach,
@@ -459,19 +624,37 @@ class AddLeadSheet {
                         };
                         final allLeads = StorageService.getLeads();
                         allLeads.insert(0, newLead);
-                        StorageService.saveLeads(allLeads);
+                        await StorageService.saveLeads(allLeads);
                         MobileActionSheets.leadCreatedNotifier.value = newLead;
 
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Lead "$name" saved to pipeline with call reminder for $nextCallDateFormatted!',
+                        if (autoCreateProject && newProj != null) {
+                          MobileActionSheets.projectCreatedNotifier.value =
+                              newProj;
+                        }
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                autoCreateProject
+                                    ? 'Lead "$name" saved & Turnkey Project "$projName" initialized!'
+                                    : 'Lead "$name" saved to pipeline with call reminder for $nextCallDateFormatted!',
+                              ),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                              action: autoCreateProject
+                                  ? SnackBarAction(
+                                      label: 'VIEW IN PROJECTS',
+                                      textColor: Colors.white,
+                                      onPressed: () {
+                                        MainDashboardScreen.navigateToTab(2);
+                                      },
+                                    )
+                                  : null,
                             ),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                          );
+                        }
                       },
                     ),
                   ],

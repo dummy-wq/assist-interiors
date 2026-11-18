@@ -193,8 +193,10 @@ void main() {
       await tester.tap(addPhotoButton);
       await tester.pumpAndSettle();
 
-      // Verify TakeSitePhotoSheet modal opened
-      expect(find.text('OPTICAL VIEWFINDER • LIVE SITE CAMERA'), findsOneWidget);
+      // Verify TakeSitePhotoSheet modal opened without the old live camera viewfinder
+      expect(find.text('OPTICAL VIEWFINDER • LIVE SITE CAMERA'), findsNothing);
+      expect(find.text('Instant Camera Shutter (Capture Now)'), findsNothing);
+      expect(find.text('CURRENT TIME & DATE'), findsOneWidget);
       expect(find.text('Save & Attach Photo to Project'), findsOneWidget);
 
       // Select an area tag
@@ -218,7 +220,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify sheet is closed and notification appears
-      expect(find.text('OPTICAL VIEWFINDER • LIVE SITE CAMERA'), findsNothing);
+      expect(find.text('CURRENT TIME & DATE'), findsNothing);
       expect(find.textContaining('Site inspection photo added to'), findsOneWidget);
     });
 
@@ -272,16 +274,16 @@ void main() {
       await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded).first);
       await tester.pumpAndSettle();
 
-      // Find seeded photo titles (e.g., 'Living Room Framing & False Ceiling')
-      final photoCard = find.text('Living Room Framing & False Ceiling');
+      // Find seeded photo titles
+      final photoCard = find.text('Double-Height Sea-Facing Lounge Bookmatched Marble');
       expect(photoCard, findsOneWidget);
 
       await tester.ensureVisible(photoCard);
       await tester.tap(photoCard);
       await tester.pumpAndSettle();
 
-      // Verify viewer dialog opened with technical details
-      expect(find.text('ASSIST INTERIORS • VERIFIED SITE PHOTO'), findsOneWidget);
+      // Verify viewer dialog opened with technical details and without top watermark banner
+      expect(find.text('ASSIST INTERIORS • VERIFIED SITE PHOTO'), findsNothing);
       expect(find.text('Zone: Living Room'), findsOneWidget);
       expect(find.text('Cloud Synced'), findsOneWidget);
 

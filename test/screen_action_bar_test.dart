@@ -39,11 +39,12 @@ void main() {
 
       // On Hub (tab 0), screen action buttons MUST NOT exist
       expect(find.byKey(const Key('action_bar_add_project')), findsNothing);
-      expect(find.byKey(const Key('action_bar_add_task')), findsNothing);
+      expect(find.byKey(const Key('action_bar_upload_design')), findsNothing);
+      expect(find.byKey(const Key('action_bar_add_material_request')), findsNothing);
+      expect(find.byKey(const Key('action_bar_add_amendment')), findsNothing);
       expect(find.byKey(const Key('action_bar_add_invoice')), findsNothing);
       expect(find.byKey(const Key('action_bar_print_invoice')), findsNothing);
       expect(find.byKey(const Key('action_bar_add_lead')), findsNothing);
-      expect(find.byKey(const Key('action_bar_add_vendor')), findsNothing);
       expect(find.byKey(const Key('action_bar_invite_staff')), findsNothing);
     });
 
@@ -70,7 +71,7 @@ void main() {
       expect(find.text('Initiate Turnkey Project'), findsOneWidget);
     });
 
-    testWidgets('Tasks tab renders Add Task and Urgent Only in action section', (
+    testWidgets('Amendments tab renders Add Amendment and Pending Sign-Off in action section', (
       WidgetTester tester,
     ) async {
       tester.view.physicalSize = const Size(1200, 900);
@@ -80,17 +81,31 @@ void main() {
       await tester.pumpWidget(_buildTestApp());
       await tester.pumpAndSettle();
 
-      // Switch to Tasks
-      await tester.tap(find.text('Tasks').first);
+      // Switch to Amendments
+      await tester.tap(find.text('Amendments').first);
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('action_bar_add_task')), findsOneWidget);
+      expect(find.byKey(const Key('action_bar_add_amendment')), findsOneWidget);
+      expect(find.text('Add Amendment'), findsOneWidget);
       expect(find.byKey(const Key('action_bar_urgent_only')), findsOneWidget);
+    });
 
-      // Tap Add Task opens task sheet
-      await tester.tap(find.byKey(const Key('action_bar_add_task')));
+    testWidgets('Design tab renders Upload Drawing and Filter Drawings in action section', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(_buildTestApp());
       await tester.pumpAndSettle();
-      expect(find.text('Create Project Task'), findsOneWidget);
+
+      // Switch to Design
+      await tester.tap(find.text('Design').first);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('action_bar_upload_design')), findsOneWidget);
+      expect(find.byKey(const Key('action_bar_filter_designs')), findsOneWidget);
     });
 
     testWidgets('Accounts tab renders Add Invoice and Print Invoice in action section', (
@@ -141,7 +156,7 @@ void main() {
       expect(find.text('Add Prospective Lead'), findsOneWidget);
     });
 
-    testWidgets('Vendors and Team tabs render their respective action buttons', (
+    testWidgets('Materials and Team tabs render their respective action buttons', (
       WidgetTester tester,
     ) async {
       tester.view.physicalSize = const Size(1200, 900);
@@ -151,13 +166,15 @@ void main() {
       await tester.pumpWidget(_buildTestApp());
       await tester.pumpAndSettle();
 
-      // Switch to Vendors
-      await tester.tap(find.text('Vendors').first);
+      // Switch to Materials
+      await tester.tap(find.text('Materials').first);
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('action_bar_add_vendor')), findsOneWidget);
+      expect(find.byKey(const Key('action_bar_add_material_request')), findsOneWidget);
+      expect(find.text('New Request'), findsOneWidget);
       expect(find.byKey(const Key('action_bar_track_pos')), findsOneWidget);
 
       // Switch to Team
+      await tester.ensureVisible(find.text('Team').first);
       await tester.tap(find.text('Team').first);
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('action_bar_invite_staff')), findsOneWidget);
@@ -205,12 +222,28 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('action_bar_add_project')), findsOneWidget);
 
-      // Tab 4: Tasks
-      await tester.tap(find.text('Tasks').last);
+      // Tab 3: Design (via More suite sheet)
+      await tester.tap(find.text('More').last);
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('action_bar_add_task')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('more_sheet_module_design')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('action_bar_upload_design')), findsOneWidget);
 
-      // Tab 5: Accounts
+      // Tab 4: Materials (via More suite sheet)
+      await tester.tap(find.text('Design').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('more_sheet_module_materials')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('action_bar_add_material_request')), findsOneWidget);
+
+      // Tab 5: Amendments (via More suite sheet)
+      await tester.tap(find.text('Materials').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('more_sheet_module_amendments')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('action_bar_add_amendment')), findsOneWidget);
+
+      // Tab 6: Accounts
       await tester.tap(find.text('Accounts').last);
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('action_bar_add_invoice')), findsOneWidget);

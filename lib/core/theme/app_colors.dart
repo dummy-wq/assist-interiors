@@ -20,14 +20,14 @@ class AppColors {
   static const Color lightBorder = Color(0xFFE5E7EB);
   static const Color lightDivider = Color(0xFFEEEEEE);
 
-  // Text Colors (High Contrast WCAG AA compliant)
+  // Text Colors (High Contrast WCAG AA/AAA prominent legibility)
   static const Color textLightPrimary = Color(0xFFFFFFFF);
-  static const Color textLightSecondary = Color(0xFFD4D4D8);
-  static const Color textLightMuted = Color(0xFFA1A1AA);
+  static const Color textLightSecondary = Color(0xFFE4E4E7);
+  static const Color textLightMuted = Color(0xFFC4C4CC);
 
-  static const Color textDarkPrimary = Color(0xFF171A22);
-  static const Color textDarkSecondary = Color(0xFF4B5563);
-  static const Color textDarkMuted = Color(0xFF6B7280);
+  static const Color textDarkPrimary = Color(0xFF0F172A);
+  static const Color textDarkSecondary = Color(0xFF1E293B);
+  static const Color textDarkMuted = Color(0xFF334155);
 
   // Status & Utility Colors
   static const Color success = Color(0xFF10B981);

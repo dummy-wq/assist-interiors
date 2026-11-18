@@ -58,6 +58,8 @@ class MobileActionSheets {
   static final ValueNotifier<int> attendanceCountNotifier = ValueNotifier(0);
   static final ValueNotifier<Map<String, dynamic>?> invoiceCreatedNotifier =
       ValueNotifier(null);
+  static final ValueNotifier<Map<String, dynamic>?> invoiceUpdatedNotifier =
+      ValueNotifier(null);
   static final ValueNotifier<Map<String, dynamic>?> projectCreatedNotifier =
       ValueNotifier(null);
   static final ValueNotifier<Map<String, dynamic>?> projectUpdatedNotifier =
@@ -73,7 +75,10 @@ class MobileActionSheets {
   // 1. Sales Vertical Sheets
   static void showAddLeadSheet(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canManageSales(auth.currentRole)) {
+    if (!AppPermissions.canManageSales(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message: 'Action restricted: Only Proprietor and Sales can add leads.',
@@ -102,8 +107,15 @@ class MobileActionSheets {
   static void showAssignMilestoneSheet(BuildContext context) =>
       AssignMilestoneSheet.show(context);
 
-  static void showUploadRenderSheet(BuildContext context) =>
-      UploadRenderSheet.show(context);
+  static void showUploadRenderSheet(
+    BuildContext context, {
+    String? preselectedProject,
+    String? initialType,
+  }) => UploadRenderSheet.show(
+    context,
+    preselectedProject: preselectedProject,
+    initialType: initialType,
+  );
 
   static void showLabourAttendanceSheet(BuildContext context) =>
       LabourAttendanceSheet.show(context);
@@ -114,9 +126,13 @@ class MobileActionSheets {
     String? initialName,
     String? initialClient,
     String? initialBudget,
+    String? leadId,
   }) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canCreateProject(auth.currentRole)) {
+    if (!AppPermissions.canCreateProject(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message:
@@ -130,6 +146,7 @@ class MobileActionSheets {
       initialName: initialName,
       initialClient: initialClient,
       initialBudget: initialBudget,
+      leadId: leadId,
     );
   }
 
@@ -139,22 +156,15 @@ class MobileActionSheets {
     String? initialName,
     String? initialClient,
     String? initialBudget,
+    String? leadId,
   }) {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canCreateProject(auth.currentRole)) {
-      AppNotification.show(
-        context,
-        message:
-            'Action restricted: Only Proprietor and Project Managers can create projects.',
-      );
-      return;
-    }
-    CreateProjectSheet.show(
+    showInitiateProjectSheet(
       context,
       onProjectCreated: onProjectCreated,
       initialName: initialName,
       initialClient: initialClient,
       initialBudget: initialBudget,
+      leadId: leadId,
     );
   }
 
@@ -170,7 +180,10 @@ class MobileActionSheets {
   // 3. Accounts & Financial Billing Sheets
   static void showCreateInvoiceSheet(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canManageAccounts(auth.currentRole)) {
+    if (!AppPermissions.canManageAccounts(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message:
@@ -183,7 +196,10 @@ class MobileActionSheets {
 
   static void showAddExpenseSheet(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canManageAccounts(auth.currentRole)) {
+    if (!AppPermissions.canManageAccounts(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message:
@@ -197,7 +213,10 @@ class MobileActionSheets {
   // 4. Procurement & Vendor Onboarding
   static void showAddVendorSheet(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canManageVendors(auth.currentRole)) {
+    if (!AppPermissions.canManageVendors(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message:
@@ -214,7 +233,10 @@ class MobileActionSheets {
     void Function(Map<String, dynamic> newTask)? onTaskCreated,
   }) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canCreateTask(auth.currentRole)) {
+    if (!AppPermissions.canCreateTask(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message:
@@ -228,7 +250,10 @@ class MobileActionSheets {
   // 6. Organization Team Management
   static void showInviteStaffSheet(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!AppPermissions.canManageTeam(auth.currentRole)) {
+    if (!AppPermissions.canManageTeam(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
       AppNotification.show(
         context,
         message: 'Action restricted: Only Proprietor can invite staff.',

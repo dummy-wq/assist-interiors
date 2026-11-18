@@ -139,20 +139,26 @@ class _PillBoxState extends State<PillBox> with SingleTickerProviderStateMixin {
                 ),
                 SizedBox(width: resolvedIconSize > 15 ? 8 : 6),
               ],
-              Text(
-                widget.label,
-                style: AppTypography.labelLarge(isDark).copyWith(
-                  color: widget.isSelected
-                      ? primary
-                      : (isDark
-                            ? AppColors.textLightSecondary
-                            : AppColors.textDarkSecondary),
-                  fontWeight: widget.isSelected
-                      ? FontWeight.w700
-                      : FontWeight.w500,
-                  fontSize: resolvedFontSize,
-                  letterSpacing: 0.2,
-                  height: 1.25,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    style: AppTypography.labelLarge(isDark).copyWith(
+                      color: widget.isSelected
+                          ? primary
+                          : (isDark
+                                ? AppColors.textLightSecondary
+                                : AppColors.textDarkSecondary),
+                      fontWeight: widget.isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w600,
+                      fontSize: resolvedFontSize,
+                      letterSpacing: 0.2,
+                      height: 1.25,
+                    ),
+                  ),
                 ),
               ),
               if (widget.trailing != null) ...[

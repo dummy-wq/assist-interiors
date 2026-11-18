@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/blueprint_grid_painter.dart';
+import '../../../core/widgets/cloud_network_image.dart';
+import '../../../core/widgets/expanded_detail_dialog.dart';
 
 class ProjectPhotoViewerDialog {
   ProjectPhotoViewerDialog._();
@@ -21,14 +24,29 @@ class ProjectPhotoViewerDialog {
     final photoTag = photo['tag'] as String? ?? 'General';
     final photoTimestamp = photo['timestamp'] as String? ?? 'Recorded Recently';
     final capturedBy = photo['capturedBy'] as String? ?? 'Site Supervisor';
-    final imagePath = photo['imagePath'] as String?;
-    final hasRealImage =
-        imagePath != null && !kIsWeb && File(imagePath).existsSync();
+    final imagePath =
+        (photo['imagePath'] ?? photo['localPath'] ?? photo['path']) as String?;
+    final imageUrl = (photo['downloadUrl'] ?? photo['imageUrl']) as String?;
+    final hasLocalImage = imagePath != null &&
+        !imagePath.startsWith('http') &&
+        !kIsWeb &&
+        File(imagePath).existsSync();
+    final hasNetworkImage = imageUrl != null && imageUrl.isNotEmpty;
+    final hasRealImage = hasLocalImage || hasNetworkImage;
 
     showDialog(
       context: context,
       builder: (dialogCtx) {
-        return Dialog(
+        final screenHeight = MediaQuery.of(dialogCtx).size.height;
+        final viewportHeight = (screenHeight * 0.56).clamp(320.0, 520.0);
+
+        return FlickDismissibleCard(
+          onDismiss: () {
+            if (Navigator.of(dialogCtx).canPop()) {
+              Navigator.of(dialogCtx).pop();
+            }
+          },
+          child: Dialog(
           backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6.0),
@@ -38,12 +56,12 @@ class ProjectPhotoViewerDialog {
             ),
           ),
           insetPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 24,
+            horizontal: 16,
+            vertical: 20,
           ),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Padding(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -111,9 +129,9 @@ class ProjectPhotoViewerDialog {
                   ),
                   const SizedBox(height: 14),
 
-                  // Architectural Photo Frame Viewport
+                  // Architectural Photo Frame Viewport (full uncropped image view)
                   Container(
-                    height: 200,
+                    height: viewportHeight,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: isDark
@@ -131,9 +149,25 @@ class ProjectPhotoViewerDialog {
                           Positioned.fill(
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(6.0),
-                              child: Image.file(
-                                File(imagePath),
-                                fit: BoxFit.cover,
+                              child: InteractiveViewer(
+                                minScale: 1.0,
+                                maxScale: 4.0,
+                                child: hasLocalImage
+                                    ? Image.file(
+                                        File(imagePath),
+                                        fit: BoxFit.contain,
+                                      )
+                                    : CloudNetworkImage(
+                                        url: imageUrl!,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (_, _, _) => Center(
+                                          child: Icon(
+                                            Icons.broken_image_outlined,
+                                            size: 42,
+                                            color: projectAccent,
+                                          ),
+                                        ),
+                                      ),
                               ),
                             ),
                           )
@@ -141,7 +175,8 @@ class ProjectPhotoViewerDialog {
                           // Blueprint grid subtle overlay
                           Positioned.fill(
                             child: CustomPaint(
-                              painter: _BlueprintGridPainter(
+                              painter: BlueprintGridPainter(
+                                step: 20.0,
                                 gridColor: (isDark ? Colors.white : Colors.black)
                                     .withValues(alpha: 0.04),
                               ),
@@ -191,42 +226,6 @@ class ProjectPhotoViewerDialog {
                             ),
                           ),
                         ],
-                        // Top watermark
-                        Positioned(
-                          top: 10,
-                          left: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 3.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: hasRealImage
-                                  ? Colors.black.withValues(alpha: 0.75)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(3.0),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.shield_outlined,
-                                  size: 12,
-                                  color: projectAccent.withValues(alpha: 0.8),
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  'ASSIST INTERIORS • VERIFIED SITE PHOTO',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
-                                    color: projectAccent.withValues(alpha: 0.8),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                         // Bottom timestamp strip
                         Positioned(
                           bottom: 10,
@@ -250,7 +249,7 @@ class ProjectPhotoViewerDialog {
                                   photoTimestamp,
                                   style: TextStyle(
                                     fontSize: 10,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w600,
                                     color: hasRealImage
                                         ? Colors.white.withValues(alpha: 0.8)
                                         : (isDark
@@ -460,33 +459,9 @@ class ProjectPhotoViewerDialog {
               ),
             ),
           ),
+        ),
         );
       },
     );
   }
-}
-
-class _BlueprintGridPainter extends CustomPainter {
-  final Color gridColor;
-
-  _BlueprintGridPainter({required this.gridColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = gridColor
-      ..strokeWidth = 0.5;
-
-    const step = 20.0;
-    for (double x = 0; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BlueprintGridPainter oldDelegate) =>
-      oldDelegate.gridColor != gridColor;
 }

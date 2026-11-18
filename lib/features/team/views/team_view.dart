@@ -5,11 +5,14 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/expanded_detail_dialog.dart';
 import '../../../core/widgets/pill_box.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/stat_strip.dart';
 import '../../../core/widgets/screen_layout.dart';
+import '../../auth/models/user_model.dart';
 import '../../auth/state/auth_provider.dart';
+import '../widgets/role_permission_config_dialog.dart';
 import '../widgets/staff_management_sheet.dart';
 import '../../../core/services/phone_call_service.dart';
 
@@ -32,8 +35,14 @@ class _TeamViewState extends State<TeamView> {
 
     final filteredMembers = _selectedRoleFilter == 'All'
         ? allMembers
+        : _selectedRoleFilter == 'Custom'
+        ? allMembers.where((m) => m.hasCustomAccess).toList()
         : allMembers
-              .where((m) => m.role.title.contains(_selectedRoleFilter))
+              .where(
+                (m) =>
+                    m.role.title.contains(_selectedRoleFilter) ||
+                    m.effectiveRoleTitle.contains(_selectedRoleFilter),
+              )
               .toList();
 
     return ScreenScrollView(
@@ -72,9 +81,8 @@ class _TeamViewState extends State<TeamView> {
         ),
         const SizedBox(height: 14),
 
-        // Pending Approvals Banner (Proprietor Exclusive)
-        if (auth.currentRole == UserRole.proprietor &&
-            pendingList.isNotEmpty) ...[
+        // Pending Approvals Banner (Master Proprietor Exclusive)
+        if (auth.canManageTeam && pendingList.isNotEmpty) ...[
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -86,7 +94,7 @@ class _TeamViewState extends State<TeamView> {
               ),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Wrap(
                   alignment: WrapAlignment.spaceBetween,
@@ -143,190 +151,303 @@ class _TeamViewState extends State<TeamView> {
                         : const Color(0xFFB37400),
                   ),
                 ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.warning,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4.0),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                      ),
-                      onPressed: () =>
-                          showStaffManagementSheet(context, initialTabIndex: 0),
-                      icon: const Icon(Icons.how_to_reg_rounded, size: 14),
-                      label: Text(
-                        'Review & Authorize (${pendingList.length})',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11.5,
-                        ),
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: isDark ? Colors.white : Colors.black87,
-                        side: BorderSide(
-                          color: isDark
-                              ? AppColors.darkBorder
-                              : AppColors.lightBorder,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4.0),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 7,
-                        ),
-                      ),
-                      onPressed: () =>
-                          showStaffManagementSheet(context, initialTabIndex: 1),
-                      icon: const Icon(Icons.people_outline_rounded, size: 14),
-                      label: Text(
-                        'View Active Roster (${allMembers.length})',
-                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 12),
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: pendingList.length,
-                  separatorBuilder: (context, index) => const Divider(),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final u = pendingList[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 16,
-                                backgroundColor: u.role.color.withValues(
-                                  alpha: 0.2,
-                                ),
-                                child: Icon(
-                                  u.role.icon,
-                                  color: u.role.color,
-                                  size: 16,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      u.fullName,
-                                      style: AppTypography.titleMedium(isDark),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      '${u.email}  ·  ${u.role.title}',
-                                      style: AppTypography.bodySmall(isDark),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(4.0),
+                      onTap: () =>
+                          showStaffManagementSheet(context, initialTabIndex: 0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (isDark
+                                  ? AppColors.darkCardElevated
+                                  : AppColors.lightBackground)
+                              .withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(4.0),
+                          border: Border.all(
+                            color: (isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.lightBorder)
+                                .withValues(alpha: 0.7),
+                            width: 0.8,
                           ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.error,
-                                  side: const BorderSide(
-                                    color: AppColors.error,
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: u.role.color.withValues(
+                                alpha: 0.2,
+                              ),
+                              child: Icon(
+                                u.role.icon,
+                                color: u.role.color,
+                                size: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    u.fullName,
+                                    style: AppTypography.titleMedium(isDark),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 6,
+                                  Text(
+                                    '${u.email}  ·  ${u.effectiveRoleTitle}',
+                                    style: AppTypography.bodySmall(isDark),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.warning.withValues(
+                                  alpha: 0.16,
                                 ),
-                                onPressed: () => auth.rejectUser(u.id),
-                                child: const Text(
-                                  'Reject',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                borderRadius: BorderRadius.circular(4.0),
+                                border: Border.all(
+                                  color: AppColors.warning.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  width: 0.7,
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.success,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 6,
-                                  ),
-                                ),
-                                onPressed: () => auth.approveUser(u.id),
-                                child: const Text(
-                                  'Approve',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              child: const Text(
+                                'Pending Review',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.warning,
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.warning,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          minimumSize: const Size(0, 38),
+                          maximumSize: const Size(double.infinity, 38),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                        ),
+                        onPressed: () =>
+                            showStaffManagementSheet(context, initialTabIndex: 0),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.how_to_reg_rounded, size: 14),
+                              const SizedBox(width: 5),
+                              Text(
+                                'Review & Authorize (${pendingList.length})',
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: isDark ? Colors.white : Colors.black87,
+                          side: BorderSide(
+                            color: isDark
+                                ? AppColors.darkBorder
+                                : AppColors.lightBorder,
+                          ),
+                          minimumSize: const Size(0, 38),
+                          maximumSize: const Size(double.infinity, 38),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                        ),
+                        onPressed: () =>
+                            showStaffManagementSheet(context, initialTabIndex: 1),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.people_outline_rounded, size: 14),
+                              const SizedBox(width: 5),
+                              Text(
+                                'View Active Roster (${allMembers.length})',
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
         ],
 
-        // Role Filter Pills
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children:
-                [
-                  'All',
-                  'Proprietor',
-                  'Sales',
-                  'Project Manager',
-                  'Designer',
-                  'Accounts',
-                  'Supervisor',
-                ].map((dept) {
-                  final isSelected = _selectedRoleFilter == dept;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: PillBox(
-                      label: dept,
-                      isSelected: isSelected,
-                      activeColor: AppColors.brandPeach,
-                      onSelected: () =>
-                          setState(() => _selectedRoleFilter = dept),
-                    ),
-                  );
-                }).toList(),
-          ),
+        // Role Filter Pills — stretched across full section width with zero dead space
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const filters = [
+              'All',
+              'Proprietor',
+              'Sales',
+              'Project Manager',
+              'Designer',
+              'Accounts',
+              'Supervisor',
+            ];
+
+            Widget buildPill(String dept) {
+              final isSelected = _selectedRoleFilter == dept;
+              return Expanded(
+                child: PillBox(
+                  label: dept,
+                  isSelected: isSelected,
+                  activeColor: AppColors.brandPeach,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 7.5,
+                  ),
+                  onSelected: () => setState(() => _selectedRoleFilter = dept),
+                ),
+              );
+            }
+
+            if (constraints.maxWidth >= 720) {
+              return Row(
+                children: [
+                  for (int i = 0; i < filters.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    buildPill(filters[i]),
+                  ],
+                ],
+              );
+            }
+
+            const firstRow = ['All', 'Proprietor', 'Sales', 'Project Manager'];
+            const secondRow = ['Designer', 'Accounts', 'Supervisor'];
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    for (int i = 0; i < firstRow.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 6),
+                      buildPill(firstRow[i]),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    for (int i = 0; i < secondRow.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 6),
+                      buildPill(secondRow[i]),
+                    ],
+                  ],
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: ScreenLayout.listGap),
 
-        // Directory label
-        Text(
-          'Staff Directory (${filteredMembers.length})',
-          style: AppTypography.titleLarge(isDark),
+        // Directory Header Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Text(
+                'Staff Directory (${filteredMembers.length})',
+                style: AppTypography.titleLarge(isDark),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (auth.canManageTeam)
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.brandPeach,
+                  side: const BorderSide(color: AppColors.brandPeach),
+                  minimumSize: const Size(0, 34),
+                  maximumSize: const Size(220, 34),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                ),
+                onPressed: () =>
+                    showStaffManagementSheet(context, initialTabIndex: 1),
+                child: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.admin_panel_settings_outlined, size: 14),
+                      SizedBox(width: 5),
+                      Text(
+                        'Manage Roles & Access',
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: ScreenLayout.controlGap),
 
@@ -360,103 +481,257 @@ class _TeamViewState extends State<TeamView> {
                   itemBuilder: (context, index) {
                     final m = filteredMembers[index];
 
-                    return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.darkCard
-                            : AppColors.lightCard,
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
                         borderRadius: BorderRadius.circular(6.0),
-                        border: Border.all(
-                          color: isDark
-                              ? AppColors.darkBorder.withValues(alpha: 0.7)
-                              : AppColors.lightBorder.withValues(alpha: 0.8),
-                          width: 0.8,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                              alpha: isDark ? 0.2 : 0.03,
+                        onTap: () =>
+                            _showMemberExpandedBox(context, m, auth, isDark),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? AppColors.darkCard
+                                : AppColors.lightCard,
+                            borderRadius: BorderRadius.circular(6.0),
+                            border: Border.all(
+                              color: isDark
+                                  ? AppColors.darkBorder.withValues(alpha: 0.7)
+                                  : AppColors.lightBorder.withValues(alpha: 0.8),
+                              width: 0.8,
                             ),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.2 : 0.03,
+                                ),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundColor: m.role.color.withValues(
-                              alpha: 0.18,
-                            ),
-                            child: Icon(
-                              m.role.icon,
-                              color: m.role.color,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Wrap(
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  spacing: 8,
-                                  runSpacing: 4,
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: m.role.color.withValues(
+                                  alpha: 0.18,
+                                ),
+                                child: Icon(
+                                  m.role.icon,
+                                  color: m.role.color,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       m.fullName,
                                       style: AppTypography.titleMedium(isDark),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4.5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: m.role.color.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          6.0,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        m.role.title,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: m.role.color,
-                                        ),
-                                      ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '${m.email}  ·  ${m.phone}',
+                                      style: AppTypography.bodySmall(isDark),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${m.email}  ·  ${m.phone}',
-                                  style: AppTypography.bodySmall(isDark),
-                                  overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(width: 10),
+                              Flexible(
+                                flex: 0,
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 150,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 9,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: m.role.color.withValues(
+                                        alpha: 0.14,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4.0),
+                                      border: Border.all(
+                                        color: m.role.color.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      m.effectiveRoleTitle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: m.role.color,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 34,
+                                height: 34,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: (isDark
+                                            ? AppColors.darkCardElevated
+                                            : AppColors.lightBackground)
+                                        .withValues(alpha: 0.9),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4.0),
+                                      side: BorderSide(
+                                        color: (isDark
+                                                ? AppColors.darkBorder
+                                                : AppColors.lightBorder)
+                                            .withValues(alpha: 0.8),
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.phone_outlined,
+                                    size: 17,
+                                  ),
+                                  tooltip: 'Dial ${m.fullName}',
+                                  onPressed: () => PhoneCallService.dialNumber(
+                                    context,
+                                    phoneNumber: m.phone,
+                                    contactName: m.fullName,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.phone_outlined, size: 20),
-                            tooltip: 'Dial ${m.fullName}',
-                            onPressed: () => PhoneCallService.dialNumber(
-                              context,
-                              phoneNumber: m.phone,
-                              contactName: m.fullName,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     );
                   },
                 ),
+        ),
+      ],
+    );
+  }
+
+  void _showMemberExpandedBox(
+    BuildContext context,
+    AppUser m,
+    AuthProvider auth,
+    bool isDark,
+  ) {
+    final canEditMember =
+        auth.canManageTeam &&
+        !(m.role == UserRole.proprietor && !m.hasCustomAccess);
+
+    showExpandedDetailBox(
+      context: context,
+      title: m.fullName,
+      subtitle: m.effectiveRoleTitle,
+      headerIcon: m.role.icon,
+      accentColor: m.role.color,
+      badgeLabel: m.effectiveRoleShortCode,
+      badgeColor: m.role.color,
+      bodyBuilder: (dialogCtx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DetailMetricGrid(
+            isDark: isDark,
+            metrics: [
+              DetailMetric(
+                label: 'Department Role',
+                value: m.effectiveRoleTitle,
+                color: m.role.color,
+                icon: m.role.icon,
+              ),
+              const DetailMetric(
+                label: 'Directory Status',
+                value: 'Active Authorized',
+                color: AppColors.success,
+                icon: Icons.verified_user_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          DetailSectionTitle(label: 'Contact & Access Details', isDark: isDark),
+          DetailInfoRow(
+            icon: Icons.email_outlined,
+            label: 'Work Email',
+            value: m.email,
+            isDark: isDark,
+          ),
+          DetailInfoRow(
+            icon: Icons.phone_rounded,
+            label: 'Phone',
+            value: m.phone,
+            isDark: isDark,
+          ),
+          DetailInfoRow(
+            icon: Icons.badge_outlined,
+            label: 'Role Code',
+            value: m.effectiveRoleShortCode,
+            isDark: isDark,
+          ),
+        ],
+      ),
+      actionsBuilder: (dialogCtx) => [
+        OutlinedButton.icon(
+          icon: const Icon(Icons.close_rounded, size: 15),
+          label: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('Close', maxLines: 1),
+          ),
+          onPressed: () => Navigator.of(dialogCtx).pop(),
+        ),
+        if (canEditMember)
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.brandPeach,
+              side: const BorderSide(color: AppColors.brandPeach),
+            ),
+            icon: const Icon(Icons.tune_rounded, size: 15),
+            label: const FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('Edit Role & Access', maxLines: 1),
+            ),
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              RolePermissionConfigDialog.showForApplicantOrStaff(
+                context,
+                targetUser: m,
+                isPendingApproval: false,
+              );
+            },
+          ),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.brandPeach,
+            foregroundColor: Colors.black,
+          ),
+          icon: const Icon(Icons.phone_rounded, size: 15),
+          label: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('Dial Staff', maxLines: 1),
+          ),
+          onPressed: () {
+            Navigator.of(dialogCtx).pop();
+            PhoneCallService.dialNumber(
+              context,
+              phoneNumber: m.phone,
+              contactName: m.fullName,
+            );
+          },
         ),
       ],
     );

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
-import '../../../core/permissions/app_permissions.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
 import '../../../core/services/storage_service.dart';
-import '../../auth/state/auth_provider.dart';
+import '../../../core/services/backend_manager.dart';
+import '../../../core/models/project_model.dart';
+import '../services/sales_pipeline_service.dart';
+import '../../dashboard/views/main_dashboard_screen.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
 class UpdateLeadStatusSheet {
@@ -26,10 +27,7 @@ class UpdateLeadStatusSheet {
         (lead['stage'] ?? lead['status'] ?? 'New Inquiry') as String;
     final remarksCtrl = TextEditingController();
 
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final canCreateProject = AppPermissions.canCreateProject(auth.currentRole);
-
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
@@ -101,50 +99,72 @@ class UpdateLeadStatusSheet {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: AppConstants.salesPipelineStages.map((stage) {
-                        final isSelected = stage == currentStage;
-                        final chipColor = stage == 'Closed Won'
-                            ? AppColors.success
-                            : (stage == 'Lost / Dropped'
-                                  ? AppColors.error
-                                  : AppColors.brandPeach);
+                      children: () {
+                        final stagesList = <String>[
+                          ...AppConstants.salesPipelineStages,
+                          for (final legacy in const [
+                            'Site Visit Scheduled',
+                            'Closed Won',
+                          ])
+                            if (!AppConstants.salesPipelineStages.contains(
+                              legacy,
+                            ))
+                              legacy,
+                        ];
+                        if (currentStage.isNotEmpty &&
+                            !stagesList.contains(currentStage)) {
+                          stagesList.add(currentStage);
+                        }
+                        return stagesList.map((stage) {
+                          final isSelected = stage == currentStage;
+                          final isAppr = SalesPipelineService.isApproved(stage);
+                          final chipColor = isAppr
+                              ? AppColors.success
+                              : (stage == 'Lost / Dropped'
+                                    ? AppColors.error
+                                    : (stage == 'BOQ'
+                                          ? AppColors.info
+                                          : (stage.contains('Visit')
+                                                ? AppColors.brandOrange
+                                                : AppColors.brandPeach)));
 
-                        return ChoiceChip(
-                          label: Text(stage),
-                          selected: isSelected,
-                          selectedColor: chipColor.withValues(alpha: 0.25),
-                          backgroundColor: isDark
-                              ? AppColors.darkBackground
-                              : AppColors.lightBackground,
-                          labelStyle: TextStyle(
-                            color: isSelected
-                                ? chipColor
-                                : (isDark
-                                      ? AppColors.textLightPrimary
-                                      : AppColors.textDarkPrimary),
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.w500,
-                            fontSize: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4.0),
-                            side: BorderSide(
+                          return ChoiceChip(
+                            label: Text(stage),
+                            selected: isSelected,
+                            selectedColor: chipColor.withValues(alpha: 0.25),
+                            backgroundColor: isDark
+                                ? AppColors.darkBackground
+                                : AppColors.lightBackground,
+                            labelStyle: TextStyle(
                               color: isSelected
                                   ? chipColor
                                   : (isDark
-                                        ? AppColors.darkBorder
-                                        : AppColors.lightBorder),
-                              width: isSelected ? 1.5 : 1.0,
+                                        ? AppColors.textLightPrimary
+                                        : AppColors.textDarkPrimary),
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w600,
+                              fontSize: 12,
                             ),
-                          ),
-                          onSelected: (selected) {
-                            if (selected) {
-                              setModalState(() => currentStage = stage);
-                            }
-                          },
-                        );
-                      }).toList(),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4.0),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? chipColor
+                                    : (isDark
+                                          ? AppColors.darkBorder
+                                          : AppColors.lightBorder),
+                                width: isSelected ? 1.5 : 1.0,
+                              ),
+                            ),
+                            onSelected: (selected) {
+                              if (selected) {
+                                setModalState(() => currentStage = stage);
+                              }
+                            },
+                          );
+                        }).toList();
+                      }(),
                     ),
                     const SizedBox(height: 14),
                     TextField(
@@ -160,10 +180,10 @@ class UpdateLeadStatusSheet {
                     const SizedBox(height: 20),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: currentStage == 'Closed Won'
+                        backgroundColor: SalesPipelineService.isApproved(currentStage)
                             ? AppColors.success
                             : AppColors.brandPeach,
-                        foregroundColor: currentStage == 'Closed Won'
+                        foregroundColor: SalesPipelineService.isApproved(currentStage)
                             ? Colors.white
                             : Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -172,70 +192,103 @@ class UpdateLeadStatusSheet {
                         ),
                       ),
                       icon: Icon(
-                        currentStage == 'Closed Won'
+                        SalesPipelineService.isApproved(currentStage)
                             ? Icons.rocket_launch_rounded
                             : Icons.check_circle_rounded,
                         size: 18,
                       ),
                       label: Text(
                         currentStage == 'Closed Won'
-                            ? (canCreateProject
-                                ? 'Mark Won & Launch Project'
-                                : 'Mark Won (Handover to PM)')
-                            : 'Update Status to $currentStage',
+                            ? 'Mark Won & Update Projects'
+                            : (SalesPipelineService.isApproved(currentStage)
+                                ? 'Approve & Move to Projects'
+                                : 'Update Status to $currentStage'),
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       onPressed: () async {
-                        List<dynamic> existingNotes = [];
-                        if (lead['notes'] is List) {
-                          existingNotes = List.from(lead['notes'] as List);
+                        final isAppr = SalesPipelineService.isApproved(currentStage);
+                        Map<String, dynamic>? affectedProject;
+
+                        if (isAppr) {
+                          final result =
+                              await SalesPipelineService.approveLeadAndMoveToProjects(
+                            lead,
+                            approvedStage: currentStage,
+                            transitionNote: remarksCtrl.text.trim().isNotEmpty
+                                ? 'Status updated to "$currentStage": ${remarksCtrl.text.trim()}'
+                                : null,
+                          );
+                          affectedProject = result['project'];
+                        } else if (currentStage == 'Lost / Dropped') {
+                          final currentProjects = StorageService.getProjects();
+                          final leadConvertedName =
+                              lead['convertedToProject'] as String?;
+                          int existingIdx = currentProjects.indexWhere(
+                            (p) =>
+                                (p['originLeadId'] != null &&
+                                    p['originLeadId'] == leadId) ||
+                                (leadConvertedName != null &&
+                                    p['name'] == leadConvertedName),
+                          );
+                          if (existingIdx != -1) {
+                            final existing = Map<String, dynamic>.from(
+                              currentProjects[existingIdx],
+                            );
+                            if (existing['status'] == 'Design and Planning' ||
+                                existing['status'] == 'New') {
+                              existing['status'] = 'Cancelled';
+                              currentProjects[existingIdx] = existing;
+                              affectedProject = existing;
+                              await StorageService.saveProjects(currentProjects);
+                              await BackendManager.instance.updateProject(
+                                ProjectModel.fromMap(existing),
+                              );
+                              MobileActionSheets.projectUpdatedNotifier.value =
+                                  existing;
+                            }
+                          }
+                          await SalesPipelineService.updateLeadStage(
+                            lead: lead,
+                            newStage: currentStage,
+                            note: remarksCtrl.text.trim().isNotEmpty
+                                ? 'Status updated to "$currentStage": ${remarksCtrl.text.trim()}'
+                                : 'Lead marked as Lost / Dropped.',
+                          );
+                        } else {
+                          await SalesPipelineService.updateLeadStage(
+                            lead: lead,
+                            newStage: currentStage,
+                            note: remarksCtrl.text.trim().isNotEmpty
+                                ? 'Status updated to "$currentStage": ${remarksCtrl.text.trim()}'
+                                : 'Status updated to "$currentStage".',
+                          );
                         }
-                        existingNotes.insert(0, {
-                          'date': DateFormat('dd MMM yyyy, hh:mm a')
-                              .format(DateTime.now()),
-                          'text':
-                              'Status updated to "$currentStage"${remarksCtrl.text.trim().isNotEmpty ? ": ${remarksCtrl.text.trim()}" : "."}',
-                        });
 
-                        final updatedFields = {
-                          'stage': currentStage,
-                          'status': currentStage,
-                          'notes': existingNotes,
-                          'updatedAt': DateTime.now().toIso8601String(),
-                        };
-
-                        await StorageService.updateLead(leadId, updatedFields);
-                        MobileActionSheets.leadUpdatedNotifier.value = {
-                          ...lead,
-                          ...updatedFields,
-                        };
                         onUpdated?.call();
 
                         if (!context.mounted) return;
                         Navigator.pop(context);
 
-                        if (currentStage == 'Closed Won' && canCreateProject) {
-                          // Trigger Project Launch Sheet
-                          MobileActionSheets.showInitiateProjectSheet(
-                            context,
-                            initialName: '$clientName Residence',
-                            initialClient: clientName,
-                            initialBudget: (lead['estValue'] as String? ?? '')
-                                .replaceAll(RegExp(r'[^0-9]'), ''),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                currentStage == 'Closed Won'
-                                    ? 'Lead marked as Closed Won! Project handover pending PM/Proprietor review.'
-                                    : 'Status updated to "$currentStage"!',
-                              ),
-                              backgroundColor: AppColors.success,
-                              behavior: SnackBarBehavior.floating,
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isAppr
+                                  ? 'Lead approved! Project "${affectedProject?['name'] ?? clientName}" is live across Projects, Design, Materials & Accounts.'
+                                  : 'Status updated to "$currentStage"!',
                             ),
-                          );
-                        }
+                            backgroundColor: AppColors.success,
+                            behavior: SnackBarBehavior.floating,
+                            action: isAppr
+                                ? SnackBarAction(
+                                    label: 'VIEW IN PROJECTS',
+                                    textColor: Colors.white,
+                                    onPressed: () {
+                                      MainDashboardScreen.navigateToTab(2);
+                                    },
+                                  )
+                                : null,
+                          ),
+                        );
                       },
                     ),
                   ],

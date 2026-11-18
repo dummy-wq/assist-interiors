@@ -328,15 +328,15 @@ class _QuickFadeMenu<T> extends StatelessWidget {
       menuTop = math.max(padding.top + 8.0, buttonRect.top - menuHeight - 4.0);
     }
 
-    final double maxAllowedWidth = screenSize.width - 24.0;
+    final double maxAllowedWidth = math.max(0.0, screenSize.width - 8.0);
     final double menuWidth = math.min(buttonRect.width, maxAllowedWidth);
     double menuLeft = buttonRect.left;
 
-    if (menuLeft + menuWidth > screenSize.width - 12.0) {
-      menuLeft = screenSize.width - 12.0 - menuWidth;
+    if (menuLeft + menuWidth > screenSize.width - 4.0) {
+      menuLeft = screenSize.width - 4.0 - menuWidth;
     }
-    if (menuLeft < 12.0) {
-      menuLeft = 12.0;
+    if (menuLeft < 4.0) {
+      menuLeft = 4.0;
     }
 
     final Color bgColor =

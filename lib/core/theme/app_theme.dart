@@ -72,14 +72,15 @@ class AppTheme {
           backgroundColor: AppColors.brandPeach,
           foregroundColor: AppColors.darkBackground,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6.0),
           ),
-          textStyle: const TextStyle(
-            fontSize: 14,
+          textStyle: AppTypography.labelLarge(true).copyWith(
+            fontSize: 13,
             fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
+            letterSpacing: 0.25,
           ),
         ),
       ),
@@ -88,16 +89,31 @@ class AppTheme {
           foregroundColor: AppColors.brandPeach,
           side: BorderSide(
             color: AppColors.brandPeach.withValues(alpha: 0.8),
-            width: 1.2,
+            width: 1.0,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6.0),
           ),
-          textStyle: const TextStyle(
+          textStyle: AppTypography.labelLarge(true).copyWith(
             fontSize: 13,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.2,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.brandPeach,
+          minimumSize: const Size(0, 38),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6.0),
+          ),
+          textStyle: AppTypography.labelLarge(true).copyWith(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -130,15 +146,15 @@ class AppTheme {
           borderRadius: BorderRadius.circular(6.0),
           borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
-        hintStyle: const TextStyle(
+        hintStyle: AppTypography.bodyMedium(true).copyWith(
           color: AppColors.textLightMuted,
           fontSize: 13,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
-        labelStyle: const TextStyle(
+        labelStyle: AppTypography.bodyMedium(true).copyWith(
           color: AppColors.textLightSecondary,
           fontSize: 13,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
@@ -172,7 +188,7 @@ class AppTheme {
         textStyle: const TextStyle(
           color: AppColors.textLightPrimary,
           fontSize: 12,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         waitDuration: const Duration(milliseconds: 400),
@@ -224,26 +240,46 @@ class AppTheme {
           backgroundColor: AppColors.brandPeachDark,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6.0),
           ),
-          textStyle: const TextStyle(
-            fontSize: 14,
+          textStyle: AppTypography.labelLarge(false).copyWith(
+            fontSize: 13,
             fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
+            letterSpacing: 0.25,
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.brandPeachDark,
-          side: const BorderSide(color: AppColors.brandPeachDark, width: 1.2),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+          side: const BorderSide(color: AppColors.brandPeachDark, width: 1.0),
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(6.0),
           ),
-          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          textStyle: AppTypography.labelLarge(false).copyWith(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.brandPeachDark,
+          minimumSize: const Size(0, 38),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6.0),
+          ),
+          textStyle: AppTypography.labelLarge(false).copyWith(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -278,15 +314,15 @@ class AppTheme {
           borderRadius: BorderRadius.circular(6.0),
           borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
-        hintStyle: const TextStyle(
+        hintStyle: AppTypography.bodyMedium(false).copyWith(
           color: AppColors.textDarkMuted,
           fontSize: 13,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
-        labelStyle: const TextStyle(
+        labelStyle: AppTypography.bodyMedium(false).copyWith(
           color: AppColors.textDarkSecondary,
           fontSize: 13,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
@@ -320,7 +356,7 @@ class AppTheme {
         textStyle: const TextStyle(
           color: AppColors.textDarkPrimary,
           fontSize: 12,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         waitDuration: const Duration(milliseconds: 400),

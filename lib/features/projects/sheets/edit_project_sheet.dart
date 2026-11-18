@@ -7,6 +7,7 @@ import '../../../core/theme/app_sizes.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
 import '../../../core/widgets/quick_fade_dropdown.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
 
 class EditProjectSheet {
   EditProjectSheet._();
@@ -55,7 +56,7 @@ class EditProjectSheet {
           orElse: () => AppColors.getProjectSwatch(nameController.text),
         );
 
-    showModalBottomSheet(
+    showAppModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,

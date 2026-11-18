@@ -1,44 +1,36 @@
 import 'package:flutter/material.dart';
 
-/// Centralized utility for throttled, rate-limited user feedback and notifications.
-/// Prevents notification queue buildup when users rapidly spam interactive buttons.
+/// Centralized utility for instant, non-queuing user feedback and notifications.
+/// Always clears any previous or queued SnackBars so only the latest change is shown.
 class AppNotification {
   AppNotification._();
 
-  static DateTime? _lastNotificationTime;
-  static const Duration defaultCooldown = Duration(milliseconds: 1200);
+  static const Duration defaultCooldown = Duration.zero;
 
   @visibleForTesting
   static void resetCooldown() {
-    _lastNotificationTime = null;
+    // Retained as a no-op for test setup compatibility.
   }
 
-  /// Shows a floating SnackBar with built-in rate-limiting and queue clearing.
-  /// If called again before [cooldown] has elapsed, subsequent triggers are ignored.
-  /// If a snackbar is already active when a valid new one arrives, it replaces it instantly.
+  /// Shows a floating SnackBar after clearing any active or queued SnackBars,
+  /// guaranteeing only the most recent status update appears on screen.
   static void show(
     BuildContext context, {
     required String message,
     Duration cooldown = defaultCooldown,
     Duration duration = const Duration(seconds: 2),
+    Color? backgroundColor,
     SnackBarAction? action,
   }) {
-    final now = DateTime.now();
-    if (_lastNotificationTime != null &&
-        now.difference(_lastNotificationTime!) < cooldown) {
-      // Ignored: Rate-limit window active, preventing spam queue buildup
-      return;
-    }
-    _lastNotificationTime = now;
-
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger == null) return;
 
-    messenger.hideCurrentSnackBar();
+    messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         content: Text(message),
         duration: duration,
+        backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         action: action,
       ),

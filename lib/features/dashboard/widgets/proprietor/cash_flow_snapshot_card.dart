@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
-import '../../../../core/services/pdf_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_sizes.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/currency_utils.dart';
 import '../../../../core/widgets/instant_press_feedback.dart';
 
 /// Card displaying executive studio cash flow, billing ratios, and recent ledger activity.
@@ -30,11 +29,7 @@ class CashFlowSnapshotCard extends StatelessWidget {
     int totalCollected = 0;
     int totalReceivables = 0;
     for (final inv in invoices) {
-      final raw = (inv['amount'] as String? ?? '').replaceAll(
-        RegExp(r'[^0-9]'),
-        '',
-      );
-      final amt = int.tryParse(raw) ?? 0;
+      final amt = CurrencyUtils.parseAmount(inv['amount']);
       totalInvoiced += amt;
       if (inv['status'] == 'Settled') {
         totalCollected += amt;
@@ -45,20 +40,10 @@ class CashFlowSnapshotCard extends StatelessWidget {
 
     int totalDisbursed = 0;
     for (final exp in expenses) {
-      final raw = (exp['amount'] as String? ?? '').replaceAll(
-        RegExp(r'[^0-9]'),
-        '',
-      );
-      final amt = int.tryParse(raw) ?? 0;
-      totalDisbursed += amt;
+      totalDisbursed += CurrencyUtils.parseAmount(exp['amount']);
     }
 
     final netCash = totalInvoiced - totalDisbursed;
-    final currencyFmt = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹ ',
-      decimalDigits: 0,
-    );
 
     final totalFlow = totalInvoiced + totalDisbursed;
     final inflowRatio = totalFlow > 0 ? (totalInvoiced / totalFlow) : 0.5;
@@ -108,32 +93,11 @@ class CashFlowSnapshotCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    PdfService.showProfitLoss(
-                      context,
-                      projects: projects,
-                      invoices: invoices,
-                      expenses: expenses,
-                    );
-                  },
-                  icon: const Icon(Icons.picture_as_pdf_outlined, size: 14),
-                  label: const Text('P&L Statement'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppSizes.borderRadiusSm,
-                    ),
-                  ),
-                ),
                 Container(
-                  constraints: const BoxConstraints(minHeight: 36.0),
+                  constraints: const BoxConstraints(minHeight: 32.0),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+                    horizontal: 10,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: isDark
@@ -152,16 +116,15 @@ class CashFlowSnapshotCard extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.sync_rounded,
-                        size: 14,
+                        size: 13,
                         color: AppColors.brandPeach,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         'Accounts Real-Time',
                         style: AppTypography.labelLarge(isDark).copyWith(
-                          fontSize: 12.5,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w700,
-                          height: 1.2,
                         ),
                       ),
                       if (onTap != null) ...[
@@ -193,10 +156,10 @@ class CashFlowSnapshotCard extends StatelessWidget {
                         isDark: isDark,
                         title: 'Total Inflow (Billings)',
                         amount: totalInvoiced > 0
-                            ? currencyFmt.format(totalInvoiced)
+                            ? CurrencyUtils.formatInr(totalInvoiced)
                             : '₹ 0',
                         subtitle:
-                            'Collected: ${totalCollected > 0 ? currencyFmt.format(totalCollected) : "₹ 0"} • Unsettled: ${totalReceivables > 0 ? currencyFmt.format(totalReceivables) : "₹ 0"}',
+                            'Collected: ${totalCollected > 0 ? CurrencyUtils.formatInr(totalCollected) : "₹ 0"} • Unsettled: ${totalReceivables > 0 ? CurrencyUtils.formatInr(totalReceivables) : "₹ 0"}',
                         icon: Icons.south_west_rounded,
                         color: AppColors.success,
                       ),
@@ -204,7 +167,7 @@ class CashFlowSnapshotCard extends StatelessWidget {
                         isDark: isDark,
                         title: 'Total Outflow (Disbursed)',
                         amount: totalDisbursed > 0
-                            ? currencyFmt.format(totalDisbursed)
+                            ? CurrencyUtils.formatInr(totalDisbursed)
                             : '₹ 0',
                         subtitle:
                             '${expenses.length} Expense Vouchers Processed',
@@ -215,7 +178,7 @@ class CashFlowSnapshotCard extends StatelessWidget {
                         isDark: isDark,
                         title: 'Net Cash Position',
                         amount: netCash != 0
-                            ? currencyFmt.format(netCash)
+                            ? CurrencyUtils.formatInr(netCash)
                             : '₹ 0',
                         subtitle: netCash >= 0
                             ? 'Surplus Operating Balance'

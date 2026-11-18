@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/app_notification.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/views/main_dashboard_screen.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
@@ -20,7 +21,7 @@ class ReviewSnagsSheet extends StatefulWidget {
   static Future<void> show(BuildContext context, {VoidCallback? onUpdated}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return showModalBottomSheet<void>(
+    return showAppModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
@@ -334,20 +335,24 @@ class _ReviewSnagsSheetState extends State<ReviewSnagsSheet> {
               // Filter Tabs
               Row(
                 children: [
-                  _buildFilterTab(
-                    label: 'Delayed Sites (${_delayedProjects.length})',
-                    isSelected: _filterMode == 'delayed',
-                    isDark: isDark,
-                    color: AppColors.error,
-                    onTap: () => setState(() => _filterMode = 'delayed'),
+                  Expanded(
+                    child: _buildFilterTab(
+                      label: 'Delayed Sites (${_delayedProjects.length})',
+                      isSelected: _filterMode == 'delayed',
+                      isDark: isDark,
+                      color: AppColors.error,
+                      onTap: () => setState(() => _filterMode = 'delayed'),
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  _buildFilterTab(
-                    label: 'All Active Snags (${_allSnagProjects.length})',
-                    isSelected: _filterMode == 'all',
-                    isDark: isDark,
-                    color: AppColors.brandPeach,
-                    onTap: () => setState(() => _filterMode = 'all'),
+                  Expanded(
+                    child: _buildFilterTab(
+                      label: 'All Active Snags (${_allSnagProjects.length})',
+                      isSelected: _filterMode == 'all',
+                      isDark: isDark,
+                      color: AppColors.brandPeach,
+                      onTap: () => setState(() => _filterMode = 'all'),
+                    ),
                   ),
                 ],
               ),
@@ -735,7 +740,7 @@ class _ReviewSnagsSheetState extends State<ReviewSnagsSheet> {
                             title,
                             style: TextStyle(
                               fontSize: 12,
-                              fontWeight: isDone ? FontWeight.w500 : FontWeight.w600,
+                              fontWeight: isDone ? FontWeight.w600 : FontWeight.w600,
                               color: isDone
                                   ? (isDark
                                       ? AppColors.textLightMuted
@@ -874,7 +879,7 @@ class _ReviewSnagsSheetState extends State<ReviewSnagsSheet> {
           label,
           style: TextStyle(
             fontSize: 11,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
             color: effectiveColor,
           ),
         ),
@@ -909,16 +914,22 @@ class _ReviewSnagsSheetState extends State<ReviewSnagsSheet> {
             width: isSelected ? 1.0 : 0.8,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected
-                ? color
-                : (isDark
-                    ? AppColors.textLightPrimary
-                    : AppColors.textDarkPrimary),
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                color: isSelected
+                    ? color
+                    : (isDark
+                        ? AppColors.textLightPrimary
+                        : AppColors.textDarkPrimary),
+              ),
+            ),
           ),
         ),
       ),

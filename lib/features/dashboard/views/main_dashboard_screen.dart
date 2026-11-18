@@ -8,17 +8,21 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/permissions/app_permissions.dart';
 import '../../auth/state/auth_provider.dart';
 import '../../projects/views/projects_view.dart';
-import '../../vendors/views/vendors_view.dart';
-import '../../tasks/views/tasks_view.dart';
+import '../../design/views/design_view.dart';
+import '../../material_requests/views/material_requests_view.dart';
+import '../../amendments/views/amendments_view.dart';
 import '../../team/views/team_view.dart';
+import '../../team/widgets/staff_management_sheet.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/pdf_service.dart';
 import '../widgets/mobile_action_sheets.dart';
 import '../widgets/role_bottom_bar.dart';
+import '../widgets/studio_side_pane_drawer.dart';
 import 'accounts_dashboard.dart';
 import 'proprietor_dashboard.dart';
 import '../../sales/views/sales_view.dart';
@@ -116,17 +120,29 @@ class MainDashboardScreen extends StatefulWidget {
 
 class _MainDashboardScreenState extends State<MainDashboardScreen> {
   int _selectedTabIndex = 0;
+  bool _hasShownInitialPendingAlert = false;
+  AuthProvider? _auth;
 
   @override
   void initState() {
     super.initState();
     _selectedTabIndex = MainDashboardScreen.activeTabNotifier.value;
     MainDashboardScreen.activeTabNotifier.addListener(_onActiveTabChanged);
+    _auth = context.read<AuthProvider>();
+    _auth?.newSignupNotificationNotifier.addListener(
+      _onNewSignupNotification,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowInitialProprietorAlert();
+    });
   }
 
   @override
   void dispose() {
     MainDashboardScreen.activeTabNotifier.removeListener(_onActiveTabChanged);
+    _auth?.newSignupNotificationNotifier.removeListener(
+      _onNewSignupNotification,
+    );
     MainDashboardScreen.activeTabNotifier.value = 0;
     super.dispose();
   }
@@ -138,6 +154,79 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         _selectedTabIndex = MainDashboardScreen.activeTabNotifier.value;
       });
     }
+  }
+
+  void _maybeShowInitialProprietorAlert() {
+    if (!mounted || _hasShownInitialPendingAlert) return;
+    final auth = context.read<AuthProvider>();
+    if (!auth.canManageTeam) return;
+    final unseen = auth.unseenPendingCount;
+    if (unseen <= 0) return;
+    _hasShownInitialPendingAlert = true;
+    _showPendingApprovalSnackbar(
+      pendingCount: unseen,
+      applicantName: auth.pendingUsers.last.fullName,
+    );
+  }
+
+  void _onNewSignupNotification() {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    final applicant = auth.newSignupNotificationNotifier.value;
+    if (applicant == null) return;
+    if (!auth.canManageTeam) return;
+    _showPendingApprovalSnackbar(
+      pendingCount: auth.pendingUsers.length,
+      applicantName: applicant.fullName,
+      roleRequested: applicant.effectiveRoleTitle,
+    );
+  }
+
+  void _showPendingApprovalSnackbar({
+    required int pendingCount,
+    required String applicantName,
+    String? roleRequested,
+  }) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 6),
+        backgroundColor: AppColors.darkCardElevated,
+        content: Row(
+          children: [
+            const Icon(
+              Icons.notifications_active_rounded,
+              color: AppColors.brandPeach,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                roleRequested != null
+                    ? '$applicantName requested access ($roleRequested). $pendingCount awaiting approval.'
+                    : '$pendingCount new team account request(s) awaiting your approval (latest: $applicantName).',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        action: SnackBarAction(
+          label: 'REVIEW',
+          textColor: AppColors.brandPeach,
+          onPressed: () {
+            if (!mounted) return;
+            showStaffManagementSheet(context, initialTabIndex: 0);
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -155,8 +244,18 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         }
       },
       child: Scaffold(
+      drawer: const StudioSidePaneDrawer(),
       appBar: AppBar(
-        titleSpacing: 20,
+        leadingWidth: 50,
+        leading: Builder(
+          builder: (drawerCtx) => Padding(
+            padding: const EdgeInsets.only(left: 10),
+            child: Center(
+              child: _buildLeftSidePaneButton(drawerCtx, auth, isDark),
+            ),
+          ),
+        ),
+        titleSpacing: 6,
         title: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
@@ -218,143 +317,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ],
           ),
         ),
-        actions: [
-          // Language Selector Button
-          PopupMenuButton<AppLanguage>(
-            tooltip: 'Language (${auth.language.shortCode})',
-            color: isDark ? AppColors.darkCard : AppColors.lightCard,
-            elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6.0),
-              side: BorderSide(
-                color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-                    .withValues(alpha: 0.8),
-                width: 0.8,
-              ),
-            ),
-            position: PopupMenuPosition.under,
-            onSelected: (AppLanguage selected) {
-              auth.setLanguage(selected);
-              AppNotification.show(
-                context,
-                message: 'Language set to ${selected.nativeName}',
-              );
-            },
-            itemBuilder: (context) {
-              return AppLanguage.values.map((lang) {
-                final isSelected = auth.language == lang;
-                return PopupMenuItem<AppLanguage>(
-                  value: lang,
-                  height: 38,
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.brandPeach.withValues(alpha: 0.2)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(4.0),
-                        ),
-                        child: Text(
-                          lang.shortCode,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: isSelected ? AppColors.brandPeach : null,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        lang.nativeName,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: isSelected ? AppColors.brandPeach : null,
-                        ),
-                      ),
-                      if (isSelected) ...[
-                        const Spacer(),
-                        const Icon(
-                          Icons.check_rounded,
-                          size: 16,
-                          color: AppColors.brandPeach,
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              }).toList();
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2.5),
-              child: InstantPressFeedback(
-                child: Material(
-                  color: isDark
-                      ? AppColors.darkCardElevated
-                      : AppColors.lightCard,
-                  borderRadius: BorderRadius.circular(AppSizes.topActionRadius),
-                  child: Container(
-                    width: AppSizes.topActionButtonSize,
-                    height: AppSizes.topActionButtonSize,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(
-                        AppSizes.topActionRadius,
-                      ),
-                      border: Border.all(
-                        color:
-                            (isDark
-                                    ? AppColors.darkBorder
-                                    : AppColors.lightBorder)
-                                .withValues(alpha: 0.7),
-                        width: 0.8,
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      auth.language.shortCode,
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.brandPeach,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          // Standardized compact Theme Toggle button
-          _buildTopIconButton(
-            icon: auth.isDarkMode
-                ? Icons.light_mode_outlined
-                : Icons.dark_mode_outlined,
-            tooltip: 'Toggle Theme',
-            isDark: isDark,
-            onPressed: () => auth.toggleTheme(),
-          ),
-          const SizedBox(width: 6),
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: _buildRoleSwitcher(context, auth, isDark, isWide),
-          ),
-          // Standardized compact Sign Out button
-          _buildTopIconButton(
-            icon: Icons.logout_rounded,
-            tooltip: 'Sign Out',
-            isDark: isDark,
-            onPressed: () => auth.logout(),
-          ),
-          const SizedBox(width: 10),
-        ],
         bottom: isWide
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(48),
@@ -380,55 +342,65 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       ),
                     ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      _buildWideNavTab(
-                        0,
-                        AppStrings.tabHub,
-                        Icons.hub_rounded,
-                        isDark,
-                      ),
-                      _buildWideNavTab(
-                        1,
-                        AppStrings.tabSales,
-                        Icons.campaign_rounded,
-                        isDark,
-                      ),
-                      _buildWideNavTab(
-                        2,
-                        AppStrings.tabProjects,
-                        Icons.apartment_rounded,
-                        isDark,
-                      ),
-                      _buildWideNavTab(
-                        3,
-                        AppStrings.tabVendors,
-                        Icons.storefront_rounded,
-                        isDark,
-                      ),
-                      _buildWideNavTab(
-                        4,
-                        AppStrings.tabTasks,
-                        Icons.task_alt_rounded,
-                        isDark,
-                      ),
-                      _buildWideNavTab(
-                        5,
-                        AppStrings.tabAccounts,
-                        Icons.account_balance_wallet_rounded,
-                        isDark,
-                      ),
-                      _buildWideNavTab(
-                        6,
-                        AppStrings.tabTeam,
-                        Icons.badge_rounded,
-                        isDark,
-                        badgeCount: auth.currentRole == UserRole.proprietor
-                            ? auth.pendingUsers.length
-                            : 0,
-                      ),
-                    ],
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: [
+                        _buildWideNavTab(
+                          0,
+                          AppStrings.tabHub,
+                          Icons.hub_rounded,
+                          isDark,
+                        ),
+                        _buildWideNavTab(
+                          1,
+                          AppStrings.tabSales,
+                          Icons.campaign_rounded,
+                          isDark,
+                        ),
+                        _buildWideNavTab(
+                          2,
+                          AppStrings.tabProjects,
+                          Icons.apartment_rounded,
+                          isDark,
+                        ),
+                        _buildWideNavTab(
+                          3,
+                          AppStrings.tabDesign,
+                          Icons.draw_rounded,
+                          isDark,
+                        ),
+                        _buildWideNavTab(
+                          4,
+                          AppStrings.tabMaterials,
+                          Icons.inventory_2_rounded,
+                          isDark,
+                        ),
+                        _buildWideNavTab(
+                          5,
+                          AppStrings.tabAmendments,
+                          Icons.published_with_changes_rounded,
+                          isDark,
+                        ),
+                        _buildWideNavTab(
+                          6,
+                          AppStrings.tabAccounts,
+                          Icons.account_balance_wallet_rounded,
+                          isDark,
+                        ),
+                        _buildWideNavTab(
+                          7,
+                          AppStrings.tabTeam,
+                          Icons.badge_rounded,
+                          isDark,
+                          badgeCount: auth.currentRole == UserRole.proprietor
+                              ? auth.pendingUsers.length
+                              : 0,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               )
@@ -445,8 +417,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 const ProprietorDashboard(),
                 const SalesView(),
                 const ProjectsView(),
-                const VendorsView(),
-                const TasksView(),
+                const DesignView(),
+                const MaterialRequestsView(),
+                const AmendmentsView(),
                 const AccountsDashboard(),
                 const TeamView(),
               ],
@@ -486,8 +459,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       },
       borderRadius: BorderRadius.circular(6.0),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.brandPeach.withValues(alpha: 0.15)
@@ -515,8 +488,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 13.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                 color: isSelected
                     ? AppColors.brandPeach
                     : (isDark
@@ -549,197 +522,90 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
   }
 
 
-  DateTime _lastActionTapTime = DateTime.fromMillisecondsSinceEpoch(0);
-
-  Widget _buildTopIconButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-    required bool isDark,
-    Color? iconColor,
-    Duration cooldown = const Duration(milliseconds: 500),
-  }) {
-    final effectiveIconColor =
-        iconColor ??
-        (isDark ? AppColors.textLightPrimary : AppColors.textDarkPrimary);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2.5),
-      child: Tooltip(
-        message: tooltip,
-        child: Material(
-          color: isDark ? AppColors.darkCardElevated : AppColors.lightCard,
-          borderRadius: BorderRadius.circular(AppSizes.topActionRadius),
-          child: InkWell(
-            onTap: () {
-              final now = DateTime.now();
-              if (now.difference(_lastActionTapTime) < cooldown) {
-                return; // Throttled: prevents spam taps from stacking actions
-              }
-              _lastActionTapTime = now;
-              onPressed();
-            },
-            borderRadius: BorderRadius.circular(AppSizes.topActionRadius),
-            child: Container(
-              width: AppSizes.topActionButtonSize,
-              height: AppSizes.topActionButtonSize,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppSizes.topActionRadius),
-                border: Border.all(
-                  color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-                      .withValues(alpha: 0.7),
-                  width: 0.8,
-                ),
-              ),
-              alignment: Alignment.center,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 150),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                transitionBuilder: (child, animation) => FadeTransition(
-                  opacity: animation,
-                  child: ScaleTransition(
-                    scale: Tween<double>(
-                      begin: 0.82,
-                      end: 1.0,
-                    ).animate(animation),
-                    child: child,
-                  ),
-                ),
-                child: Icon(
-                  icon,
-                  key: ValueKey<IconData>(icon),
-                  size: AppSizes.topActionIconSize,
-                  color: effectiveIconColor,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRoleSwitcher(
-    BuildContext context,
+  Widget _buildLeftSidePaneButton(
+    BuildContext drawerCtx,
     AuthProvider auth,
     bool isDark,
-    bool isWide,
   ) {
-    return PopupMenuButton<UserRole>(
-      tooltip: 'Switch Demo Role',
-      initialValue: auth.currentRole,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-      color: isDark ? AppColors.darkCardElevated : AppColors.lightCard,
-      onSelected: (newRole) {
-        auth.switchRole(newRole);
-        AppNotification.show(
-          context,
-          message: 'Active demo role switched to ${newRole.title}',
-        );
-      },
-      itemBuilder: (context) => UserRole.values.map((role) {
-        final isSelected = role == auth.currentRole;
-        return PopupMenuItem<UserRole>(
-          value: role,
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: role.color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6.0),
-                ),
-                child: Icon(role.icon, color: role.color, size: 16),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      role.title,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected ? role.color : null,
-                      ),
-                    ),
-                    Text(
-                      AppPermissions.getRoleAccessSummary(role),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: isDark
-                            ? AppColors.textLightMuted
-                            : AppColors.textDarkMuted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (isSelected)
-                Icon(Icons.check_rounded, color: role.color, size: 16),
-            ],
-          ),
-        );
-      }).toList(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        decoration: BoxDecoration(
-          color: (isDark ? AppColors.darkCardElevated : AppColors.lightCard)
-              .withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(6.0),
-          border: Border.all(
-            color: auth.currentRole.color.withValues(alpha: 0.4),
-            width: 0.8,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 12,
-              backgroundColor: auth.currentRole.color.withValues(alpha: 0.2),
-              child: Icon(
-                auth.currentRole.icon,
-                color: auth.currentRole.color,
-                size: 14,
+    final pendingCount = auth.canManageTeam ? auth.pendingUsers.length : 0;
+    final unseenCount = auth.canManageTeam ? auth.unseenPendingCount : 0;
+    final hasPending = pendingCount > 0;
+    final hasUnseen = unseenCount > 0;
+
+    return Tooltip(
+      message: 'Open Menu & Settings',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: const Key('left_side_pane_btn'),
+          borderRadius: BorderRadius.circular(AppSizes.topActionRadius),
+          onTap: () => Scaffold.of(drawerCtx).openDrawer(),
+          child: Container(
+            width: AppSizes.topActionButtonSize,
+            height: AppSizes.topActionButtonSize,
+            decoration: BoxDecoration(
+              color: hasUnseen
+                  ? AppColors.brandPeach.withValues(alpha: 0.16)
+                  : (isDark ? AppColors.darkCardElevated : AppColors.lightCard)
+                      .withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(AppSizes.topActionRadius),
+              border: Border.all(
+                color: hasUnseen
+                    ? AppColors.brandPeach
+                    : (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+                        .withValues(alpha: 0.7),
+                width: hasUnseen ? 1.1 : 0.8,
               ),
             ),
-            if (isWide) ...[
-              const SizedBox(width: 6),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    auth.userName,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.menu_rounded,
+                  size: 20,
+                  color: hasPending
+                      ? AppColors.brandPeach
+                      : (isDark
+                          ? AppColors.textLightPrimary
+                          : AppColors.textDarkPrimary),
+                ),
+                if (hasPending)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      key: const Key('proprietor_notifications_badge'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: hasUnseen
+                            ? AppColors.error
+                            : AppColors.brandPeach,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.darkBackground
+                              : AppColors.lightBackground,
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Text(
+                        '$pendingCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          height: 1.0,
+                        ),
+                      ),
                     ),
                   ),
-                  Text(
-                    auth.currentRole.shortCode,
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: auth.currentRole.color,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(width: 2),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 14,
-              color: auth.currentRole.color,
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -772,7 +638,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         ),
       ),
       padding: EdgeInsets.symmetric(
-        horizontal: isWide ? 24 : 16,
+        horizontal: isWide ? 14 : 10,
         vertical: 8,
       ),
       child: isWide
@@ -824,20 +690,46 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                 ),
               ],
             )
-          : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (int i = 0; i < buttons.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 8),
-                    buttons[i],
-                  ],
-                ],
-              ),
-            ),
+          : _buildMobileActionButtonsGrid(buttons),
     );
+  }
+
+  Widget _buildMobileActionButtonsGrid(List<Widget> buttons) {
+    if (buttons.isEmpty) return const SizedBox.shrink();
+    if (buttons.length <= 3) {
+      return Row(
+        children: [
+          for (int i = 0; i < buttons.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            Expanded(
+              child: SizedBox(width: double.infinity, child: buttons[i]),
+            ),
+          ],
+        ],
+      );
+    }
+    // 4+ buttons (e.g. Accounts): clean balanced 2-column rows filling 100% width
+    final rows = <Widget>[];
+    for (int i = 0; i < buttons.length; i += 2) {
+      final hasSecond = i + 1 < buttons.length;
+      if (i > 0) rows.add(const SizedBox(height: 6));
+      rows.add(
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(width: double.infinity, child: buttons[i]),
+            ),
+            if (hasSecond) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(width: double.infinity, child: buttons[i + 1]),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+    return Column(mainAxisSize: MainAxisSize.min, children: rows);
   }
 
   Widget _buildPrimaryActionButton({
@@ -853,19 +745,25 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           backgroundColor: AppColors.brandPeach,
           foregroundColor: Colors.black,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          minimumSize: const Size(0, 38),
+          maximumSize: const Size(double.infinity, 38),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4.0),
+            borderRadius: BorderRadius.circular(6.0),
           ),
-          textStyle: const TextStyle(
+          textStyle: AppTypography.labelLarge(true).copyWith(
             fontSize: 12.5,
             fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
+            letterSpacing: 0.25,
           ),
         ),
         onPressed: onPressed,
         icon: Icon(icon, size: 16, color: Colors.black),
-        label: Text(label),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(AppStrings.tr(label), maxLines: 1),
+        ),
       ),
     );
   }
@@ -886,15 +784,18 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         style: OutlinedButton.styleFrom(
           foregroundColor: effectiveColor,
           elevation: 0,
+          minimumSize: const Size(0, 38),
+          maximumSize: const Size(double.infinity, 38),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           side: BorderSide(
             color: effectiveColor.withValues(alpha: 0.8),
             width: 1.0,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4.0),
+            borderRadius: BorderRadius.circular(6.0),
           ),
-          textStyle: const TextStyle(
+          textStyle: AppTypography.labelLarge(isDark).copyWith(
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.2,
@@ -902,7 +803,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         ),
         onPressed: onPressed,
         icon: Icon(icon, size: 16, color: effectiveColor),
-        label: Text(label),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(AppStrings.tr(label), maxLines: 1),
+        ),
       ),
     );
   }
@@ -913,10 +817,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     bool isDark,
   ) {
     final role = auth.currentRole;
+    final user = auth.currentUser;
     switch (_selectedTabIndex) {
       case 1:
         // SALES & PIPELINE
-        final canManageSales = AppPermissions.canManageSales(role);
+        final canManageSales = AppPermissions.canManageSales(role, user: user);
         return [
           if (canManageSales)
             _buildPrimaryActionButton(
@@ -946,7 +851,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
       case 2:
         // PROJECTS PORTFOLIO
-        final canCreateProject = AppPermissions.canCreateProject(role);
+        final canCreateProject = AppPermissions.canCreateProject(role, user: user);
+        final canManageDesignOnProject =
+            AppPermissions.canManageDesignAssets(role, user: user);
         return [
           if (canCreateProject)
             _buildPrimaryActionButton(
@@ -955,6 +862,17 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               label: 'Add Project',
               onPressed: () =>
                   MobileActionSheets.showCreateProjectSheet(context),
+            ),
+          if (canManageDesignOnProject)
+            _buildSecondaryActionButton(
+              key: const Key('action_bar_projects_upload_boq'),
+              icon: Icons.table_view_rounded,
+              label: 'Upload BOQ',
+              isDark: isDark,
+              onPressed: () => MobileActionSheets.showUploadRenderSheet(
+                context,
+                initialType: 'Material BOQ',
+              ),
             ),
           _buildSecondaryActionButton(
             key: const Key('action_bar_filter_projects'),
@@ -967,62 +885,102 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         ];
 
       case 3:
-        // VENDORS & TRADES
-        final canManageVendors = AppPermissions.canManageVendors(role);
+        // DESIGN & TECHNICAL DRAWINGS
+        final canManageDesign =
+            AppPermissions.canManageDesignAssets(role, user: user);
         return [
-          if (canManageVendors)
+          if (canManageDesign) ...[
             _buildPrimaryActionButton(
-              key: const Key('action_bar_add_vendor'),
-              icon: Icons.add_business_rounded,
-              label: 'Add Vendor',
-              onPressed: () => MobileActionSheets.showAddVendorSheet(context),
+              key: const Key('action_bar_upload_design'),
+              icon: Icons.cloud_upload_rounded,
+              label: 'Upload Drawing',
+              onPressed: () =>
+                  MobileActionSheets.showUploadRenderSheet(context),
             ),
+            _buildSecondaryActionButton(
+              key: const Key('action_bar_upload_boq'),
+              icon: Icons.table_view_rounded,
+              label: 'Upload BOQ',
+              isDark: isDark,
+              onPressed: () => MobileActionSheets.showUploadRenderSheet(
+                context,
+                initialType: 'Material BOQ',
+              ),
+            ),
+          ],
           _buildSecondaryActionButton(
-            key: const Key('action_bar_track_pos'),
-            icon: Icons.local_shipping_outlined,
-            label: 'Track POs',
+            key: const Key('action_bar_filter_designs'),
+            icon: Icons.filter_list_rounded,
+            label: 'Filter Drawings',
             isDark: isDark,
             onPressed: () {
               AppNotification.show(
                 context,
                 message:
-                    '10 Active Purchase Orders currently in transit across 5 vendors.',
+                    'Filter CAD drawings, 3D renders, and GFC construction packages.',
               );
             },
           ),
         ];
 
       case 4:
-        // TASKS & EXECUTION
-        final canCreateTask = AppPermissions.canCreateTask(role);
+        // MATERIAL REQUESTS & PROCUREMENT
         return [
-          if (canCreateTask)
-            _buildPrimaryActionButton(
-              key: const Key('action_bar_add_task'),
-              icon: Icons.add_task_rounded,
-              label: 'Add Task',
-              onPressed: () =>
-                  MobileActionSheets.showCreateTaskSheet(context),
-            ),
+          _buildPrimaryActionButton(
+            key: const Key('action_bar_add_material_request'),
+            icon: Icons.add_shopping_cart_rounded,
+            label: 'New Request',
+            onPressed: () {
+              MaterialRequestsView.openCreateModalTrigger.value++;
+            },
+          ),
           _buildSecondaryActionButton(
-            key: const Key('action_bar_urgent_only'),
-            icon: Icons.flag_rounded,
-            label: 'Urgent Only',
+            key: const Key('action_bar_track_pos'),
+            icon: Icons.local_shipping_outlined,
+            label: 'Track Dispatches',
             isDark: isDark,
             onPressed: () {
               AppNotification.show(
                 context,
                 message:
-                    'Showing Urgent & High priority milestones due within 48 hours.',
+                    'Tracking active material dispatches across sites and suppliers.',
               );
             },
           ),
         ];
 
       case 5:
+        // AMENDMENTS & SCOPE VARIATIONS
+        return [
+          _buildPrimaryActionButton(
+            key: const Key('action_bar_add_amendment'),
+            icon: Icons.post_add_rounded,
+            label: 'Add Amendment',
+            onPressed: () {
+              AmendmentsView.openAddModalTrigger.value++;
+            },
+          ),
+          _buildSecondaryActionButton(
+            key: const Key('action_bar_urgent_only'),
+            icon: Icons.flag_rounded,
+            label: 'Pending Sign-Off',
+            isDark: isDark,
+            onPressed: () {
+              AppNotification.show(
+                context,
+                message:
+                    'Showing scope variations awaiting client sign-off.',
+              );
+            },
+          ),
+        ];
+
+      case 6:
         // ACCOUNTS & BILLING
-        final canManageAccounts = AppPermissions.canManageAccounts(role);
-        final canExportFinancials = AppPermissions.canExportFinancials(role);
+        final canManageAccounts =
+            AppPermissions.canManageAccounts(role, user: user);
+        final canExportFinancials =
+            AppPermissions.canExportFinancials(role, user: user);
 
         if (!canManageAccounts && !canExportFinancials) {
           return [
@@ -1043,7 +1001,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Financial ledger read-only for ${role.title}',
+                    'Financial ledger read-only for ${user?.effectiveRoleTitle ?? role.title}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -1094,9 +1052,9 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ),
         ];
 
-      case 6:
+      case 7:
         // TEAM & WORKFORCE
-        final canManageTeam = AppPermissions.canManageTeam(role);
+        final canManageTeam = AppPermissions.canManageTeam(role, user: user);
         return [
           if (canManageTeam)
             _buildPrimaryActionButton(
@@ -1128,12 +1086,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       case 2:
         return 'Projects Portfolio';
       case 3:
-        return 'Vendors & Procurement';
+        return 'Design Studio & Technical Drawings';
       case 4:
-        return 'Tasks & Site Milestones';
+        return 'Material Requests & Procurement';
       case 5:
-        return 'Accounts, Billing & Financials';
+        return 'Amendments & Scope Variations';
       case 6:
+        return 'Accounts, Billing & Financials';
+      case 7:
         return 'Team & Personnel Governance';
       default:
         return '';
@@ -1166,7 +1126,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     List<Map<String, dynamic>> invoices,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet<void>(
+    showAppModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
