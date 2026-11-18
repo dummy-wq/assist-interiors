@@ -18,6 +18,137 @@ import '../../../core/widgets/app_modal_sheet.dart';
 class TakeSitePhotoSheet {
   TakeSitePhotoSheet._();
 
+  /// One-tap entry point used by Supervisors' large "Take Site Photo" button:
+  /// picks a project (or uses the only active project) and opens [TakeSitePhotoSheet].
+  static void openQuickCapture(BuildContext context) {
+    final projects = StorageService.getProjects();
+    if (projects.isEmpty) {
+      ScaffoldMessenger.maybeOf(context)
+        ?..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No projects yet. Add a project first, then take site photos.',
+            ),
+            backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      return;
+    }
+
+    void openForProject(int index) {
+      show(
+        context,
+        project: projects[index],
+        onPhotoAdded: (photo) {
+          final current = StorageService.getProjects();
+          if (index < current.length) {
+            final photosRaw = (current[index]['photos'] as List?) ?? [];
+            final list = photosRaw
+                .map((p) => Map<String, dynamic>.from(p as Map))
+                .toList();
+            list.insert(0, photo);
+            current[index]['photos'] = list;
+            StorageService.saveProjects(current);
+            StorageService.cloudSyncNotifier.value =
+                StorageService.cloudSyncNotifier.value + 1;
+          }
+          if (context.mounted) {
+            ScaffoldMessenger.maybeOf(context)
+              ?..clearSnackBars()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Site inspection photo added to ${projects[index]['name']}',
+                  ),
+                  backgroundColor: AppColors.success,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+          }
+        },
+      );
+    }
+
+    if (projects.length == 1) {
+      openForProject(0);
+      return;
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showAppModalBottomSheet<void>(
+      context: context,
+      backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12.0)),
+      ),
+      builder: (pickerCtx) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Choose Project for Photo',
+                  style: AppTypography.titleLarge(isDark),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Select which site you are taking a photo of:',
+                  style: AppTypography.bodySmall(isDark),
+                ),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 320),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: projects.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (_, idx) {
+                      final proj = projects[idx];
+                      return ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6.0),
+                          side: BorderSide(
+                            color: (isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.lightBorder)
+                                .withValues(alpha: 0.7),
+                          ),
+                        ),
+                        leading: const Icon(
+                          Icons.apartment_rounded,
+                          color: AppColors.brandPeach,
+                        ),
+                        title: Text(
+                          (proj['name'] ?? 'Site').toString(),
+                          style: AppTypography.titleMedium(isDark),
+                        ),
+                        subtitle: Text(
+                          (proj['location'] ?? '').toString(),
+                          style: AppTypography.bodySmall(isDark),
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () {
+                          Navigator.of(pickerCtx).pop();
+                          openForProject(idx);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   static void show(
     BuildContext context, {
     required Map<String, dynamic> project,
@@ -923,7 +1054,7 @@ class TakeSitePhotoSheet {
                                     ..showSnackBar(
                                       const SnackBar(
                                         content: Text(
-                                          'Photo saved locally, but cloud Storage upload failed. Check Storage rules / connection.',
+                                          'Photo saved on phone. It will upload when you\'re back online.',
                                         ),
                                         backgroundColor: AppColors.warning,
                                         behavior: SnackBarBehavior.floating,

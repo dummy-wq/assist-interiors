@@ -128,7 +128,7 @@ void main() {
       );
     });
 
-    test('StorageService auto-heals missing timelineSpreadsheet with defaults', () {
+    test('StorageService leaves missing timelineSpreadsheet null without placeholder data', () {
       final projectWithoutSheet = {
         'id': 'legacy_proj',
         'name': 'Legacy Luxury Villa',
@@ -140,11 +140,7 @@ void main() {
 
       final loaded = StorageService.getProjects();
       expect(loaded.length, equals(1));
-      expect(loaded.first['timelineSpreadsheet'], isNotNull);
-      final sheet = SpreadsheetData.fromMap(
-        loaded.first['timelineSpreadsheet'] as Map<String, dynamic>,
-      );
-      expect(sheet.rows.length, equals(12));
+      expect(loaded.first['timelineSpreadsheet'], isNull);
     });
   });
 

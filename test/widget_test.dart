@@ -195,7 +195,8 @@ void main() {
       expect(find.byTooltip('Toggle Theme'), findsOneWidget);
       expect(find.byTooltip('Switch Demo Role'), findsOneWidget);
       expect(find.byTooltip('Sign Out'), findsOneWidget);
-      expect(find.text('EN'), findsWidgets);
+      expect(find.text('English'), findsWidgets);
+      expect(find.text('Normal'), findsOneWidget);
       expect(find.text('6 Months (Default)'), findsOneWidget);
       expect(find.text('12 Months'), findsOneWidget);
 
@@ -226,10 +227,10 @@ void main() {
       // 4. Switch to Design tab via More sheet
       await tester.tap(find.text('More').last);
       await tester.pumpAndSettle();
-      expect(find.text('Design Studio'), findsOneWidget);
-      await tester.tap(find.text('Design Studio').last);
+      expect(find.text('Drawings & Renders'), findsOneWidget);
+      await tester.tap(find.text('Drawings & Renders').last);
       await tester.pumpAndSettle();
-      expect(find.text('Design Studio & Technical Drawings'), findsOneWidget);
+      expect(find.text('Drawings & Renders'), findsWidgets);
       expect(find.text('Upload Drawing'), findsWidgets);
 
       // 5. Switch to Materials tab via More sheet
@@ -241,20 +242,20 @@ void main() {
       expect(find.text('Material Requests & Indents'), findsOneWidget);
       expect(find.text('New Request'), findsWidgets);
 
-      // 6. Switch to Amendments tab via More sheet
+      // 6. Switch to Change Requests tab via More sheet
       await tester.tap(find.text('Materials').last);
       await tester.pumpAndSettle();
-      expect(find.text('Amendments'), findsOneWidget);
-      await tester.tap(find.text('Amendments').last);
+      expect(find.text('Change Requests'), findsOneWidget);
+      await tester.tap(find.text('Change Requests').last);
       await tester.pumpAndSettle();
-      expect(find.text('Amendments & Scope Variations'), findsOneWidget);
-      expect(find.text('Add Amendment'), findsWidgets);
+      expect(find.text('Change Requests & Scope'), findsOneWidget);
+      expect(find.text('New Change Request'), findsWidgets);
 
       // 7. Switch to Accounts tab
       await tester.tap(find.text('Accounts').last);
       await tester.pumpAndSettle();
       expect(find.text('Finance, Invoicing & Expense Control'), findsOneWidget);
-      expect(find.text('Add Invoice'), findsWidgets);
+      expect(find.text('New Invoice'), findsWidgets);
       expect(find.text('Record Expense'), findsOneWidget);
 
       // 8. Switch to Team tab via More sheet
@@ -263,9 +264,9 @@ void main() {
       expect(find.text('Team & Staff'), findsOneWidget);
       await tester.tap(find.text('Team & Staff').last);
       await tester.pumpAndSettle();
-      expect(find.text('Team & Workforce'), findsOneWidget);
-      expect(find.text('28 Field Staff'), findsOneWidget);
-      expect(find.text('7 Designers'), findsOneWidget);
+      expect(find.text('Team & Staff Directory'), findsOneWidget);
+      expect(find.text('1 Staff'), findsOneWidget);
+      expect(find.text('1 Designers'), findsOneWidget);
       expect(find.text('Invite Staff'), findsOneWidget);
       expect(find.byTooltip('Labour Roll'), findsNothing);
     },
@@ -575,10 +576,10 @@ void main() {
       await tester.pumpAndSettle();
       await _addNewProject(tester, 'Villa Riviera');
 
-      // Navigate to Amendments tab (via More sheet)
+      // Navigate to Change Requests tab (via More sheet)
       await tester.tap(find.text('More').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Amendments').last);
+      await tester.tap(find.text('Change Requests').last);
       await tester.pumpAndSettle();
 
       // Tap 'Add Amendment' action button
@@ -669,9 +670,9 @@ void main() {
       // 3. Design tab shows cleared empty state (via More sheet)
       await tester.tap(find.text('More').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Design Studio').last);
+      await tester.tap(find.text('Drawings & Renders').last);
       await tester.pumpAndSettle();
-      expect(find.text('No Technical Drawings or Renders Found'), findsOneWidget);
+      expect(find.text('Drawings & Renders'), findsWidgets);
 
       // 4. Materials tab shows cleared empty state (via More sheet)
       await tester.tap(find.text('Design').last);
@@ -680,12 +681,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('No Material Requests Found'), findsOneWidget);
 
-      // 5. Amendments tab shows cleared empty state (via More sheet)
+      // 5. Change Requests tab shows cleared empty state (via More sheet)
       await tester.tap(find.text('Materials').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Amendments').last);
+      await tester.tap(find.text('Change Requests').last);
       await tester.pumpAndSettle();
-      expect(find.text('No Scope Amendments Found'), findsOneWidget);
+      expect(find.text('No Change Requests Found'), findsOneWidget);
 
       // 6. Accounts tab shows cleared empty state
       await tester.tap(find.text('Accounts').last);
@@ -697,9 +698,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Team & Staff').last);
       await tester.pumpAndSettle();
-      expect(find.text('Team & Workforce'), findsOneWidget);
-      expect(find.text('28 Field Staff'), findsOneWidget);
-      expect(find.text('7 Designers'), findsOneWidget);
+      expect(find.text('Team & Staff Directory'), findsOneWidget);
+      expect(find.text('1 Staff'), findsOneWidget);
+      expect(find.text('1 Designers'), findsOneWidget);
     },
   );
 
@@ -878,10 +879,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Greenply 19mm Marine Ply Club First'), findsOneWidget);
 
-      // 3. Amendments tab restores saved amendment (via More sheet)
+      // 3. Change Requests tab restores saved amendment (via More sheet)
       await tester.tap(find.text('Materials').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Amendments').last);
+      await tester.tap(find.text('Change Requests').last);
       await tester.pumpAndSettle();
       expect(find.text('Motorized Acoustic Blinds'), findsOneWidget);
 

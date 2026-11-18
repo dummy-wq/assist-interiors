@@ -8,8 +8,8 @@ class AppSizes {
   AppSizes._();
 
   // Corner Radii Tokens
-  // sm = 4.0 (interactive controls, pillboxes, chips, buttons, small tags)
-  // md = 6.0 (containers, cards, dialogs, bottom sheets)
+  // sm = 4.0 (micro indicators / small internal tags)
+  // md = 6.0 (standardized buttons, chips, cards, dialogs, bottom sheets)
   static const double radiusSm = 4.0;
   static const double radiusMd = 6.0;
 
@@ -46,6 +46,72 @@ class AppSizes {
     horizontal: 12,
     vertical: 0,
   );
+
+  // Standardized Primary / Modal / Sheet Button Tokens
+  static const double buttonHeight = 40.0;
+  static const double buttonRadius = 6.0;
+  static const double buttonFontSize = 13.0;
+  static const EdgeInsets buttonPadding = EdgeInsets.symmetric(
+    horizontal: 16,
+    vertical: 0,
+  );
+
+  // Standardized Compact / Inline Card & Bar Action Button Tokens
+  static const double compactButtonHeight = 38.0;
+  static const double compactButtonRadius = 6.0;
+  static const double compactButtonFontSize = 12.0;
+  static const double compactButtonIconSize = 14.0;
+  static const EdgeInsets compactButtonPadding = EdgeInsets.symmetric(
+    horizontal: 10,
+    vertical: 0,
+  );
+
+  static ButtonStyle compactOutlinedStyle({
+    required Color foregroundColor,
+    Color? borderColor,
+    EdgeInsetsGeometry? padding,
+    Color? backgroundColor,
+  }) {
+    return OutlinedButton.styleFrom(
+      foregroundColor: foregroundColor,
+      backgroundColor: backgroundColor,
+      elevation: 0,
+      side: BorderSide(
+        color: borderColor ?? foregroundColor,
+        width: 0.9,
+      ),
+      minimumSize: const Size(0, compactButtonHeight),
+      maximumSize: const Size(double.infinity, compactButtonHeight),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: padding ?? compactButtonPadding,
+      shape: const RoundedRectangleBorder(borderRadius: borderRadiusMd),
+      textStyle: const TextStyle(
+        fontSize: compactButtonFontSize,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  static ButtonStyle compactElevatedStyle({
+    required Color backgroundColor,
+    required Color foregroundColor,
+    EdgeInsetsGeometry? padding,
+  }) {
+    return ElevatedButton.styleFrom(
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
+      elevation: 0,
+      minimumSize: const Size(0, compactButtonHeight),
+      maximumSize: const Size(double.infinity, compactButtonHeight),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: padding ?? compactButtonPadding,
+      shape: const RoundedRectangleBorder(borderRadius: borderRadiusMd),
+      textStyle: const TextStyle(
+        fontSize: compactButtonFontSize,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
 
   // Standardized Action / Header Button Tokens
   static const double topActionButtonSize = 34.0;

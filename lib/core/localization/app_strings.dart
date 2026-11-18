@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Supported application languages
-enum AppLanguage { english, hindi, marathi, tamil, telugu }
+enum AppLanguage { english, hindi, kannada, marathi, tamil, telugu }
 
 extension AppLanguageExtension on AppLanguage {
   String get code {
@@ -10,6 +10,8 @@ extension AppLanguageExtension on AppLanguage {
         return 'en';
       case AppLanguage.hindi:
         return 'hi';
+      case AppLanguage.kannada:
+        return 'kn';
       case AppLanguage.marathi:
         return 'mr';
       case AppLanguage.tamil:
@@ -25,6 +27,8 @@ extension AppLanguageExtension on AppLanguage {
         return 'English';
       case AppLanguage.hindi:
         return 'हिंदी';
+      case AppLanguage.kannada:
+        return 'ಕನ್ನಡ';
       case AppLanguage.marathi:
         return 'मराठी';
       case AppLanguage.tamil:
@@ -40,6 +44,8 @@ extension AppLanguageExtension on AppLanguage {
         return 'EN';
       case AppLanguage.hindi:
         return 'HI';
+      case AppLanguage.kannada:
+        return 'KN';
       case AppLanguage.marathi:
         return 'MR';
       case AppLanguage.tamil:
@@ -90,7 +96,7 @@ class AppStrings {
   static String get tabProjects => tr('Projects');
   static String get tabMaterials => tr('Materials');
   static String get tabMaterialRequests => tr('Material Requests');
-  static String get tabAmendments => tr('Amendments');
+  static String get tabAmendments => tr('Change Requests');
   static String get tabVendors => tr('Vendors');
   static String get tabTasks => tr('Tasks');
   static String get tabAccounts => tr('Accounts');
@@ -163,6 +169,7 @@ class AppStrings {
     'Hub': {
       AppLanguage.english: 'Hub',
       AppLanguage.hindi: 'हब',
+      AppLanguage.kannada: 'ಮುಖಪುಟ',
       AppLanguage.marathi: 'हब',
       AppLanguage.tamil: 'மையம்',
       AppLanguage.telugu: 'హబ్',
@@ -170,6 +177,7 @@ class AppStrings {
     'Sales': {
       AppLanguage.english: 'Sales',
       AppLanguage.hindi: 'बिक्री',
+      AppLanguage.kannada: 'ಮಾರಾಟ',
       AppLanguage.marathi: 'विक्री',
       AppLanguage.tamil: 'விற்பனை',
       AppLanguage.telugu: 'అమ్మకాలు',
@@ -177,6 +185,7 @@ class AppStrings {
     'Design': {
       AppLanguage.english: 'Design',
       AppLanguage.hindi: 'डिज़ाइन',
+      AppLanguage.kannada: 'ವಿನ್ಯಾಸ',
       AppLanguage.marathi: 'डिझाईन',
       AppLanguage.tamil: 'வடிவமைப்பு',
       AppLanguage.telugu: 'రూపకల్పన',
@@ -184,6 +193,7 @@ class AppStrings {
     'Projects': {
       AppLanguage.english: 'Projects',
       AppLanguage.hindi: 'प्रोजेक्ट्स',
+      AppLanguage.kannada: 'ಪ್ರಾಜೆಕ್ಟ್‌ಗಳು',
       AppLanguage.marathi: 'प्रकल्प',
       AppLanguage.tamil: 'திட்டங்கள்',
       AppLanguage.telugu: 'ప్రాజెక్టులు',
@@ -191,6 +201,7 @@ class AppStrings {
     'Materials': {
       AppLanguage.english: 'Materials',
       AppLanguage.hindi: 'सामग्री',
+      AppLanguage.kannada: 'ಸಾಮಗ್ರಿ',
       AppLanguage.marathi: 'साहित्य',
       AppLanguage.tamil: 'பொருட்கள்',
       AppLanguage.telugu: 'సామగ్రి',
@@ -198,20 +209,31 @@ class AppStrings {
     'Material Requests': {
       AppLanguage.english: 'Material Requests',
       AppLanguage.hindi: 'सामग्री अनुरोध',
+      AppLanguage.kannada: 'ಸಾಮಗ್ರಿ ವಿನಂತಿಗಳು',
       AppLanguage.marathi: 'साहित्य विनंत्या',
       AppLanguage.tamil: 'பொருள் கோரிக்கைகள்',
       AppLanguage.telugu: 'సామగ్రి అభ్యర్థనలు',
     },
     'Amendments': {
-      AppLanguage.english: 'Amendments',
-      AppLanguage.hindi: 'संशोधन',
-      AppLanguage.marathi: 'सुधारणा',
-      AppLanguage.tamil: 'திருத்தங்கள்',
-      AppLanguage.telugu: 'సవరణలు',
+      AppLanguage.english: 'Change Requests',
+      AppLanguage.hindi: 'बदलाव अनुरोध',
+      AppLanguage.kannada: 'ಬದಲಾವಣೆ ವಿನಂತಿಗಳು',
+      AppLanguage.marathi: 'बदल विनंत्या',
+      AppLanguage.tamil: 'மாற்றக் கோரிக்கைகள்',
+      AppLanguage.telugu: 'మార్పు అభ్యర్థనలు',
+    },
+    'Change Requests': {
+      AppLanguage.english: 'Change Requests',
+      AppLanguage.hindi: 'बदलाव अनुरोध',
+      AppLanguage.kannada: 'ಬದಲಾವಣೆ ವಿನಂತಿಗಳು',
+      AppLanguage.marathi: 'बदल विनंत्या',
+      AppLanguage.tamil: 'மாற்றக் கோரிக்கைகள்',
+      AppLanguage.telugu: 'మార్పు అభ్యర్థనలు',
     },
     'Vendors': {
       AppLanguage.english: 'Vendors',
       AppLanguage.hindi: 'वेंडर्स',
+      AppLanguage.kannada: 'ಮಾರಾಟಗಾರರು',
       AppLanguage.marathi: 'विक्रेते',
       AppLanguage.tamil: 'விற்பனையாளர்கள்',
       AppLanguage.telugu: 'విక్రేతలు',
@@ -219,6 +241,7 @@ class AppStrings {
     'Tasks': {
       AppLanguage.english: 'Tasks',
       AppLanguage.hindi: 'कार्य',
+      AppLanguage.kannada: 'ಕೆಲಸಗಳು',
       AppLanguage.marathi: 'कार्ये',
       AppLanguage.tamil: 'பணிகள்',
       AppLanguage.telugu: 'పనులు',
@@ -226,6 +249,7 @@ class AppStrings {
     'Accounts': {
       AppLanguage.english: 'Accounts',
       AppLanguage.hindi: 'खाते',
+      AppLanguage.kannada: 'ಖಾತೆಗಳು',
       AppLanguage.marathi: 'खाती',
       AppLanguage.tamil: 'கணக்குகள்',
       AppLanguage.telugu: 'ఖాతాలు',
@@ -233,6 +257,7 @@ class AppStrings {
     'Team': {
       AppLanguage.english: 'Team',
       AppLanguage.hindi: 'टीम',
+      AppLanguage.kannada: 'ತಂಡ',
       AppLanguage.marathi: 'संघ',
       AppLanguage.tamil: 'குழு',
       AppLanguage.telugu: 'బృందం',
@@ -240,15 +265,15 @@ class AppStrings {
     'More': {
       AppLanguage.english: 'More',
       AppLanguage.hindi: 'अधिक',
+      AppLanguage.kannada: 'ಇನ್ನಷ್ಟು',
       AppLanguage.marathi: 'अधिक',
       AppLanguage.tamil: 'மேலும்',
       AppLanguage.telugu: 'మరిన్ని',
     },
-
-    // --- Projects & Metrics ---
     'Projects Portfolio': {
       AppLanguage.english: 'Projects Portfolio',
       AppLanguage.hindi: 'प्रोजेक्ट पोर्टफोलियो',
+      AppLanguage.kannada: 'ಪ್ರಾಜೆಕ್ಟ್ ಪಟ್ಟಿ',
       AppLanguage.marathi: 'प्रकल्प पोर्टफोलिओ',
       AppLanguage.tamil: 'திட்டங்கள் போர்ட்ஃபோலியோ',
       AppLanguage.telugu: 'ప్రాజెక్టుల పోర్ట్‌ఫోలియో',
@@ -256,6 +281,7 @@ class AppStrings {
     'Add New Project': {
       AppLanguage.english: 'Add New Project',
       AppLanguage.hindi: 'नया प्रोजेक्ट जोड़ें',
+      AppLanguage.kannada: 'ಹೊಸ ಪ್ರಾಜೆಕ್ಟ್ ಸೇರಿಸಿ',
       AppLanguage.marathi: 'नवीन प्रकल्प जोडा',
       AppLanguage.tamil: 'புதிய திட்டம் சேர்க்க',
       AppLanguage.telugu: 'కొత్త ప్రాజెక్ట్ జోడించండి',
@@ -263,6 +289,7 @@ class AppStrings {
     'Update Progress': {
       AppLanguage.english: 'Update Progress',
       AppLanguage.hindi: 'प्रगति अपडेट करें',
+      AppLanguage.kannada: 'ಪ್ರಗತಿ ನವೀಕರಿಸಿ',
       AppLanguage.marathi: 'प्रगती अपडेट करा',
       AppLanguage.tamil: 'முன்னேற்றத்தைப் புதுப்பிக்கவும்',
       AppLanguage.telugu: 'పురోగతిని నవీకరించండి',
@@ -270,6 +297,7 @@ class AppStrings {
     'Mark Delayed': {
       AppLanguage.english: 'Mark Delayed',
       AppLanguage.hindi: 'विलंबित चिह्नित करें',
+      AppLanguage.kannada: 'ವಿಳಂಬವಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ',
       AppLanguage.marathi: 'विलंबित चिन्हांकित करा',
       AppLanguage.tamil: 'தாமதமாக குறிக்கவும்',
       AppLanguage.telugu: 'ఆలస్యంగా గుర్తించండి',
@@ -277,6 +305,7 @@ class AppStrings {
     'Mark as Delayed': {
       AppLanguage.english: 'Mark as Delayed',
       AppLanguage.hindi: 'विलंबित चिह्नित करें',
+      AppLanguage.kannada: 'ವಿಳಂಬವಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ',
       AppLanguage.marathi: 'विलंबित चिन्हांकित करा',
       AppLanguage.tamil: 'தாமதமாக குறிக்கவும்',
       AppLanguage.telugu: 'ఆలస్యంగా గుర్తించండి',
@@ -284,6 +313,7 @@ class AppStrings {
     'Revert to On Track': {
       AppLanguage.english: 'Revert to On Track',
       AppLanguage.hindi: 'समय पर वापस करें',
+      AppLanguage.kannada: 'ಸಮಯಕ್ಕೆ ಸರಿಯಾಗಿದೆ ಎಂದು ಬದಲಿಸಿ',
       AppLanguage.marathi: 'ट्रॅकवर परत आणा',
       AppLanguage.tamil: 'சரியான நிலைக்கு மாற்றவும்',
       AppLanguage.telugu: 'సమయానికి మార్చండి',
@@ -291,6 +321,7 @@ class AppStrings {
     'Edit Project': {
       AppLanguage.english: 'Edit Project',
       AppLanguage.hindi: 'प्रोजेक्ट संपादित करें',
+      AppLanguage.kannada: 'ಪ್ರಾಜೆಕ್ಟ್ ತಿದ್ದುಪಡಿ',
       AppLanguage.marathi: 'प्रकल्प संपादित करा',
       AppLanguage.tamil: 'திட்டத்தைத் திருத்து',
       AppLanguage.telugu: 'ప్రాజెక్ట్‌ను సవరించండి',
@@ -298,34 +329,23 @@ class AppStrings {
     'Edit Project Details': {
       AppLanguage.english: 'Edit Project Details',
       AppLanguage.hindi: 'प्रोजेक्ट विवरण संपादित करें',
+      AppLanguage.kannada: 'ಪ್ರಾಜೆಕ್ಟ್ ವಿವರಗಳನ್ನು ತಿದ್ದುಪಡಿ ಮಾಡಿ',
       AppLanguage.marathi: 'प्रकल्प तपशील संपादित करा',
       AppLanguage.tamil: 'திட்ட விவரங்களைத் திருத்து',
       AppLanguage.telugu: 'ప్రాజెక్ట్ వివరాలను సవరించండి',
     },
-    'Project Options': {
-      AppLanguage.english: 'Project Options',
-      AppLanguage.hindi: 'प्रोजेक्ट विकल्प',
-      AppLanguage.marathi: 'प्रकल्प पर्याय',
-      AppLanguage.tamil: 'திட்ட விருப்பங்கள்',
-      AppLanguage.telugu: 'ప్రాజెక్ట్ ఎంపికలు',
-    },
     'Save Changes': {
       AppLanguage.english: 'Save Changes',
       AppLanguage.hindi: 'बदलाव सहेजें',
+      AppLanguage.kannada: 'ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಿ',
       AppLanguage.marathi: 'बदल जतन करा',
       AppLanguage.tamil: 'மாற்றங்களைச் சேமிக்க',
       AppLanguage.telugu: 'మార్పులను సేవ్ చేయండి',
     },
-    'Project details updated successfully!': {
-      AppLanguage.english: 'Project details updated successfully!',
-      AppLanguage.hindi: 'प्रोजेक्ट विवरण सफलतापूर्वक अपडेट किया गया!',
-      AppLanguage.marathi: 'प्रकल्प तपशील यशस्वीरित्या अद्यतनित केले!',
-      AppLanguage.tamil: 'திட்ட விவரங்கள் வெற்றிகரமாக புதுப்பிக்கப்பட்டன!',
-      AppLanguage.telugu: 'ప్రాజెక్ట్ వివరాలు విజయవంతంగా నవీకరించబడ్డాయి!',
-    },
     'Active Sites': {
       AppLanguage.english: 'Active Sites',
       AppLanguage.hindi: 'सक्रिय साइटें',
+      AppLanguage.kannada: 'ಸಕ್ರಿಯ ಸೈಟ್‌ಗಳು',
       AppLanguage.marathi: 'सक्रिय साइट्स',
       AppLanguage.tamil: 'செயலில் உள்ள தளங்கள்',
       AppLanguage.telugu: 'క్రియాశీల సైట్లు',
@@ -333,6 +353,7 @@ class AppStrings {
     'Contract Value': {
       AppLanguage.english: 'Contract Value',
       AppLanguage.hindi: 'अनुबंध मूल्य',
+      AppLanguage.kannada: 'ಒಪ್ಪಂದದ ಮೌಲ್ಯ',
       AppLanguage.marathi: 'करार मूल्य',
       AppLanguage.tamil: 'ஒப்பந்த மதிப்பு',
       AppLanguage.telugu: 'ఒప్పందం విలువ',
@@ -340,6 +361,7 @@ class AppStrings {
     'Average Progress': {
       AppLanguage.english: 'Average Progress',
       AppLanguage.hindi: 'औसत प्रगति',
+      AppLanguage.kannada: 'ಸರಾಸರಿ ಪ್ರಗತಿ',
       AppLanguage.marathi: 'सरासरी प्रगती',
       AppLanguage.tamil: 'சராசரி முன்னேற்றம்',
       AppLanguage.telugu: 'సగటు పురోగతి',
@@ -347,57 +369,23 @@ class AppStrings {
     'Upcoming Handovers': {
       AppLanguage.english: 'Upcoming Handovers',
       AppLanguage.hindi: 'आगामी हस्तांतरण',
+      AppLanguage.kannada: 'ಮುಂಬರುವ ಹಸ್ತಾಂತರಗಳು',
       AppLanguage.marathi: 'आगामी हस्तांतरण',
       AppLanguage.tamil: 'வரவிருக்கும் ஒப்படைப்புகள்',
       AppLanguage.telugu: 'రాబోయే అప్పగింతలు',
     },
-    'Handovers': {
-      AppLanguage.english: 'Handovers',
-      AppLanguage.hindi: 'हस्तांतरण',
-      AppLanguage.marathi: 'हस्तांतरण',
-      AppLanguage.tamil: 'ஒப்படைப்புகள்',
-      AppLanguage.telugu: 'అప్పగింతలు',
-    },
     'All': {
       AppLanguage.english: 'All',
       AppLanguage.hindi: 'सभी',
+      AppLanguage.kannada: 'ಎಲ್ಲಾ',
       AppLanguage.marathi: 'सर्व',
       AppLanguage.tamil: 'அனைத்தும்',
       AppLanguage.telugu: 'అన్నీ',
     },
-    'Tasks & Milestones': {
-      AppLanguage.english: 'Tasks & Milestones',
-      AppLanguage.hindi: 'कार्य और मील के पत्थर',
-      AppLanguage.marathi: 'कार्ये आणि टप्पे',
-      AppLanguage.tamil: 'பணிகள் & மைல்கற்கள்',
-      AppLanguage.telugu: 'పనులు & మైలురాళ్ళు',
-    },
-    'Pending': {
-      AppLanguage.english: 'Pending',
-      AppLanguage.hindi: 'लंबित',
-      AppLanguage.marathi: 'प्रलंबित',
-      AppLanguage.tamil: 'நிலுவையில்',
-      AppLanguage.telugu: 'పెండింగ్‌లో ఉంది',
-    },
-    'Due This Week': {
-      AppLanguage.english: 'Due This Week',
-      AppLanguage.hindi: 'इस सप्ताह देय',
-      AppLanguage.marathi: 'या आठवड्यात देय',
-      AppLanguage.tamil: 'இந்த வாரம் முடிவடைகிறது',
-      AppLanguage.telugu: 'ఈ వారం గడువు',
-    },
-    'No Projects Listed': {
-      AppLanguage.english: 'No Projects Listed',
-      AppLanguage.hindi: 'कोई प्रोजेक्ट सूचीबद्ध नहीं',
-      AppLanguage.marathi: 'कोणतेही प्रकल्प नाहीत',
-      AppLanguage.tamil: 'திட்டங்கள் எதுவும் இல்லை',
-      AppLanguage.telugu: 'ప్రాజెక్టులు ఏవీ లేవు',
-    },
-
-    // --- Statuses ---
     'On Track': {
       AppLanguage.english: 'On Track',
       AppLanguage.hindi: 'समय पर',
+      AppLanguage.kannada: 'ಸಮಯಕ್ಕೆ ಸರಿಯಾಗಿದೆ',
       AppLanguage.marathi: 'वेळेवर',
       AppLanguage.tamil: 'சரியான பாதையில்',
       AppLanguage.telugu: 'సమయానికి',
@@ -405,6 +393,7 @@ class AppStrings {
     'Delayed': {
       AppLanguage.english: 'Delayed',
       AppLanguage.hindi: 'विलंबित',
+      AppLanguage.kannada: 'ವಿಳಂಬವಾಗಿದೆ',
       AppLanguage.marathi: 'उशीर झाला',
       AppLanguage.tamil: 'தாமதமானது',
       AppLanguage.telugu: 'ఆలస్యం',
@@ -412,6 +401,7 @@ class AppStrings {
     'Completed': {
       AppLanguage.english: 'Completed',
       AppLanguage.hindi: 'पूर्ण हुआ',
+      AppLanguage.kannada: 'ಪೂರ್ಣಗೊಂಡಿದೆ',
       AppLanguage.marathi: 'पूर्ण झाले',
       AppLanguage.tamil: 'முடிந்தது',
       AppLanguage.telugu: 'పూర్తయింది',
@@ -419,9 +409,436 @@ class AppStrings {
     'Design and Planning': {
       AppLanguage.english: 'Design and Planning',
       AppLanguage.hindi: 'डिजाइन और योजना',
+      AppLanguage.kannada: 'ವಿನ್ಯಾಸ ಮತ್ತು ಯೋಜನೆ',
       AppLanguage.marathi: 'डिझाइन आणि नियोजन',
       AppLanguage.tamil: 'வடிவமைப்பு & திட்டமிடல்',
       AppLanguage.telugu: 'డిజైన్ & ప్రణాళిక',
+    },
+    'Cancel': {
+      AppLanguage.english: 'Cancel',
+      AppLanguage.hindi: 'रद्द करें',
+      AppLanguage.kannada: 'ರದ್ದುಮಾಡಿ',
+      AppLanguage.marathi: 'रद्द करा',
+      AppLanguage.tamil: 'ரத்து செய்',
+      AppLanguage.telugu: 'రద్దు చేయండి',
+    },
+    'Save': {
+      AppLanguage.english: 'Save',
+      AppLanguage.hindi: 'सहेजें',
+      AppLanguage.kannada: 'ಉಳಿಸಿ',
+      AppLanguage.marathi: 'जतन करा',
+      AppLanguage.tamil: 'சேமிக்க',
+      AppLanguage.telugu: 'సేవ్ చేయండి',
+    },
+    'Delete': {
+      AppLanguage.english: 'Delete',
+      AppLanguage.hindi: 'हटाएं',
+      AppLanguage.kannada: 'ತೆಗೆದುಹಾಕಿ',
+      AppLanguage.marathi: 'हटवा',
+      AppLanguage.tamil: 'அழிக்க',
+      AppLanguage.telugu: 'తొలగించండి',
+    },
+    'Close': {
+      AppLanguage.english: 'Close',
+      AppLanguage.hindi: 'बंद करें',
+      AppLanguage.kannada: 'ಮುಚ್ಚಿ',
+      AppLanguage.marathi: 'बंद करा',
+      AppLanguage.tamil: 'மூடு',
+      AppLanguage.telugu: 'మూసివేయండి',
+    },
+    'Home': {
+      AppLanguage.english: 'Home',
+      AppLanguage.hindi: 'होम',
+      AppLanguage.kannada: 'ಮನೆ',
+      AppLanguage.marathi: 'होम',
+      AppLanguage.tamil: 'முகப்பு',
+      AppLanguage.telugu: 'హోమ్',
+    },
+    'Sites': {
+      AppLanguage.english: 'Sites',
+      AppLanguage.hindi: 'साइट्स',
+      AppLanguage.kannada: 'ಸೈಟ್‌ಗಳು',
+      AppLanguage.marathi: 'साइट्स',
+      AppLanguage.tamil: 'தளங்கள்',
+      AppLanguage.telugu: 'సైట్లు',
+    },
+    'Issues': {
+      AppLanguage.english: 'Issues',
+      AppLanguage.hindi: 'समस्याएं',
+      AppLanguage.kannada: 'ಸಮಸ್ಯೆಗಳು',
+      AppLanguage.marathi: 'समस्या',
+      AppLanguage.tamil: 'சிக்கல்கள்',
+      AppLanguage.telugu: 'సమస్యలు',
+    },
+    'Executive Studio Hub': {
+      AppLanguage.english: 'Executive Studio Hub',
+      AppLanguage.hindi: 'स्टूडियो मुख्य हब',
+      AppLanguage.kannada: 'ಸ್ಟುಡಿಯೋ ಮುಖಪುಟ',
+      AppLanguage.marathi: 'स्टुडिओ मुख्य हब',
+      AppLanguage.tamil: 'ஸ்டுடியோ மையம்',
+      AppLanguage.telugu: 'స్టూడియో ప్రధాన హబ్',
+    },
+    'Studio Home': {
+      AppLanguage.english: 'Studio Home',
+      AppLanguage.hindi: 'स्टूडियो होम',
+      AppLanguage.kannada: 'ಸ್ಟುಡಿಯೋ ಮುಖಪುಟ',
+      AppLanguage.marathi: 'स्टुडिओ होम',
+      AppLanguage.tamil: 'ஸ்டுடியோ முகப்பு',
+      AppLanguage.telugu: 'స్టూడియో హోమ్',
+    },
+    'Quick Actions — Tap What You Need': {
+      AppLanguage.english: 'Quick Actions — Tap What You Need',
+      AppLanguage.hindi: 'त्वरित कार्य — जो चाहिए उसे चुनें',
+      AppLanguage.kannada: 'ತ್ವರಿತ ಕ್ರಿಯೆಗಳು — ನಿಮಗೆ ಬೇಕಾದದ್ದನ್ನು ಒತ್ತಿ',
+      AppLanguage.marathi: 'त्वरित कृती — हवे ते निवडा',
+      AppLanguage.tamil: 'விரைவு செயல்கள் — தேவையானதைத் தட்டவும்',
+      AppLanguage.telugu: 'త్వరిత చర్యలు — కావలసినది ఎంచుకోండి',
+    },
+    'Take Site Photo': {
+      AppLanguage.english: 'Take Site Photo',
+      AppLanguage.hindi: 'साइट फ़ोटो लें',
+      AppLanguage.kannada: 'ಸೈಟ್ ಫೋಟೋ ತೆಗೆಯಿರಿ',
+      AppLanguage.marathi: 'साइट फोटो काढा',
+      AppLanguage.tamil: 'தளப் புகைப்படம் எடுக்கவும்',
+      AppLanguage.telugu: 'సైట్ ఫోటో తీయండి',
+    },
+    'Upload Drawing': {
+      AppLanguage.english: 'Upload Drawing',
+      AppLanguage.hindi: 'ड्राइंग अपलोड करें',
+      AppLanguage.kannada: 'ಡ್ರಾಯಿಂಗ್ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ',
+      AppLanguage.marathi: 'ड्रॉइंग अपलोड करा',
+      AppLanguage.tamil: 'வரைபடம் பதிவேற்று',
+      AppLanguage.telugu: 'డ్రాయింగ్ అప్‌లోడ్',
+    },
+    'New Invoice': {
+      AppLanguage.english: 'New Invoice',
+      AppLanguage.hindi: 'नया बिल बनाएं',
+      AppLanguage.kannada: 'ಹೊಸ ಬಿಲ್ ರಚಿಸಿ',
+      AppLanguage.marathi: 'नवीन बिल बनवा',
+      AppLanguage.tamil: 'புதிய பில்',
+      AppLanguage.telugu: 'కొత్త బిల్లు',
+    },
+    'Add New Lead': {
+      AppLanguage.english: 'Add New Lead',
+      AppLanguage.hindi: 'नया ग्राहक जोड़ें',
+      AppLanguage.kannada: 'ಹೊಸ ಗ್ರಾಹಕರನ್ನು ಸೇರಿಸಿ',
+      AppLanguage.marathi: 'नवीन ग्राहक जोडा',
+      AppLanguage.tamil: 'புதிய வாடிக்கையாளர் சேர்க்கவும்',
+      AppLanguage.telugu: 'కొత్త కస్టమర్‌ను జోడించండి',
+    },
+    'Add Project': {
+      AppLanguage.english: 'Add Project',
+      AppLanguage.hindi: 'प्रोजेक्ट जोड़ें',
+      AppLanguage.kannada: 'ಪ್ರಾಜೆಕ್ಟ್ ಸೇರಿಸಿ',
+      AppLanguage.marathi: 'प्रकल्प जोडा',
+      AppLanguage.tamil: 'திட்டம் சேர்',
+      AppLanguage.telugu: 'ప్రాజెక్ట్ జోడించండి',
+    },
+    'Upload Material List': {
+      AppLanguage.english: 'Upload Material List',
+      AppLanguage.hindi: 'सामग्री सूची अपलोड करें',
+      AppLanguage.kannada: 'ಸಾಮಗ್ರಿ ಪಟ್ಟಿ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ',
+      AppLanguage.marathi: 'साहित्य यादी अपलोड करा',
+      AppLanguage.tamil: 'பொருள் பட்டியலை பதிவேற்றவும்',
+      AppLanguage.telugu: 'సామగ్రి జాబితా అప్‌లోడ్ చేయండి',
+    },
+    'Upload BOQ': {
+      AppLanguage.english: 'Upload Material List',
+      AppLanguage.hindi: 'सामग्री सूची अपलोड करें',
+      AppLanguage.kannada: 'ಸಾಮಗ್ರಿ ಪಟ್ಟಿ ಅಪ್‌ಲೋಡ್ ಮಾಡಿ',
+      AppLanguage.marathi: 'साहित्य यादी अपलोड करा',
+      AppLanguage.tamil: 'பொருள் பட்டியலை பதிவேற்றவும்',
+      AppLanguage.telugu: 'సామగ్రి జాబితా అప్‌లోడ్ చేయండి',
+    },
+    'Add Invoice': {
+      AppLanguage.english: 'New Invoice',
+      AppLanguage.hindi: 'नया बिल बनाएं',
+      AppLanguage.kannada: 'ಹೊಸ ಬಿಲ್ ರಚಿಸಿ',
+      AppLanguage.marathi: 'नवीन बिल बनवा',
+      AppLanguage.tamil: 'புதிய பில் சேர்',
+      AppLanguage.telugu: 'కొత్త బిల్లు జోడించండి',
+    },
+    'Add Amendment': {
+      AppLanguage.english: 'New Change Request',
+      AppLanguage.hindi: 'नया बदलाव अनुरोध',
+      AppLanguage.kannada: 'ಹೊಸ ಬದಲಾವಣೆ ವಿನಂತಿ',
+      AppLanguage.marathi: 'नवीन बदल विनंती',
+      AppLanguage.tamil: 'புதிய மாற்றக் கோரிக்கை',
+      AppLanguage.telugu: 'కొత్త మార్పు అభ్యర్థన',
+    },
+    'Progress': {
+      AppLanguage.english: 'Progress',
+      AppLanguage.hindi: 'प्रगति',
+      AppLanguage.kannada: 'ಪ್ರಗತಿ',
+      AppLanguage.marathi: 'प्रगती',
+      AppLanguage.tamil: 'முன்னேற்றம்',
+      AppLanguage.telugu: 'పురోగతి',
+    },
+    'Photos': {
+      AppLanguage.english: 'Photos',
+      AppLanguage.hindi: 'फ़ोटो',
+      AppLanguage.kannada: 'ಫೋಟೋಗಳು',
+      AppLanguage.marathi: 'फोटो',
+      AppLanguage.tamil: 'புகைப்படங்கள்',
+      AppLanguage.telugu: 'ఫోటోలు',
+    },
+    'Files': {
+      AppLanguage.english: 'Files',
+      AppLanguage.hindi: 'फ़ाइलें',
+      AppLanguage.kannada: 'ಫೈಲ್‌ಗಳು',
+      AppLanguage.marathi: 'फाइल्स',
+      AppLanguage.tamil: 'கோப்புகள்',
+      AppLanguage.telugu: 'ఫైళ్లు',
+    },
+    'Billing': {
+      AppLanguage.english: 'Billing',
+      AppLanguage.hindi: 'बिलिंग',
+      AppLanguage.kannada: 'ಬಿಲ್ಲಿಂಗ್',
+      AppLanguage.marathi: 'बिलिंग',
+      AppLanguage.tamil: 'பில்லிங்',
+      AppLanguage.telugu: 'బిల్లింగ్',
+    },
+    '✓ Saved · Synced': {
+      AppLanguage.english: '✓ Saved · Synced',
+      AppLanguage.hindi: '✓ सहेजा गया · सिंक है',
+      AppLanguage.kannada: '✓ ಉಳಿಸಲಾಗಿದೆ · ಸಿಂಕ್ ಆಗಿದೆ',
+      AppLanguage.marathi: '✓ जतन · सिंक झाले',
+      AppLanguage.tamil: '✓ சேமிக்கப்பட்டது · ஒத்திசைக்கப்பட்டது',
+      AppLanguage.telugu: '✓ సేవ్ చేయబడింది · సింక్ అయింది',
+    },
+    '⏳ Syncing...': {
+      AppLanguage.english: '⏳ Syncing...',
+      AppLanguage.hindi: '⏳ सिंक हो रहा है...',
+      AppLanguage.kannada: '⏳ ಸಿಂಕ್ ಆಗುತ್ತಿದೆ...',
+      AppLanguage.marathi: '⏳ सिंक होत आहे...',
+      AppLanguage.tamil: '⏳ ஒத்திசைக்கிறது...',
+      AppLanguage.telugu: '⏳ సింక్ అవుతోంది...',
+    },
+    '⚠ Offline – will sync later': {
+      AppLanguage.english: '⚠ Offline – will sync later',
+      AppLanguage.hindi: '⚠ ऑफ़लाइन – बाद में सिंक होगा',
+      AppLanguage.kannada: '⚠ ಆಫ್‌ಲೈನ್ – ನಂತರ ಸಿಂಕ್ ಆಗುತ್ತದೆ',
+      AppLanguage.marathi: '⚠ ऑफलाइन – नंतर सिंक होईल',
+      AppLanguage.tamil: '⚠ ஆஃப்லைன் – பின்னர் ஒத்திசைக்கும்',
+      AppLanguage.telugu: '⚠ ఆఫ్‌లైన్ – తర్వాత సింక్ అవుతుంది',
+    },
+    'Photo saved on phone. It will upload when you\'re back online.': {
+      AppLanguage.english:
+          'Photo saved on phone. It will upload when you\'re back online.',
+      AppLanguage.hindi:
+          'फ़ोटो फ़ोन पर सहेजी गई। इंटरनेट आने पर यह अपलोड हो जाएगी।',
+      AppLanguage.kannada:
+          'ಫೋಟೋ ಫೋನ್‌ನಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ. ಆನ್‌ಲೈನ್ ಬಂದಾಗ ಅಪ್‌ಲೋಡ್ ಆಗುತ್ತದೆ.',
+    },
+    'Photo removed': {
+      AppLanguage.english: 'Photo removed',
+      AppLanguage.hindi: 'फ़ोटो हटा दी गई',
+      AppLanguage.kannada: 'ಫೋಟೋ ತೆಗೆದುಹಾಕಲಾಗಿದೆ',
+    },
+    'File removed': {
+      AppLanguage.english: 'File removed',
+      AppLanguage.hindi: 'फ़ाइल हटा दी गई',
+      AppLanguage.kannada: 'ಫೈಲ್ ತೆಗೆದುಹಾಕಲಾಗಿದೆ',
+    },
+    'Undo': {
+      AppLanguage.english: 'Undo',
+      AppLanguage.hindi: 'वापस लाएं',
+      AppLanguage.kannada: 'ಹಿಂಪಡೆಯಿರಿ',
+      AppLanguage.marathi: 'पूर्ववत करा',
+      AppLanguage.tamil: 'செயல்தவிர்',
+      AppLanguage.telugu: 'అన్డు',
+    },
+    'Remove Photo': {
+      AppLanguage.english: 'Remove Photo',
+      AppLanguage.hindi: 'फ़ोटो हटाएं',
+      AppLanguage.kannada: 'ಫೋಟೋ ತೆಗೆದುಹಾಕಿ',
+    },
+    'No photos yet. Tap below to take your first site photo.': {
+      AppLanguage.english:
+          'No photos yet. Tap below to take your first site photo.',
+      AppLanguage.hindi:
+          'अभी कोई फ़ोटो नहीं है। पहली साइट फ़ोटो लेने के लिए नीचे टैप करें।',
+      AppLanguage.kannada:
+          'ಇನ್ನೂ ಯಾವುದೇ ಫೋಟೋಗಳಿಲ್ಲ. ಮೊದಲ ಸೈಟ್ ಫೋಟೋ ತೆಗೆಯಲು ಕೆಳಗೆ ಒತ್ತಿ.',
+    },
+    'No drawings or material lists yet. Tap below to upload one.': {
+      AppLanguage.english:
+          'No drawings or material lists yet. Tap below to upload one.',
+      AppLanguage.hindi:
+          'अभी कोई ड्राइंग या सामग्री सूची नहीं है। अपलोड करने के लिए नीचे टैप करें।',
+      AppLanguage.kannada:
+          'ಇನ್ನೂ ಡ್ರಾಯಿಂಗ್ ಅಥವಾ ಸಾಮಗ್ರಿ ಪಟ್ಟಿಗಳಿಲ್ಲ. ಅಪ್‌ಲೋಡ್ ಮಾಡಲು ಕೆಳಗೆ ಒತ್ತಿ.',
+    },
+    'No bills or invoices linked yet.': {
+      AppLanguage.english: 'No bills or invoices linked yet.',
+      AppLanguage.hindi: 'अभी कोई बिल जुड़ा नहीं है।',
+      AppLanguage.kannada: 'ಇನ್ನೂ ಯಾವುದೇ ಬಿಲ್‌ಗಳು ಲಿಂಕ್ ಆಗಿಲ್ಲ.',
+    },
+    'No projects yet. Tap below to add your first project.': {
+      AppLanguage.english:
+          'No projects yet. Tap below to add your first project.',
+      AppLanguage.hindi:
+          'अभी कोई प्रोजेक्ट नहीं है। अपना पहला प्रोजेक्ट जोड़ने के लिए नीचे टैप करें।',
+      AppLanguage.kannada:
+          'ಇನ್ನೂ ಯಾವುದೇ ಪ್ರಾಜೆಕ್ಟ್‌ಗಳಿಲ್ಲ. ನಿಮ್ಮ ಮೊದಲ ಪ್ರಾಜೆಕ್ಟ್ ಸೇರಿಸಲು ಕೆಳಗೆ ಒತ್ತಿ.',
+    },
+    'Reset Password': {
+      AppLanguage.english: 'Reset Password',
+      AppLanguage.hindi: 'पासवर्ड रीसेट करें',
+      AppLanguage.kannada: 'ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿ',
+    },
+    'Enter New Password': {
+      AppLanguage.english: 'Enter New Password',
+      AppLanguage.hindi: 'नया पासवर्ड दर्ज करें',
+      AppLanguage.kannada: 'ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ನಮೂದಿಸಿ',
+    },
+    'Confirm New Password': {
+      AppLanguage.english: 'Confirm New Password',
+      AppLanguage.hindi: 'पासवर्ड की पुष्टि करें',
+      AppLanguage.kannada: 'ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ದೃಢೀಕರಿಸಿ',
+    },
+    'Open Externally in Excel / Viewer': {
+      AppLanguage.english: 'Open Externally in Excel / Viewer',
+      AppLanguage.hindi: 'एक्सेल / व्यूअर में खोलें',
+      AppLanguage.kannada: 'ಎಕ್ಸೆಲ್ / ವೀಕ್ಷಕದಲ್ಲಿ ತೆರೆಯಿರಿ',
+    },
+    'Upload & Link Excel File (.xlsx)': {
+      AppLanguage.english: 'Upload & Link Excel File (.xlsx)',
+      AppLanguage.hindi: 'एक्सेल फ़ाइल (.xlsx) अपलोड और लिंक करें',
+      AppLanguage.kannada: 'ಎಕ್ಸೆಲ್ ಫೈಲ್ (.xlsx) ಅಪ್‌ಲೋಡ್ ಮತ್ತು ಲಿಂಕ್ ಮಾಡಿ',
+    },
+    'Replace File': {
+      AppLanguage.english: 'Replace File',
+      AppLanguage.hindi: 'फ़ाइल बदलें',
+      AppLanguage.kannada: 'ಫೈಲ್ ಬದಲಾಯಿಸಿ',
+    },
+    'Remove File': {
+      AppLanguage.english: 'Remove File',
+      AppLanguage.hindi: 'फ़ाइल हटाएं',
+      AppLanguage.kannada: 'ಫೈಲ್ ತೆಗೆದುಹಾಕಿ',
+    },
+    'No Excel Timeline File Linked': {
+      AppLanguage.english: 'No Excel Timeline File Linked',
+      AppLanguage.hindi: 'कोई एक्सेल टाइमलाइन फ़ाइल जुड़ी नहीं है',
+      AppLanguage.kannada: 'ಯಾವುದೇ ಎಕ್ಸೆಲ್ ಟೈಮ್‌ಲೈನ್ ಫೈಲ್ ಲಿಂಕ್ ಆಗಿಲ್ಲ',
+    },
+    'Text Size': {
+      AppLanguage.english: 'Text Size',
+      AppLanguage.hindi: 'टेक्स्ट का आकार',
+      AppLanguage.kannada: 'ಪಠ್ಯದ ಗಾತ್ರ',
+    },
+    'Normal': {
+      AppLanguage.english: 'Normal',
+      AppLanguage.hindi: 'सामान्य',
+      AppLanguage.kannada: 'ಸಾಮಾನ್ಯ',
+    },
+    'Large': {
+      AppLanguage.english: 'Large',
+      AppLanguage.hindi: 'बड़ा',
+      AppLanguage.kannada: 'ದೊಡ್ಡದು',
+    },
+    'Extra Large': {
+      AppLanguage.english: 'Extra Large',
+      AppLanguage.hindi: 'बहुत बड़ा',
+      AppLanguage.kannada: 'ಅತಿ ದೊಡ್ಡದು',
+    },
+    'Quick Start Guide': {
+      AppLanguage.english: 'Quick Start Guide',
+      AppLanguage.hindi: 'त्वरित उपयोग गाइड',
+      AppLanguage.kannada: 'ತ್ವರಿತ ಬಳಕೆ ಮಾರ್ಗದರ್ಶಿ',
+    },
+    'Show Quick Guide': {
+      AppLanguage.english: 'Show Quick Guide',
+      AppLanguage.hindi: 'गाइड दिखाएं',
+      AppLanguage.kannada: 'ಮಾರ್ಗದರ್ಶಿ ತೋರಿಸಿ',
+    },
+    'Next': {
+      AppLanguage.english: 'Next',
+      AppLanguage.hindi: 'अगला',
+      AppLanguage.kannada: 'ಮುಂದೆ',
+    },
+    'Got It': {
+      AppLanguage.english: 'Got It',
+      AppLanguage.hindi: 'समझ गया',
+      AppLanguage.kannada: 'ಅರ್ಥವಾಯಿತು',
+    },
+    'Skip': {
+      AppLanguage.english: 'Skip',
+      AppLanguage.hindi: 'छोड़ें',
+      AppLanguage.kannada: 'ಬಿಟ್ಟುಬಿಡಿ',
+    },
+    'Sign Out': {
+      AppLanguage.english: 'Sign Out',
+      AppLanguage.hindi: 'साइन आउट',
+      AppLanguage.kannada: 'ಸೈನ್ ಔಟ್',
+      AppLanguage.marathi: 'साइन आउट',
+      AppLanguage.tamil: 'வெளியேறு',
+      AppLanguage.telugu: 'సైన్ అవుట్',
+    },
+    'Drawings & Renders': {
+      AppLanguage.english: 'Drawings & Renders',
+      AppLanguage.hindi: 'ड्राइंग और 3D व्यू',
+      AppLanguage.kannada: 'ಡ್ರಾಯಿಂಗ್‌ಗಳು ಮತ್ತು ರೆಂಡರ್‌ಗಳು',
+    },
+    'Drawings & Files': {
+      AppLanguage.english: 'Drawings & Files',
+      AppLanguage.hindi: 'ड्राइंग और फ़ाइलें',
+      AppLanguage.kannada: 'ಡ್ರಾಯಿಂಗ್‌ಗಳು ಮತ್ತು ಫೈಲ್‌ಗಳು',
+    },
+    'Team & Staff': {
+      AppLanguage.english: 'Team & Staff',
+      AppLanguage.hindi: 'टीम और कर्मचारी',
+      AppLanguage.kannada: 'ತಂಡ ಮತ್ತು ಸಿಬ್ಬಂದಿ',
+    },
+    'Team & Access': {
+      AppLanguage.english: 'Team & Access',
+      AppLanguage.hindi: 'टीम और अनुमतियां',
+      AppLanguage.kannada: 'ತಂಡ ಮತ್ತು ಪ್ರವೇಶ',
+    },
+    'Studio Settings & Photo Archive': {
+      AppLanguage.english: 'Studio Settings & Photo Archive',
+      AppLanguage.hindi: 'स्टूडियो सेटिंग्स और फ़ोटो संग्रह',
+      AppLanguage.kannada: 'ಸ್ಟುಡಿಯೋ ಸೆಟ್ಟಿಂಗ್‌ಗಳು ಮತ್ತು ಫೋಟೋ ಆರ್ಕೈವ್',
+    },
+    'INTERFACE LANGUAGE': {
+      AppLanguage.english: 'INTERFACE LANGUAGE',
+      AppLanguage.hindi: 'ऐप की भाषा',
+      AppLanguage.kannada: 'ಅಪ್ಲಿಕೇಶನ್ ಭಾಷೆ',
+    },
+    'APPEARANCE & THEME': {
+      AppLanguage.english: 'APPEARANCE & THEME',
+      AppLanguage.hindi: 'रंग और थीम',
+      AppLanguage.kannada: 'ನೋಟ ಮತ್ತು ಥೀಮ್',
+    },
+    'Dark Mode Active': {
+      AppLanguage.english: 'Dark Mode Active',
+      AppLanguage.hindi: 'डार्क मोड चालू',
+      AppLanguage.kannada: 'ಡಾರ್ಕ್ ಮೋಡ್ ಸಕ್ರಿಯವಾಗಿದೆ',
+    },
+    'Light Mode Active': {
+      AppLanguage.english: 'Light Mode Active',
+      AppLanguage.hindi: 'लाइट मोड चालू',
+      AppLanguage.kannada: 'ಲೈಟ್ ಮೋಡ್ ಸಕ್ರಿಯವಾಗಿದೆ',
+    },
+    'Manage Roles & Access': {
+      AppLanguage.english: 'Manage Roles & Access',
+      AppLanguage.hindi: 'भूमिका और अनुमतियां प्रबंधित करें',
+      AppLanguage.kannada: 'ಪಾತ್ರಗಳು ಮತ್ತು ಪ್ರವೇಶ ನಿರ್ವಹಿಸಿ',
+    },
+    'Edit Role & Access': {
+      AppLanguage.english: 'Edit Role & Access',
+      AppLanguage.hindi: 'भूमिका बदलें',
+      AppLanguage.kannada: 'ಪಾತ್ರ ಮತ್ತು ಪ್ರವೇಶ ಬದಲಿಸಿ',
+    },
+    'Dismiss Staff': {
+      AppLanguage.english: 'Dismiss Staff',
+      AppLanguage.hindi: 'कर्मचारी हटाएं',
+      AppLanguage.kannada: 'ಸಿಬ್ಬಂದಿಯನ್ನು ತೆಗೆದುಹಾಕಿ',
+    },
+    'Cloud Synced': {
+      AppLanguage.english: 'Synced',
+      AppLanguage.hindi: 'सिंक है',
+      AppLanguage.kannada: 'ಸಿಂಕ್ ಆಗಿದೆ',
     },
     'Design & Planning': {
       AppLanguage.english: 'Design & Planning',
@@ -713,37 +1130,10 @@ class AppStrings {
     },
 
     // --- Buttons & Common UI ---
-    'Cancel': {
-      AppLanguage.english: 'Cancel',
-      AppLanguage.hindi: 'रद्द करें',
-      AppLanguage.marathi: 'रद्द करा',
-      AppLanguage.tamil: 'ரத்து செய்',
-      AppLanguage.telugu: 'రద్దు చేయండి',
-    },
-    'Save': {
-      AppLanguage.english: 'Save',
-      AppLanguage.hindi: 'सहेजें',
-      AppLanguage.marathi: 'जतन करा',
-      AppLanguage.tamil: 'சேமிக்க',
-      AppLanguage.telugu: 'సేవ్ చేయండి',
-    },
-    'Delete': {
-      AppLanguage.english: 'Delete',
-      AppLanguage.hindi: 'हटाएं',
-      AppLanguage.marathi: 'हटवा',
-      AppLanguage.tamil: 'அழிக்க',
-      AppLanguage.telugu: 'తొలగించండి',
-    },
-    'Close': {
-      AppLanguage.english: 'Close',
-      AppLanguage.hindi: 'बंद करें',
-      AppLanguage.marathi: 'बंद करा',
-      AppLanguage.tamil: 'மூடு',
-      AppLanguage.telugu: 'మూసివేయండి',
-    },
     'Submit': {
       AppLanguage.english: 'Submit',
       AppLanguage.hindi: 'जमा करें',
+      AppLanguage.kannada: 'ಸಲ್ಲಿಸಿ',
       AppLanguage.marathi: 'सबमिट करा',
       AppLanguage.tamil: 'சமர்ப்பிக்கவும்',
       AppLanguage.telugu: 'సమర్పించండి',
@@ -751,6 +1141,7 @@ class AppStrings {
     'Search': {
       AppLanguage.english: 'Search',
       AppLanguage.hindi: 'खोजें',
+      AppLanguage.kannada: 'ಹುಡುಕಿ',
       AppLanguage.marathi: 'शोधा',
       AppLanguage.tamil: 'தேடு',
       AppLanguage.telugu: 'వెతకండి',
@@ -758,6 +1149,7 @@ class AppStrings {
     'Filter': {
       AppLanguage.english: 'Filter',
       AppLanguage.hindi: 'फ़िल्टर',
+      AppLanguage.kannada: 'ಫಿಲ್ಟರ್',
       AppLanguage.marathi: 'फिल्टर',
       AppLanguage.tamil: 'வடிகட்டி',
       AppLanguage.telugu: 'ఫిల్టర్',
@@ -765,6 +1157,7 @@ class AppStrings {
     'Stages & Checklist': {
       AppLanguage.english: 'Stages & Checklist',
       AppLanguage.hindi: 'चरण और चेकलिस्ट',
+      AppLanguage.kannada: 'ಹಂತಗಳು ಮತ್ತು ಪರಿಶೀಲನಾಪಟ್ಟಿ',
       AppLanguage.marathi: 'टप्पे आणि चेकलिस्ट',
       AppLanguage.tamil: 'நிலைகள் & சரிபார்ப்புப் பட்டியல்',
       AppLanguage.telugu: 'దశలు & చెక్‌లిస్ట్',
@@ -772,6 +1165,7 @@ class AppStrings {
     'Add Stage': {
       AppLanguage.english: 'Add Stage',
       AppLanguage.hindi: 'चरण जोड़ें',
+      AppLanguage.kannada: 'ಹಂತ ಸೇರಿಸಿ',
       AppLanguage.marathi: 'टप्पा जोडा',
       AppLanguage.tamil: 'நிலையைச் சேர்க்கவும்',
       AppLanguage.telugu: 'దశను జోడించండి',
@@ -779,6 +1173,7 @@ class AppStrings {
     'FINANCIAL COMMITMENT': {
       AppLanguage.english: 'FINANCIAL COMMITMENT',
       AppLanguage.hindi: 'वित्तीय प्रतिबद्धता',
+      AppLanguage.kannada: 'ಬಜೆಟ್ ಮತ್ತು ಖರ್ಚು',
       AppLanguage.marathi: 'आर्थिक वचनबद्धता',
       AppLanguage.tamil: 'நிதி அர்ப்பணிப்பு',
       AppLanguage.telugu: 'ఆర్థిక నిబద్ధత',
@@ -786,6 +1181,7 @@ class AppStrings {
     'Hide Stages': {
       AppLanguage.english: 'Hide Stages',
       AppLanguage.hindi: 'चरण छुपाएं',
+      AppLanguage.kannada: 'ಹಂತಗಳನ್ನು ಮರೆಮಾಡಿ',
       AppLanguage.marathi: 'टप्पे लपवा',
       AppLanguage.tamil: 'நிலைகளை மறை',
       AppLanguage.telugu: 'దశలను దాచు',
@@ -793,44 +1189,10 @@ class AppStrings {
     'Onboard Vendor': {
       AppLanguage.english: 'Onboard Vendor',
       AppLanguage.hindi: 'वेंडर जोड़ें',
+      AppLanguage.kannada: 'ಮಾರಾಟಗಾರರನ್ನು ಸೇರಿಸಿ',
       AppLanguage.marathi: 'विक्रेता जोडा',
       AppLanguage.tamil: 'விற்பனையாளரை சேர்க்க',
       AppLanguage.telugu: 'విక్రేతను చేర్చండి',
-    },
-    'Home': {
-      AppLanguage.english: 'Home',
-      AppLanguage.hindi: 'होम',
-      AppLanguage.marathi: 'होम',
-      AppLanguage.tamil: 'முகப்பு',
-      AppLanguage.telugu: 'హోమ్',
-    },
-    'Sites': {
-      AppLanguage.english: 'Sites',
-      AppLanguage.hindi: 'साइट्स',
-      AppLanguage.marathi: 'साइट्स',
-      AppLanguage.tamil: 'தளங்கள்',
-      AppLanguage.telugu: 'సైట్లు',
-    },
-    'Issues': {
-      AppLanguage.english: 'Issues',
-      AppLanguage.hindi: 'समस्याएं',
-      AppLanguage.marathi: 'समस्या',
-      AppLanguage.tamil: 'சிக்கல்கள்',
-      AppLanguage.telugu: 'సమస్యలు',
-    },
-    'Executive Studio Hub': {
-      AppLanguage.english: 'Executive Studio Hub',
-      AppLanguage.hindi: 'स्टूडियो मुख्य हब',
-      AppLanguage.marathi: 'स्टुडिओ मुख्य हब',
-      AppLanguage.tamil: 'ஸ்டுடியோ மையம்',
-      AppLanguage.telugu: 'స్టూడియో ప్రధాన హబ్',
-    },
-    'Quick Actions — Tap What You Need': {
-      AppLanguage.english: 'Quick Actions — Tap What You Need',
-      AppLanguage.hindi: 'त्वरित कार्य — जो चाहिए उसे चुनें',
-      AppLanguage.marathi: 'त्वरित कृती — हवे ते निवडा',
-      AppLanguage.tamil: 'விரைவு செயல்கள் — தேவையானதைத் தட்டவும்',
-      AppLanguage.telugu: 'త్వరిత చర్యలు — కావలసినది ఎంచుకోండి',
     },
     'Sites & Photos': {
       AppLanguage.english: 'Sites & Photos',
@@ -916,13 +1278,6 @@ class AppStrings {
       AppLanguage.tamil: 'குழு & பணிகள்',
       AppLanguage.telugu: 'టీమ్ & పనులు',
     },
-    'Add Project': {
-      AppLanguage.english: 'Add Project',
-      AppLanguage.hindi: 'प्रोजेक्ट जोड़ें',
-      AppLanguage.marathi: 'प्रोजेक्ट जोडा',
-      AppLanguage.tamil: 'திட்டம் சேர்',
-      AppLanguage.telugu: 'ప్రాజెక్ట్ జోడించండి',
-    },
     'Filter Projects': {
       AppLanguage.english: 'Filter Projects',
       AppLanguage.hindi: 'प्रोजेक्ट फ़िल्टर',
@@ -930,58 +1285,34 @@ class AppStrings {
       AppLanguage.tamil: 'திட்டங்களை வடிகட்டு',
       AppLanguage.telugu: 'ప్రాజెక్టులు ఫిల్టర్',
     },
-    'Upload Drawing': {
-      AppLanguage.english: 'Upload Drawing',
-      AppLanguage.hindi: 'ड्राइंग अपलोड करें',
-      AppLanguage.marathi: 'ड्रॉइंग अपलोड करा',
-      AppLanguage.tamil: 'வரைபடம் பதிவேற்று',
-      AppLanguage.telugu: 'డ్రాయింగ్ అప్‌లోడ్',
-    },
-    'Upload BOQ': {
-      AppLanguage.english: 'Upload BOQ',
-      AppLanguage.hindi: 'BOQ अपलोड करें',
-      AppLanguage.marathi: 'BOQ अपलोड करा',
-      AppLanguage.tamil: 'BOQ பதிவேற்று',
-      AppLanguage.telugu: 'BOQ అప్‌లోడ్',
-    },
     'Filter Drawings': {
       AppLanguage.english: 'Filter Drawings',
       AppLanguage.hindi: 'ड्राइंग फ़िल्टर',
+      AppLanguage.kannada: 'ಡ್ರಾಯಿಂಗ್ ಫಿಲ್ಟರ್',
       AppLanguage.marathi: 'ड्रॉइंग फिल्टर',
       AppLanguage.tamil: 'வரைபடங்கள் வடிகட்டு',
       AppLanguage.telugu: 'డ్రాయింగ్స్ ఫిల్టర్',
     },
     'Add Lead': {
       AppLanguage.english: 'Add Lead',
-      AppLanguage.hindi: 'लीड जोड़ें',
+      AppLanguage.hindi: 'ग्राहक जोड़ें',
+      AppLanguage.kannada: 'ಗ್ರಾಹಕರನ್ನು ಸೇರಿಸಿ',
       AppLanguage.marathi: 'लीड जोडा',
       AppLanguage.tamil: 'லீட் சேர்',
       AppLanguage.telugu: 'లీడ్ జోడించండి',
     },
-    'Add Amendment': {
-      AppLanguage.english: 'Add Amendment',
-      AppLanguage.hindi: 'संशोधन जोड़ें',
-      AppLanguage.marathi: 'बदल जोडा',
-      AppLanguage.tamil: 'திருத்தம் சேர்',
-      AppLanguage.telugu: 'మార్పు జోడించండి',
-    },
     'Pending Sign-Off': {
       AppLanguage.english: 'Pending Sign-Off',
       AppLanguage.hindi: 'स्वीकृति लंबित',
+      AppLanguage.kannada: 'ಅನುಮೋದನೆ ಬಾಕಿ ಇದೆ',
       AppLanguage.marathi: 'मंजुरी प्रलंबित',
       AppLanguage.tamil: 'ஒப்புதல் நிலுவை',
       AppLanguage.telugu: 'ఆమోదం పెండింగ్',
     },
-    'Add Invoice': {
-      AppLanguage.english: 'Add Invoice',
-      AppLanguage.hindi: 'बिल जोड़ें',
-      AppLanguage.marathi: 'बिल जोडा',
-      AppLanguage.tamil: 'பில் சேர்',
-      AppLanguage.telugu: 'బిల్లు జోడించండి',
-    },
     'Print Invoice': {
       AppLanguage.english: 'Print Invoice',
       AppLanguage.hindi: 'बिल प्रिंट करें',
+      AppLanguage.kannada: 'ಬಿಲ್ ಪ್ರಿಂಟ್ ಮಾಡಿ',
       AppLanguage.marathi: 'बिल प्रिंट करा',
       AppLanguage.tamil: 'பில் அச்சிடு',
       AppLanguage.telugu: 'బిల్లు ప్రింట్',
@@ -989,6 +1320,7 @@ class AppStrings {
     'P&L Report': {
       AppLanguage.english: 'P&L Report',
       AppLanguage.hindi: 'लाभ-हानि रिपोर्ट',
+      AppLanguage.kannada: 'ಲಾಭ-ನಷ್ಟ ವರದಿ',
       AppLanguage.marathi: 'नफा-तोटा अहवाल',
       AppLanguage.tamil: 'லாப-நஷ்ட அறிக்கை',
       AppLanguage.telugu: 'లాభ-నష్ట నివేదిక',
@@ -996,6 +1328,7 @@ class AppStrings {
     'Record Expense': {
       AppLanguage.english: 'Record Expense',
       AppLanguage.hindi: 'खर्च दर्ज करें',
+      AppLanguage.kannada: 'ಖರ್ಚು ದಾಖಲಿಸಿ',
       AppLanguage.marathi: 'खर्च नोंदवा',
       AppLanguage.tamil: 'செலவு பதிவு',
       AppLanguage.telugu: 'ఖర్చు నమోదు',
@@ -1003,6 +1336,7 @@ class AppStrings {
     'Labour Roll': {
       AppLanguage.english: 'Labour Roll',
       AppLanguage.hindi: 'श्रमिक हाज़िरी',
+      AppLanguage.kannada: 'ಕಾರ್ಮಿಕರ ಹಾಜರಾತಿ',
       AppLanguage.marathi: 'कामगार हजेरी',
       AppLanguage.tamil: 'தொழிலாளர் வருகை',
       AppLanguage.telugu: 'కార్మికుల హాజరు',
@@ -1010,6 +1344,7 @@ class AppStrings {
     'New Request': {
       AppLanguage.english: 'New Request',
       AppLanguage.hindi: 'नया अनुरोध',
+      AppLanguage.kannada: 'ಹೊಸ ವಿನಂತಿ',
       AppLanguage.marathi: 'नवीन विनंती',
       AppLanguage.tamil: 'புதிய கோரிக்கை',
       AppLanguage.telugu: 'కొత్త అభ్యర్థన',
@@ -1017,6 +1352,7 @@ class AppStrings {
     'Track Dispatch': {
       AppLanguage.english: 'Track Dispatch',
       AppLanguage.hindi: 'डिस्पैच ट्रैक करें',
+      AppLanguage.kannada: 'ರವಾನೆಯನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ',
       AppLanguage.marathi: 'डिस्पॅच ट्रॅक करा',
       AppLanguage.tamil: 'அனுப்புதலைக் கண்காணி',
       AppLanguage.telugu: 'డిస్పాచ్ ట్రాక్',
@@ -1024,6 +1360,7 @@ class AppStrings {
     'Step Back': {
       AppLanguage.english: 'Step Back',
       AppLanguage.hindi: 'पीछे जाएं',
+      AppLanguage.kannada: 'ಹಿಂದಕ್ಕೆ ಹೋಗಿ',
       AppLanguage.marathi: 'मागे जा',
       AppLanguage.tamil: 'பின்செல்',
       AppLanguage.telugu: 'వెనుకకు వెళ్ళండి',
@@ -1031,6 +1368,7 @@ class AppStrings {
     'Cloud Sync On': {
       AppLanguage.english: 'Cloud Sync On',
       AppLanguage.hindi: 'क्लाउड सिंक चालू',
+      AppLanguage.kannada: 'ಕ್ಲೌಡ್ ಸಿಂಕ್ ಆನ್',
       AppLanguage.marathi: 'क्लाउड सिंक सुरू',
       AppLanguage.tamil: 'கிளவுட் ஒத்திசைவு இயக்கம்',
       AppLanguage.telugu: 'క్లౌడ్ సింక్ ఆన్',
@@ -1038,16 +1376,87 @@ class AppStrings {
     'Saved on Phone (Offline)': {
       AppLanguage.english: 'Saved on Phone (Offline)',
       AppLanguage.hindi: 'फ़ोन पर सहेजा गया (ऑफ़लाइन)',
+      AppLanguage.kannada: 'ಫೋನ್‌ನಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ (ಆಫ್‌ಲೈನ್)',
       AppLanguage.marathi: 'फोनवर जतन केले (ऑफलाइन)',
       AppLanguage.tamil: 'தொலைபேசியில் சேமிக்கப்பட்டது',
       AppLanguage.telugu: 'ఫోన్‌లో సేవ్ చేయబడింది',
     },
-    'Sign Out': {
-      AppLanguage.english: 'Sign Out',
-      AppLanguage.hindi: 'साइन आउट',
-      AppLanguage.marathi: 'साइन आउट',
-      AppLanguage.tamil: 'வெளியேறு',
-      AppLanguage.telugu: 'సైన్ అవుట్',
+    'Change Requests & Scope': {
+      AppLanguage.english: 'Change Requests & Scope',
+      AppLanguage.hindi: 'बदलाव अनुरोध और दायरा',
+      AppLanguage.kannada: 'ಬದಲಾವಣೆ ವಿನಂತಿಗಳು',
+    },
+    'Scope, cost, or timeline changes requested by client or site': {
+      AppLanguage.english:
+          'Scope, cost, or timeline changes requested by client or site',
+      AppLanguage.hindi:
+          'ग्राहक या साइट की ओर से काम, खर्च या समय में बदलाव के अनुरोध',
+      AppLanguage.kannada:
+          'ಗ್ರಾಹಕರು ಅಥವಾ ಸೈಟ್‌ನಿಂದ ಕೇಳಲಾದ ಕೆಲಸ, ವೆಚ್ಚ ಅಥವಾ ಸಮಯದ ಬದಲಾವಣೆಗಳು',
+    },
+    'Drawings, 3D views & material lists': {
+      AppLanguage.english: 'Drawings, 3D views & material lists',
+      AppLanguage.hindi: '2D प्लान, 3D व्यू और सामग्री की सूची',
+      AppLanguage.kannada: '2D ಪ್ಲಾನ್‌ಗಳು, 3D ವೀಕ್ಷಣೆಗಳು ಮತ್ತು ಸಾಮಗ್ರಿ ಪಟ್ಟಿಗಳು',
+    },
+    'Zone': {
+      AppLanguage.english: 'Zone',
+      AppLanguage.hindi: 'क्षेत्र',
+      AppLanguage.kannada: 'ವಿಭಾಗ',
+    },
+    'Recorded': {
+      AppLanguage.english: 'Recorded',
+      AppLanguage.hindi: 'समय',
+      AppLanguage.kannada: 'ಸಮಯ',
+    },
+    'Captured By': {
+      AppLanguage.english: 'Captured By',
+      AppLanguage.hindi: 'किसने लिया',
+      AppLanguage.kannada: 'ತೆಗೆದವರು',
+    },
+    'PROJECT TIMELINE SPREADSHEET': {
+      AppLanguage.english: 'EXCEL TIMELINE FILE',
+      AppLanguage.hindi: 'एक्सेल टाइमलाइन फ़ाइल',
+      AppLanguage.kannada: 'ಎಕ್ಸೆಲ್ ಟೈಮ್‌ಲೈನ್ ಫೈಲ್',
+    },
+    'Team & Staff Directory': {
+      AppLanguage.english: 'Team & Staff Directory',
+      AppLanguage.hindi: 'टीम और कर्मचारी सूची',
+      AppLanguage.kannada: 'ತಂಡ ಮತ್ತು ಸಿಬ್ಬಂದಿ ಪಟ್ಟಿ',
+    },
+    'Manage approved staff, reset passwords & check new access requests': {
+      AppLanguage.english:
+          'Manage approved staff, reset passwords & check new access requests',
+      AppLanguage.hindi:
+          'कर्मचारियों को प्रबंधित करें, पासवर्ड रीसेट करें और नए अनुरोध देखें',
+      AppLanguage.kannada:
+          'ಸಿಬ್ಬಂದಿಯನ್ನು ನಿರ್ವಹಿಸಿ, ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿ ಮತ್ತು ಹೊಸ ವಿನಂತಿಗಳನ್ನು ಪರಿಶೀಲಿಸಿ',
+    },
+    'No Change Requests Found': {
+      AppLanguage.english: 'No Change Requests Found',
+      AppLanguage.hindi: 'कोई बदलाव अनुरोध नहीं मिला',
+      AppLanguage.kannada: 'ಯಾವುದೇ ಬದಲಾವಣೆ ವಿನಂತಿಗಳು ಕಂಡುಬಂದಿಲ್ಲ',
+    },
+    'No change requests yet. Tap below to log a scope or cost change.': {
+      AppLanguage.english:
+          'No change requests yet. Tap below to log a scope or cost change.',
+      AppLanguage.hindi:
+          'अभी कोई बदलाव अनुरोध नहीं है। नया बदलाव दर्ज करने के लिए नीचे टैप करें।',
+      AppLanguage.kannada:
+          'ಇನ್ನೂ ಯಾವುದೇ ಬದಲಾವಣೆ ವಿನಂತಿಗಳಿಲ್ಲ. ಹೊಸದನ್ನು ದಾಖಲಿಸಲು ಕೆಳಗೆ ಒತ್ತಿ.',
+    },
+    'New Change Request': {
+      AppLanguage.english: 'New Change Request',
+      AppLanguage.hindi: 'नया बदलाव अनुरोध',
+      AppLanguage.kannada: 'ಹೊಸ ಬದಲಾವಣೆ ವಿನಂತಿ',
+    },
+    'No client leads yet. Tap below to add your first lead.': {
+      AppLanguage.english:
+          'No client leads yet. Tap below to add your first lead.',
+      AppLanguage.hindi:
+          'अभी कोई ग्राहक लीड नहीं है। पहला ग्राहक जोड़ने के लिए नीचे टैप करें।',
+      AppLanguage.kannada:
+          'ಇನ್ನೂ ಯಾವುದೇ ಗ್ರಾಹಕರ ಲೀಡ್‌ಗಳಿಲ್ಲ. ಮೊದಲ ಗ್ರಾಹಕರನ್ನು ಸೇರಿಸಲು ಕೆಳಗೆ ಒತ್ತಿ.',
     },
   };
 }

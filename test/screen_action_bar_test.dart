@@ -71,7 +71,7 @@ void main() {
       expect(find.text('Initiate Turnkey Project'), findsOneWidget);
     });
 
-    testWidgets('Amendments tab renders Add Amendment and Pending Sign-Off in action section', (
+    testWidgets('Amendments tab renders New Change Request and Pending Sign-Off in action section', (
       WidgetTester tester,
     ) async {
       tester.view.physicalSize = const Size(1200, 900);
@@ -81,12 +81,12 @@ void main() {
       await tester.pumpWidget(_buildTestApp());
       await tester.pumpAndSettle();
 
-      // Switch to Amendments
-      await tester.tap(find.text('Amendments').first);
+      // Switch to Change Requests
+      await tester.tap(find.text('Change Requests').first);
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('action_bar_add_amendment')), findsOneWidget);
-      expect(find.text('Add Amendment'), findsOneWidget);
+      expect(find.text('New Change Request'), findsOneWidget);
       expect(find.byKey(const Key('action_bar_urgent_only')), findsOneWidget);
     });
 

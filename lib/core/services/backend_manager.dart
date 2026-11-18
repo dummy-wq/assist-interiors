@@ -15,14 +15,30 @@ import 'local_database_service.dart';
 import 'firestore_database_service.dart';
 import 'storage_service.dart';
 
+enum CloudSyncState { synced, syncing, offline }
+
 class BackendManager {
   static final BackendManager instance = BackendManager._();
   BackendManager._();
+
+  static final ValueNotifier<CloudSyncState> syncStateNotifier =
+      ValueNotifier<CloudSyncState>(CloudSyncState.offline);
 
   final LocalDatabaseService _localDb = LocalDatabaseService();
   final FirestoreDatabaseService _firestoreDb = FirestoreDatabaseService();
   final List<StreamSubscription<dynamic>> _realtimeSubscriptions = [];
   bool _realtimeSyncActive = false;
+
+  static void setSyncState(CloudSyncState state) {
+    syncStateNotifier.value = state;
+  }
+
+  CloudSyncState get currentSyncState {
+    if (!isCloudConnected || !isAuthenticatedCloud) {
+      return CloudSyncState.offline;
+    }
+    return syncStateNotifier.value;
+  }
 
   DatabaseService get activeService {
     if (Firebase.apps.isNotEmpty) {
@@ -38,16 +54,23 @@ class BackendManager {
   Future<void> init() async {
     await _localDb.init();
     if (Firebase.apps.isNotEmpty) {
+      syncStateNotifier.value = CloudSyncState.syncing;
       try {
         await _firestoreDb.init();
         final authed = await CloudStorageService.ensureAuthenticated();
         if (authed) {
           await _ensureFirestoreUserBootstrap();
+          syncStateNotifier.value = CloudSyncState.synced;
           unawaited(syncLocalToCloud());
+        } else {
+          syncStateNotifier.value = CloudSyncState.offline;
         }
       } catch (e) {
+        syncStateNotifier.value = CloudSyncState.offline;
         debugPrint('Firestore initialization error: $e');
       }
+    } else {
+      syncStateNotifier.value = CloudSyncState.offline;
     }
   }
 
@@ -170,24 +193,42 @@ class BackendManager {
     String docId,
     Map<String, dynamic> data,
   ) async {
-    if (!isCloudConnected) return;
-    if (!await CloudStorageService.ensureAuthenticated()) return;
+    if (!isCloudConnected) {
+      syncStateNotifier.value = CloudSyncState.offline;
+      return;
+    }
+    if (!await CloudStorageService.ensureAuthenticated()) {
+      syncStateNotifier.value = CloudSyncState.offline;
+      return;
+    }
+    syncStateNotifier.value = CloudSyncState.syncing;
     await _firestoreDb.upsertDocument(collection, docId, data);
+    syncStateNotifier.value = CloudSyncState.synced;
   }
 
   Future<void> deleteDocument(String collection, String docId) async {
     if (!isCloudConnected) return;
     if (!await CloudStorageService.ensureAuthenticated()) return;
+    syncStateNotifier.value = CloudSyncState.syncing;
     await _firestoreDb.deleteDocument(collection, docId);
+    syncStateNotifier.value = CloudSyncState.synced;
   }
 
   Future<void> syncCollection(
     String collection,
     List<Map<String, dynamic>> records,
   ) async {
-    if (!isCloudConnected) return;
-    if (!await CloudStorageService.ensureAuthenticated()) return;
+    if (!isCloudConnected) {
+      syncStateNotifier.value = CloudSyncState.offline;
+      return;
+    }
+    if (!await CloudStorageService.ensureAuthenticated()) {
+      syncStateNotifier.value = CloudSyncState.offline;
+      return;
+    }
+    syncStateNotifier.value = CloudSyncState.syncing;
     await _firestoreDb.syncCollection(collection, records);
+    syncStateNotifier.value = CloudSyncState.synced;
   }
 
   Future<List<Map<String, dynamic>>> fetchCollection(String collection) async {
@@ -202,11 +243,13 @@ class BackendManager {
   }) async {
     if (!isCloudConnected) return;
     if (!await CloudStorageService.ensureAuthenticated()) return;
+    syncStateNotifier.value = CloudSyncState.syncing;
     await _firestoreDb.upsertDocument('studio_settings', 'retention_policy', {
       'id': 'retention_policy',
       'photoRetentionMonths': photoRetentionMonths,
       'cadRetentionMonths': cadRetentionMonths,
     });
+    syncStateNotifier.value = CloudSyncState.synced;
   }
 
   /// Sync all existing local records with Firestore when connecting with an authenticated session.
@@ -214,9 +257,16 @@ class BackendManager {
   /// - When Firestore already has documents, Firestore is treated as the single source of truth
   ///   so photos or records deleted on one device are never resurrected from another device's local cache.
   Future<void> syncLocalToCloud() async {
-    if (!isCloudConnected) return;
+    if (!isCloudConnected) {
+      syncStateNotifier.value = CloudSyncState.offline;
+      return;
+    }
     final authed = await CloudStorageService.ensureAuthenticated();
-    if (!authed) return;
+    if (!authed) {
+      syncStateNotifier.value = CloudSyncState.offline;
+      return;
+    }
+    syncStateNotifier.value = CloudSyncState.syncing;
     try {
       await CloudStorageService.syncPendingLocalPhotos();
 
@@ -251,10 +301,12 @@ class BackendManager {
         cadRetentionMonths: StorageService.getCadRetentionMonths(),
       );
 
+      syncStateNotifier.value = CloudSyncState.synced;
       debugPrint(
         'Local database synchronized with Cloud Firestore successfully.',
       );
     } catch (e) {
+      syncStateNotifier.value = CloudSyncState.offline;
       debugPrint('Sync error: $e');
     }
   }

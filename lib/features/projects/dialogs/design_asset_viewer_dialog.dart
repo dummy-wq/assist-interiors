@@ -537,49 +537,8 @@ class DesignAssetViewerDialog {
                                   ),
                                 ),
                                 onPressed: () {
-                                  showDialog(
-                                    context: dialogCtx,
-                                    builder: (confirmCtx) => AlertDialog(
-                                      backgroundColor: isDark
-                                          ? AppColors.darkCard
-                                          : AppColors.lightCard,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(6.0),
-                                      ),
-                                      title: const Text(
-                                        'Delete Deliverable?',
-                                        style: TextStyle(fontSize: 16),
-                                      ),
-                                      content: Text(
-                                        'Are you sure you want to remove "$title"? This action cannot be undone.',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: isDark
-                                              ? AppColors.textLightMuted
-                                              : AppColors.textDarkMuted,
-                                        ),
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(confirmCtx),
-                                          child: const Text('Cancel'),
-                                        ),
-                                        TextButton(
-                                          style: TextButton.styleFrom(
-                                            foregroundColor: AppColors.error,
-                                          ),
-                                          onPressed: () {
-                                            Navigator.pop(confirmCtx);
-                                            Navigator.pop(dialogCtx);
-                                            onDelete?.call();
-                                          },
-                                          child: const Text('Delete'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
+                                  Navigator.pop(dialogCtx);
+                                  onDelete?.call();
                                 },
                                 icon: const Icon(
                                   Icons.delete_outline_rounded,
@@ -588,7 +547,7 @@ class DesignAssetViewerDialog {
                                 label: const Text(
                                   'Delete',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 12.5,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),

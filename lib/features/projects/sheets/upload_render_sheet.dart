@@ -406,40 +406,48 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.brandPeach.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
-                      child: const Icon(
-                        Icons.cloud_upload_rounded,
-                        color: AppColors.brandPeach,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Upload Design Deliverable',
-                          style: AppTypography.titleLarge(isDark),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.brandPeach.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4.0),
                         ),
-                        Text(
-                          'CAD Drawings, 3D Renders, Mood Boards & BOQ',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark
-                                ? AppColors.textLightMuted
-                                : AppColors.textDarkMuted,
-                          ),
+                        child: const Icon(
+                          Icons.cloud_upload_rounded,
+                          color: AppColors.brandPeach,
+                          size: 20,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Upload Drawing or Material List',
+                              style: AppTypography.titleLarge(isDark),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '2D Drawings, 3D Renders, Mood Boards & Material Lists',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDark
+                                    ? AppColors.textLightMuted
+                                    : AppColors.textDarkMuted,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded),

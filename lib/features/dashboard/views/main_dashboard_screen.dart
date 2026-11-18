@@ -9,6 +9,8 @@ import '../../../core/theme/app_sizes.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
+import '../../../core/widgets/role_onboarding_guide.dart';
+import '../../../core/widgets/sync_status_badge.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/permissions/app_permissions.dart';
 import '../../auth/state/auth_provider.dart';
@@ -21,6 +23,7 @@ import '../../team/widgets/staff_management_sheet.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/pdf_service.dart';
 import '../widgets/mobile_action_sheets.dart';
+import '../../projects/sheets/take_site_photo_sheet.dart';
 import '../widgets/role_bottom_bar.dart';
 import '../widgets/studio_side_pane_drawer.dart';
 import 'accounts_dashboard.dart';
@@ -134,6 +137,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeShowInitialProprietorAlert();
+      final auth = _auth;
+      if (mounted && auth != null && auth.shouldShowOnboardingTips) {
+        RoleOnboardingGuide.maybeShowOnFirstVisit(
+          context,
+          role: auth.currentRole,
+        );
+      }
     });
   }
 
@@ -317,6 +327,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             ],
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Center(child: SyncStatusBadge(compact: !isWide)),
+          ),
+        ],
         bottom: isWide
             ? PreferredSize(
                 preferredSize: const Size.fromHeight(48),
@@ -741,25 +757,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     return InstantPressFeedback(
       child: ElevatedButton.icon(
         key: key,
-        style: ElevatedButton.styleFrom(
+        style: AppSizes.compactElevatedStyle(
           backgroundColor: AppColors.brandPeach,
           foregroundColor: Colors.black,
-          elevation: 0,
-          minimumSize: const Size(0, 38),
-          maximumSize: const Size(double.infinity, 38),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
-          ),
-          textStyle: AppTypography.labelLarge(true).copyWith(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.25,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
         ),
         onPressed: onPressed,
-        icon: Icon(icon, size: 16, color: Colors.black),
+        icon: Icon(icon, size: 15, color: Colors.black),
         label: FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(AppStrings.tr(label), maxLines: 1),
@@ -781,28 +785,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     return InstantPressFeedback(
       child: OutlinedButton.icon(
         key: key,
-        style: OutlinedButton.styleFrom(
+        style: AppSizes.compactOutlinedStyle(
           foregroundColor: effectiveColor,
-          elevation: 0,
-          minimumSize: const Size(0, 38),
-          maximumSize: const Size(double.infinity, 38),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          side: BorderSide(
-            color: effectiveColor.withValues(alpha: 0.8),
-            width: 1.0,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
-          ),
-          textStyle: AppTypography.labelLarge(isDark).copyWith(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-          ),
+          borderColor: effectiveColor.withValues(alpha: 0.8),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
         ),
         onPressed: onPressed,
-        icon: Icon(icon, size: 16, color: effectiveColor),
+        icon: Icon(icon, size: 15, color: effectiveColor),
         label: FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(AppStrings.tr(label), maxLines: 1),
@@ -854,7 +843,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         final canCreateProject = AppPermissions.canCreateProject(role, user: user);
         final canManageDesignOnProject =
             AppPermissions.canManageDesignAssets(role, user: user);
+        final canTakePhotos =
+            AppPermissions.canAddProjectPhotos(role, user: user);
         return [
+          if (role == UserRole.supervisor && canTakePhotos)
+            _buildPrimaryActionButton(
+              key: const Key('action_bar_take_site_photo'),
+              icon: Icons.add_a_photo_rounded,
+              label: 'Take Site Photo',
+              onPressed: () => TakeSitePhotoSheet.openQuickCapture(context),
+            ),
           if (canCreateProject)
             _buildPrimaryActionButton(
               key: const Key('action_bar_add_project'),
@@ -867,7 +865,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             _buildSecondaryActionButton(
               key: const Key('action_bar_projects_upload_boq'),
               icon: Icons.table_view_rounded,
-              label: 'Upload BOQ',
+              label: 'Upload Material List',
               isDark: isDark,
               onPressed: () => MobileActionSheets.showUploadRenderSheet(
                 context,
@@ -900,7 +898,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             _buildSecondaryActionButton(
               key: const Key('action_bar_upload_boq'),
               icon: Icons.table_view_rounded,
-              label: 'Upload BOQ',
+              label: 'Upload Material List',
               isDark: isDark,
               onPressed: () => MobileActionSheets.showUploadRenderSheet(
                 context,
@@ -917,7 +915,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               AppNotification.show(
                 context,
                 message:
-                    'Filter CAD drawings, 3D renders, and GFC construction packages.',
+                    'Filter 2D floor plans, 3D views, and site drawings.',
               );
             },
           ),
@@ -950,12 +948,12 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         ];
 
       case 5:
-        // AMENDMENTS & SCOPE VARIATIONS
+        // CHANGE REQUESTS & SCOPE VARIATIONS
         return [
           _buildPrimaryActionButton(
             key: const Key('action_bar_add_amendment'),
             icon: Icons.post_add_rounded,
-            label: 'Add Amendment',
+            label: 'New Change Request',
             onPressed: () {
               AmendmentsView.openAddModalTrigger.value++;
             },
@@ -969,7 +967,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               AppNotification.show(
                 context,
                 message:
-                    'Showing scope variations awaiting client sign-off.',
+                    'Showing change requests awaiting client sign-off.',
               );
             },
           ),
@@ -1086,15 +1084,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
       case 2:
         return 'Projects Portfolio';
       case 3:
-        return 'Design Studio & Technical Drawings';
+        return 'Drawings & Renders';
       case 4:
         return 'Material Requests & Procurement';
       case 5:
-        return 'Amendments & Scope Variations';
+        return 'Change Requests & Scope';
       case 6:
-        return 'Accounts, Billing & Financials';
+        return 'Accounts & Billing';
       case 7:
-        return 'Team & Personnel Governance';
+        return 'Team & Access';
       default:
         return '';
     }

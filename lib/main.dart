@@ -46,7 +46,6 @@ void main() async {
   };
 
   await StorageService.init();
-  await StorageService.seedFillerProjectsIfEmpty();
   try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
@@ -110,7 +109,7 @@ class AssistInteriorsApp extends StatelessWidget {
           final mediaQuery = MediaQuery.of(context);
           final scaledMediaQuery = mediaQuery.copyWith(
             textScaler: TextScaler.linear(
-              mediaQuery.textScaler.scale(1.0) * 1.10,
+              mediaQuery.textScaler.scale(1.0) * 1.10 * auth.textScaleFactor,
             ),
           );
           return MediaQuery(

@@ -9,6 +9,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/permissions/app_permissions.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/cloud_network_image.dart';
 import '../../../core/widgets/expanded_detail_dialog.dart';
@@ -28,6 +29,7 @@ import '../sheets/take_site_photo_sheet.dart';
 import '../dialogs/project_photo_viewer_dialog.dart';
 import '../dialogs/design_asset_viewer_dialog.dart';
 import '../dialogs/project_timeline_sheet_dialog.dart';
+import '../../auth/models/user_model.dart';
 import '../../auth/state/auth_provider.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
@@ -46,6 +48,67 @@ class _ProjectsViewState extends State<ProjectsView> {
 
   final List<Map<String, dynamic>> _projects = <Map<String, dynamic>>[];
   final Set<String> _expandedProjects = <String>{};
+  final Map<String, String> _selectedProjectTabs = <String, String>{};
+
+  List<String> _visibleTabsForProject(UserRole role, AppUser? user) {
+    late List<String> tabs;
+    switch (role) {
+      case UserRole.supervisor:
+        tabs = ['progress', 'photos', 'files'];
+        break;
+      case UserRole.designer:
+        tabs = ['progress', 'files', 'photos'];
+        break;
+      case UserRole.accounts:
+        tabs = ['billing', 'progress', 'files'];
+        break;
+      case UserRole.sales:
+        tabs = ['progress', 'files', 'photos'];
+        break;
+      case UserRole.projectManager:
+      case UserRole.proprietor:
+        tabs = ['progress', 'photos', 'files', 'billing'];
+        break;
+    }
+    if (!tabs.contains('photos') &&
+        AppPermissions.canAddProjectPhotos(role, user: user)) {
+      tabs.add('photos');
+    }
+    if (!tabs.contains('billing') &&
+        (AppPermissions.canManageAccounts(role, user: user) ||
+            AppPermissions.canExportFinancials(role, user: user))) {
+      tabs.add('billing');
+    }
+    return tabs;
+  }
+
+  String _projectTabLabel(String tabKey) {
+    switch (tabKey) {
+      case 'photos':
+        return AppStrings.tr('Photos');
+      case 'files':
+        return AppStrings.tr('Files');
+      case 'billing':
+        return AppStrings.tr('Billing');
+      case 'progress':
+      default:
+        return AppStrings.tr('Progress');
+    }
+  }
+
+  IconData _projectTabIcon(String tabKey) {
+    switch (tabKey) {
+      case 'photos':
+        return Icons.photo_camera_outlined;
+      case 'files':
+        return Icons.folder_copy_outlined;
+      case 'billing':
+        return Icons.receipt_long_outlined;
+      case 'progress':
+      default:
+        return Icons.checklist_rounded;
+    }
+  }
 
   @override
   void initState() {
@@ -308,6 +371,10 @@ class _ProjectsViewState extends State<ProjectsView> {
       return;
     }
     Map<String, dynamic>? removedPhoto;
+    Map<String, dynamic>? removedSitePhoto;
+    int? removedSitePhotoIndex;
+    final projectKey = _projects[projectIndex]['id'] ?? _projects[projectIndex]['name'];
+
     setState(() {
       final photosRaw = (_projects[projectIndex]['photos'] as List?) ?? [];
       final list = photosRaw
@@ -328,21 +395,74 @@ class _ProjectsViewState extends State<ProjectsView> {
             (m) => Map<String, dynamic>.from(m),
           ),
         );
-        siteList.removeWhere(
+        final sIdx = siteList.indexWhere(
           (sp) =>
               (removedId != null && sp['id'] == removedId) ||
               (removedUrl != null &&
                   (sp['downloadUrl'] == removedUrl ||
                       sp['imageUrl'] == removedUrl)),
         );
+        if (sIdx != -1) {
+          removedSitePhotoIndex = sIdx;
+          removedSitePhoto = siteList.removeAt(sIdx);
+        }
         _projects[projectIndex]['sitePhotos'] = siteList;
       }
     });
 
-    if (removedPhoto != null) {
-      final storagePath = removedPhoto!['storagePath']?.toString();
+    StorageService.saveProjects(_projects);
+    if (removedPhoto == null) return;
+
+    final photoToDelete = removedPhoto!;
+    final sitePhotoToRestore = removedSitePhoto;
+    final restoreSiteIdx = removedSitePhotoIndex;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        content: Text(AppStrings.tr('Photo removed')),
+        action: SnackBarAction(
+          label: AppStrings.tr('Undo'),
+          onPressed: () {
+            if (!mounted) return;
+            final pIdx = _projects.indexWhere(
+              (pr) => (pr['id'] ?? pr['name']) == projectKey,
+            );
+            if (pIdx == -1) return;
+            setState(() {
+              final curPhotos = ((_projects[pIdx]['photos'] as List?) ?? [])
+                  .map((p) => Map<String, dynamic>.from(p as Map))
+                  .toList();
+              final insertIdx = photoIndex.clamp(0, curPhotos.length);
+              curPhotos.insert(insertIdx, photoToDelete);
+              _projects[pIdx]['photos'] = curPhotos;
+
+              if (sitePhotoToRestore != null &&
+                  _projects[pIdx]['sitePhotos'] is List) {
+                final curSite = (_projects[pIdx]['sitePhotos'] as List)
+                    .whereType<Map>()
+                    .map((m) => Map<String, dynamic>.from(m))
+                    .toList();
+                final sInsert = (restoreSiteIdx ?? curSite.length)
+                    .clamp(0, curSite.length);
+                curSite.insert(sInsert, sitePhotoToRestore);
+                _projects[pIdx]['sitePhotos'] = curSite;
+              }
+            });
+            StorageService.saveProjects(_projects);
+          },
+        ),
+      ),
+    );
+
+    controller.closed.then((reason) {
+      if (reason == SnackBarClosedReason.action) return;
+      final storagePath = photoToDelete['storagePath']?.toString();
       final downloadUrl =
-          (removedPhoto!['downloadUrl'] ?? removedPhoto!['imageUrl'])
+          (photoToDelete['downloadUrl'] ?? photoToDelete['imageUrl'])
               ?.toString();
       CloudStorageService.deleteFile(
         storagePath: storagePath,
@@ -351,7 +471,7 @@ class _ProjectsViewState extends State<ProjectsView> {
 
       if (!kIsWeb) {
         for (final key in const ['localPath', 'imageUrl', 'path']) {
-          final p = removedPhoto![key]?.toString().trim() ?? '';
+          final p = photoToDelete[key]?.toString().trim() ?? '';
           if (p.isNotEmpty &&
               !p.startsWith('http://') &&
               !p.startsWith('https://') &&
@@ -365,10 +485,7 @@ class _ProjectsViewState extends State<ProjectsView> {
           }
         }
       }
-    }
-
-    StorageService.saveProjects(_projects);
-    AppNotification.show(context, message: 'Site inspection photo removed');
+    });
   }
 
   void _openUploadDesignAsset(int projectIndex, {String? initialType}) {
@@ -422,6 +539,8 @@ class _ProjectsViewState extends State<ProjectsView> {
       return;
     }
     Map<String, dynamic>? removedAsset;
+    final projectKey =
+        _projects[projectIndex]['id'] ?? _projects[projectIndex]['name'];
     setState(() {
       final assetsRaw =
           (_projects[projectIndex]['designAssets'] as List?) ?? [];
@@ -433,16 +552,49 @@ class _ProjectsViewState extends State<ProjectsView> {
       }
       _projects[projectIndex]['designAssets'] = list;
     });
-    if (removedAsset != null) {
+    StorageService.saveProjects(_projects);
+    if (removedAsset == null) return;
+
+    final assetToDelete = removedAsset!;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        content: Text(AppStrings.tr('File removed')),
+        action: SnackBarAction(
+          label: AppStrings.tr('Undo'),
+          onPressed: () {
+            if (!mounted) return;
+            final pIdx = _projects.indexWhere(
+              (pr) => (pr['id'] ?? pr['name']) == projectKey,
+            );
+            if (pIdx == -1) return;
+            setState(() {
+              final curAssets =
+                  ((_projects[pIdx]['designAssets'] as List?) ?? [])
+                      .map((a) => Map<String, dynamic>.from(a as Map))
+                      .toList();
+              final insertIdx = assetIndex.clamp(0, curAssets.length);
+              curAssets.insert(insertIdx, assetToDelete);
+              _projects[pIdx]['designAssets'] = curAssets;
+            });
+            StorageService.saveProjects(_projects);
+          },
+        ),
+      ),
+    );
+
+    controller.closed.then((reason) {
+      if (reason == SnackBarClosedReason.action) return;
       CloudStorageService.deleteFile(
-        storagePath: removedAsset!['storagePath']?.toString(),
+        storagePath: assetToDelete['storagePath']?.toString(),
         downloadUrl:
-            (removedAsset!['downloadUrl'] ?? removedAsset!['fileUrl'])
+            (assetToDelete['downloadUrl'] ?? assetToDelete['fileUrl'])
                 ?.toString(),
       );
-    }
-    StorageService.saveProjects(_projects);
-    AppNotification.show(context, message: 'Design deliverable removed');
+    });
   }
 
   void _updateDesignAssetStatus(
@@ -729,11 +881,13 @@ class _ProjectsViewState extends State<ProjectsView> {
                   key: ValueKey('empty_projects_$_selectedStatus'),
                   icon: Icons.apartment_outlined,
                   title: AppStrings.noProjectsListed,
-                  message: _selectedStatus == 'All'
+                  message: _selectedStatus == 'All' && _searchQuery.isEmpty
                       ? (canCreateProject
-                            ? 'All project entries have been cleared. Tap "Add Project" to initialize a project site.'
-                            : 'All project entries have been cleared.')
-                      : 'No projects found with status "$_selectedStatus".',
+                            ? AppStrings.tr(
+                                'No projects yet. Tap below to add your first project.',
+                              )
+                            : 'No projects added yet.')
+                      : 'No projects found matching "$_searchQuery"${_selectedStatus != 'All' ? ' with status "$_selectedStatus"' : ''}.',
                   action: (_selectedStatus != 'All' || _searchQuery.isNotEmpty)
                       ? OutlinedButton.icon(
                           onPressed: () {
@@ -749,7 +903,23 @@ class _ProjectsViewState extends State<ProjectsView> {
                           icon: const Icon(Icons.refresh_rounded, size: 16),
                           label: const Text('Show All Projects'),
                         )
-                      : null,
+                      : (canCreateProject
+                            ? FilledButton.icon(
+                                onPressed: () =>
+                                    MobileActionSheets.showCreateProjectSheet(
+                                      context,
+                                    ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.brandPeach,
+                                  foregroundColor: Colors.black,
+                                ),
+                                icon: const Icon(
+                                  Icons.add_business_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(AppStrings.tr('Add Project')),
+                              )
+                            : null),
                 )
               : ListView.separated(
                   key: ValueKey('projects_$_selectedStatus'),
@@ -795,6 +965,19 @@ class _ProjectsViewState extends State<ProjectsView> {
                     final bool isExpanded = _expandedProjects.contains(
                       projectKey,
                     );
+                    final List<String> visibleTabs = _visibleTabsForProject(
+                      currentRole,
+                      currentUser,
+                    );
+                    final String? storedTab = _selectedProjectTabs[projectKey];
+                    final String activeTab =
+                        (storedTab != null && visibleTabs.contains(storedTab))
+                            ? storedTab
+                            : visibleTabs.first;
+                    final int tabPhotoCount =
+                        ((p['photos'] as List?) ?? []).length;
+                    final int tabFileCount =
+                        ((p['designAssets'] as List?) ?? []).length;
 
                     final double progress = _calculateProgress(stages);
                     final int progressPercent = (progress * 100).round();
@@ -1723,9 +1906,9 @@ class _ProjectsViewState extends State<ProjectsView> {
                                           children: [
                                             Flexible(
                                               child: Text(
-                                                'Tap to view stages, photos & design assets',
+                                                'Tap to view Progress, Photos & Files',
                                                 style: TextStyle(
-                                                  fontSize: 11.0,
+                                                  fontSize: 12.0,
                                                   fontWeight: FontWeight.w600,
                                                   color: isDark
                                                       ? AppColors.textLightSecondary
@@ -1747,8 +1930,123 @@ class _ProjectsViewState extends State<ProjectsView> {
                                     ),
                                   ],
                                   if (isExpanded) ...[
-                                    // Quick Action: Mark as Delayed toggle button
-                                    if (canModifyStatus) ...[
+                                    const SizedBox(height: 12),
+                                    // Role-filtered Project Sub-Tabs
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? AppColors.darkCardElevated
+                                            : AppColors.lightBackground,
+                                        borderRadius: BorderRadius.circular(
+                                          8.0,
+                                        ),
+                                        border: Border.all(
+                                          color: (isDark
+                                                  ? AppColors.darkBorder
+                                                  : AppColors.lightBorder)
+                                              .withValues(alpha: 0.7),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: Row(
+                                          children: visibleTabs.map((tabKey) {
+                                            final bool isSelected =
+                                                tabKey == activeTab;
+                                            final String badge =
+                                                tabKey == 'photos'
+                                                    ? (tabPhotoCount > 0
+                                                        ? ' ($tabPhotoCount)'
+                                                        : '')
+                                                    : (tabKey == 'files' &&
+                                                            tabFileCount > 0
+                                                        ? ' ($tabFileCount)'
+                                                        : '');
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 4,
+                                              ),
+                                              child: Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        6.0,
+                                                      ),
+                                                  onTap: () {
+                                                    HapticFeedback.selectionClick();
+                                                    setState(() {
+                                                      _selectedProjectTabs[
+                                                              projectKey] =
+                                                          tabKey;
+                                                    });
+                                                  },
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                          vertical: 8,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: isSelected
+                                                          ? AppColors.brandPeach
+                                                          : Colors.transparent,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            6.0,
+                                                          ),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          _projectTabIcon(
+                                                            tabKey,
+                                                          ),
+                                                          size: 15,
+                                                          color: isSelected
+                                                              ? Colors.black
+                                                              : (isDark
+                                                                    ? AppColors
+                                                                          .textLightSecondary
+                                                                    : AppColors
+                                                                          .textDarkSecondary),
+                                                        ),
+                                                        const SizedBox(width: 6),
+                                                        Text(
+                                                          '${_projectTabLabel(tabKey)}$badge',
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight: isSelected
+                                                                ? FontWeight
+                                                                      .w800
+                                                                : FontWeight
+                                                                      .w600,
+                                                            color: isSelected
+                                                                ? Colors.black
+                                                                : (isDark
+                                                                      ? AppColors
+                                                                            .textLightPrimary
+                                                                      : AppColors
+                                                                            .textDarkPrimary),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ),
+                                    ),
+                                    if (activeTab == 'progress' &&
+                                        canModifyStatus) ...[
                                       const SizedBox(height: 10),
                                       Align(
                                         alignment: Alignment.centerLeft,
@@ -1770,7 +2068,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                               isDelayed
                                                   ? Icons.warning_amber_rounded
                                                   : Icons.schedule_rounded,
-                                              size: 13,
+                                              size: 14,
                                               color: isDelayed
                                                   ? AppColors.error
                                                   : (isDark
@@ -1784,7 +2082,8 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                   ? AppStrings.revertToOnTrack
                                                   : AppStrings.markAsDelayed,
                                               style: TextStyle(
-                                                fontSize: 11,
+                                                fontSize: AppSizes
+                                                    .compactButtonFontSize,
                                                 fontWeight: FontWeight.w700,
                                                 color: isDelayed
                                                     ? AppColors.error
@@ -1795,46 +2094,38 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                                 .textDarkPrimary),
                                               ),
                                             ),
-                                            style: OutlinedButton.styleFrom(
-                                              side: BorderSide(
-                                                color: isDelayed
-                                                    ? AppColors.error
-                                                          .withValues(
-                                                            alpha: 0.8,
-                                                          )
-                                                    : (isDark
-                                                          ? AppColors.darkBorder
-                                                          : AppColors
-                                                                .lightBorder),
-                                                width: 0.8,
-                                              ),
+                                            style: AppSizes.compactOutlinedStyle(
+                                              foregroundColor: isDelayed
+                                                  ? AppColors.error
+                                                  : (isDark
+                                                        ? AppColors
+                                                              .textLightPrimary
+                                                        : AppColors
+                                                              .textDarkPrimary),
+                                              borderColor: isDelayed
+                                                  ? AppColors.error
+                                                        .withValues(
+                                                          alpha: 0.8,
+                                                        )
+                                                  : (isDark
+                                                        ? AppColors.darkBorder
+                                                        : AppColors
+                                                              .lightBorder),
                                               backgroundColor: isDelayed
                                                   ? AppColors.error.withValues(
                                                       alpha: 0.12,
                                                     )
                                                   : Colors.transparent,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 6,
-                                                  ),
-                                              minimumSize: Size.zero,
-                                              tapTargetSize:
-                                                  MaterialTapTargetSize
-                                                      .shrinkWrap,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(4.0),
-                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
                                     ],
-                                    const SizedBox(height: 18),
+                                    const SizedBox(height: 14),
 
-                                    // Financial & Team Leads Strip
-                                    Container(
+                                    if (activeTab == 'billing') ...[
+                                      // Financial & Team Leads Strip
+                                      Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 14,
                                         vertical: 12,
@@ -1961,7 +2252,97 @@ class _ProjectsViewState extends State<ProjectsView> {
                                         }).toList();
 
                                         if (mappedInvoices.isEmpty) {
-                                          return const SizedBox.shrink();
+                                          final canManageBilling =
+                                              AppPermissions.canManageAccounts(
+                                            currentRole,
+                                            user: currentUser,
+                                          );
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 12,
+                                              bottom: 8,
+                                            ),
+                                            child: Container(
+                                              width: double.infinity,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 14,
+                                                vertical: 16,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? AppColors.darkCardElevated
+                                                    : AppColors.lightBackground,
+                                                borderRadius:
+                                                    BorderRadius.circular(6.0),
+                                                border: Border.all(
+                                                  color: (isDark
+                                                          ? AppColors.darkBorder
+                                                          : AppColors
+                                                              .lightBorder)
+                                                      .withValues(alpha: 0.6),
+                                                  width: 0.8,
+                                                ),
+                                              ),
+                                              child: Column(
+                                                children: [
+                                                  Icon(
+                                                    Icons.receipt_long_outlined,
+                                                    size: 24,
+                                                    color: isDark
+                                                        ? AppColors
+                                                            .textLightMuted
+                                                        : AppColors
+                                                            .textDarkMuted,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    AppStrings.tr(
+                                                      'No bills or invoices linked yet.',
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontSize: 12.5,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: isDark
+                                                          ? AppColors
+                                                              .textLightSecondary
+                                                          : AppColors
+                                                              .textDarkSecondary,
+                                                    ),
+                                                  ),
+                                                  if (canManageBilling) ...[
+                                                    const SizedBox(height: 12),
+                                                    FilledButton.icon(
+                                                      onPressed: () =>
+                                                          MobileActionSheets
+                                                              .showCreateInvoiceSheet(
+                                                        context,
+                                                      ),
+                                                      style: AppSizes
+                                                          .compactElevatedStyle(
+                                                        backgroundColor:
+                                                            AppColors
+                                                                .brandPeach,
+                                                        foregroundColor:
+                                                            Colors.black,
+                                                      ),
+                                                      icon: const Icon(
+                                                        Icons.add_rounded,
+                                                        size: 18,
+                                                      ),
+                                                      label: Text(
+                                                        AppStrings.tr(
+                                                          'New Invoice',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                          );
                                         }
 
                                         final latestInv =
@@ -2056,8 +2437,10 @@ class _ProjectsViewState extends State<ProjectsView> {
                                         );
                                       },
                                     ),
+                                    ],
                                     // Site Photos & Inspection Gallery
-                                    Builder(
+                                    if (activeTab == 'photos')
+                                      Builder(
                                       builder: (context) {
                                         final photosRaw =
                                             (p['photos'] as List?) ?? [];
@@ -2096,9 +2479,9 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                       ),
                                                       const SizedBox(width: 6),
                                                       Text(
-                                                        'SITE INSPECTION PHOTOS',
+                                                        'SITE PHOTOS',
                                                         style: TextStyle(
-                                                          fontSize: 10.5,
+                                                          fontSize: 11.5,
                                                           letterSpacing: 0.8,
                                                           fontWeight:
                                                               FontWeight.w700,
@@ -2145,62 +2528,42 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                     ],
                                                   ),
                                                   if (canAddPhotos)
-                                                    Wrap(
-                                                      spacing: 6,
-                                                      runSpacing: 4,
-                                                      children: [
-                                                        InstantPressFeedback(
-                                                          child: OutlinedButton.icon(
-                                                            onPressed: () =>
-                                                                _takeSitePhoto(
-                                                              rawIndex,
-                                                            ),
-                                                            icon: const Icon(
-                                                              Icons
-                                                                  .add_a_photo_outlined,
-                                                              size: 13,
-                                                              color: AppColors
-                                                                  .brandPeach,
-                                                            ),
-                                                            label: const Text(
-                                                              'Add Photo',
-                                                              style: TextStyle(
-                                                                fontSize: 11,
-                                                                fontWeight:
-                                                                    FontWeight.w700,
-                                                                color: AppColors
-                                                                    .brandPeach,
-                                                              ),
-                                                            ),
-                                                            style: OutlinedButton.styleFrom(
-                                                              side: BorderSide(
-                                                                color: AppColors
-                                                                    .brandPeach
-                                                                    .withValues(
-                                                                      alpha: 0.6,
-                                                                    ),
-                                                                width: 0.8,
-                                                              ),
-                                                              padding:
-                                                                  const EdgeInsets.symmetric(
-                                                                    horizontal: 8,
-                                                                    vertical: 4,
-                                                                  ),
-                                                              minimumSize:
-                                                                  Size.zero,
-                                                              tapTargetSize:
-                                                                  MaterialTapTargetSize
-                                                                      .shrinkWrap,
-                                                              shape: RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      4.0,
-                                                                    ),
-                                                              ),
-                                                            ),
+                                                    InstantPressFeedback(
+                                                      child: FilledButton.icon(
+                                                        onPressed: () =>
+                                                            _takeSitePhoto(
+                                                          rawIndex,
+                                                        ),
+                                                        icon: const Icon(
+                                                          Icons
+                                                              .add_a_photo_outlined,
+                                                          size: 16,
+                                                        ),
+                                                        label: Text(
+                                                          AppStrings.tr(
+                                                            'Take Site Photo',
+                                                          ),
+                                                          style:
+                                                              const TextStyle(
+                                                            fontSize: 12.5,
+                                                            fontWeight:
+                                                                FontWeight.w700,
                                                           ),
                                                         ),
-                                                      ],
+                                                        style: AppSizes
+                                                            .compactElevatedStyle(
+                                                          backgroundColor:
+                                                              AppColors
+                                                                  .brandPeach,
+                                                          foregroundColor:
+                                                              Colors.black,
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                            horizontal: 14,
+                                                          ),
+                                                        ),
+                                                      ),
                                                     ),
                                                 ],
                                               ),
@@ -2524,13 +2887,15 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                             ),
                                                             Flexible(
                                                               child: Text(
-                                                                'No site photos yet. Tap to add a photo.',
+                                                                AppStrings.tr(
+                                                                  'No photos yet. Tap below to take your first site photo.',
+                                                                ),
                                                                 maxLines: 2,
                                                                 overflow:
                                                                     TextOverflow
                                                                         .ellipsis,
                                                                 style: const TextStyle(
-                                                                  fontSize: 11,
+                                                                  fontSize: 12,
                                                                   fontWeight:
                                                                       FontWeight
                                                                           .w600,
@@ -2587,10 +2952,9 @@ class _ProjectsViewState extends State<ProjectsView> {
                                         );
                                       },
                                     ),
-                                    const SizedBox(height: 18),
-
                                     // Architectural Design Deliverables (CAD, 3D Renders, BOQ, Mood Boards)
-                                    Builder(
+                                    if (activeTab == 'files')
+                                      Builder(
                                       builder: (context) {
                                         final assetsRaw =
                                             (p['designAssets'] as List?) ?? [];
@@ -2628,22 +2992,53 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                       ),
                                                       const SizedBox(width: 6),
                                                       Flexible(
-                                                        child: Text(
-                                                          'DESIGN DELIVERABLES',
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                          style: TextStyle(
-                                                            fontSize: 10.5,
-                                                            letterSpacing: 0.6,
-                                                            fontWeight:
-                                                                FontWeight.w700,
-                                                            color: isDark
-                                                                ? AppColors
-                                                                      .textLightMuted
-                                                                : AppColors
-                                                                      .textDarkMuted,
-                                                          ),
+                                                        child: Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
+                                                          children: [
+                                                            Text(
+                                                              AppStrings.tr(
+                                                                'Drawings & Renders',
+                                                              ).toUpperCase(),
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                              style: TextStyle(
+                                                                fontSize: 11.5,
+                                                                letterSpacing:
+                                                                    0.6,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                color: isDark
+                                                                    ? AppColors
+                                                                          .textLightMuted
+                                                                    : AppColors
+                                                                          .textDarkMuted,
+                                                              ),
+                                                            ),
+                                                            Text(
+                                                              AppStrings.tr(
+                                                                'Drawings, 3D views & material lists',
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                              style: TextStyle(
+                                                                fontSize: 11,
+                                                                color: isDark
+                                                                    ? AppColors
+                                                                          .textLightSecondary
+                                                                    : AppColors
+                                                                          .textDarkSecondary,
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
                                                       ),
                                                       const SizedBox(width: 8),
@@ -2694,16 +3089,17 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                             icon: const Icon(
                                                               Icons
                                                                   .table_view_rounded,
-                                                              size: 13,
+                                                              size: 14,
                                                               color: AppColors
                                                                   .brandPeach,
                                                             ),
                                                             label: Text(
                                                               AppStrings.tr(
-                                                                'Upload BOQ',
+                                                                'Upload Material List',
                                                               ),
                                                               style: const TextStyle(
-                                                                fontSize: 11,
+                                                                fontSize: AppSizes
+                                                                    .compactButtonFontSize,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w700,
@@ -2711,33 +3107,16 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                                     .brandPeach,
                                                               ),
                                                             ),
-                                                            style: OutlinedButton.styleFrom(
-                                                              side: BorderSide(
-                                                                color: AppColors
-                                                                    .brandPeach
-                                                                    .withValues(
-                                                                      alpha:
-                                                                          0.6,
-                                                                    ),
-                                                                width: 0.8,
-                                                              ),
-                                                              padding:
-                                                                  const EdgeInsets.symmetric(
-                                                                    horizontal:
-                                                                        10,
-                                                                    vertical: 5,
+                                                            style: AppSizes
+                                                                .compactOutlinedStyle(
+                                                              foregroundColor:
+                                                                  AppColors
+                                                                      .brandPeach,
+                                                              borderColor: AppColors
+                                                                  .brandPeach
+                                                                  .withValues(
+                                                                    alpha: 0.7,
                                                                   ),
-                                                              minimumSize:
-                                                                  Size.zero,
-                                                              tapTargetSize:
-                                                                  MaterialTapTargetSize
-                                                                      .shrinkWrap,
-                                                              shape: RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      4.0,
-                                                                    ),
-                                                              ),
                                                             ),
                                                           ),
                                                         ),
@@ -2750,14 +3129,17 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                             icon: const Icon(
                                                               Icons
                                                                   .cloud_upload_outlined,
-                                                              size: 13,
+                                                              size: 14,
                                                               color: AppColors
                                                                   .brandPeach,
                                                             ),
-                                                            label: const Text(
-                                                              'Add Deliverable',
+                                                            label: Text(
+                                                              AppStrings.tr(
+                                                                'Upload Drawing',
+                                                              ),
                                                               style: TextStyle(
-                                                                fontSize: 11,
+                                                                fontSize: AppSizes
+                                                                    .compactButtonFontSize,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w700,
@@ -2765,33 +3147,16 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                                     .brandPeach,
                                                               ),
                                                             ),
-                                                            style: OutlinedButton.styleFrom(
-                                                              side: BorderSide(
-                                                                color: AppColors
-                                                                    .brandPeach
-                                                                    .withValues(
-                                                                      alpha:
-                                                                          0.6,
-                                                                    ),
-                                                                width: 0.8,
-                                                              ),
-                                                              padding:
-                                                                  const EdgeInsets.symmetric(
-                                                                    horizontal:
-                                                                        10,
-                                                                    vertical: 5,
+                                                            style: AppSizes
+                                                                .compactOutlinedStyle(
+                                                              foregroundColor:
+                                                                  AppColors
+                                                                      .brandPeach,
+                                                              borderColor: AppColors
+                                                                  .brandPeach
+                                                                  .withValues(
+                                                                    alpha: 0.7,
                                                                   ),
-                                                              minimumSize:
-                                                                  Size.zero,
-                                                              tapTargetSize:
-                                                                  MaterialTapTargetSize
-                                                                      .shrinkWrap,
-                                                              shape: RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      4.0,
-                                                                    ),
-                                                              ),
                                                             ),
                                                           ),
                                                         ),
@@ -3164,13 +3529,15 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                             ),
                                                             Flexible(
                                                               child: Text(
-                                                                'No design deliverables published yet. Tap to attach CAD or 3D renders.',
+                                                                AppStrings.tr(
+                                                                  'No drawings or material lists yet. Tap below to upload one.',
+                                                                ),
                                                                 maxLines: 2,
                                                                 overflow:
                                                                     TextOverflow
                                                                         .ellipsis,
                                                                 style: const TextStyle(
-                                                                  fontSize: 11,
+                                                                  fontSize: 12,
                                                                   fontWeight:
                                                                       FontWeight
                                                                           .w600,
@@ -3227,10 +3594,9 @@ class _ProjectsViewState extends State<ProjectsView> {
                                         );
                                       },
                                     ),
-                                    const SizedBox(height: 18),
-
-                                    // Adaptive Progress Bar & Counter
-                                    Row(
+                                    if (activeTab == 'progress') ...[
+                                      // Adaptive Progress Bar & Counter
+                                      Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       crossAxisAlignment:
@@ -3680,6 +4046,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                         ),
                                       ],
                                     ),
+                                    ],
                                     const SizedBox(height: 10),
                                     InkWell(
                                       borderRadius: BorderRadius.circular(4.0),

@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/expanded_detail_dialog.dart';
 import '../../../core/widgets/pill_box.dart';
@@ -12,6 +14,7 @@ import '../../../core/widgets/stat_strip.dart';
 import '../../../core/widgets/screen_layout.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/state/auth_provider.dart';
+import '../widgets/reset_password_dialog.dart';
 import '../widgets/role_permission_config_dialog.dart';
 import '../widgets/staff_management_sheet.dart';
 import '../../../core/services/phone_call_service.dart';
@@ -45,35 +48,54 @@ class _TeamViewState extends State<TeamView> {
               )
               .toList();
 
+    final supervisorsCount =
+        allMembers.where((m) => m.role == UserRole.supervisor).length;
+    final designersCount =
+        allMembers.where((m) => m.role == UserRole.designer).length;
+    final salesCount =
+        allMembers.where((m) => m.role == UserRole.sales).length;
+    final leadsCount = allMembers
+        .where(
+          (m) =>
+              m.role == UserRole.proprietor ||
+              m.role == UserRole.projectManager ||
+              m.role == UserRole.accounts,
+        )
+        .length;
+
     return ScreenScrollView(
       children: [
-        const ScreenHeader('Team & Workforce'),
+        const ScreenHeader(
+          'Team & Staff Directory',
+          subtitle:
+              'Manage approved staff, reset passwords & check new access requests',
+        ),
         const SizedBox(height: ScreenLayout.headerGap),
 
-        // Live Headcount Stats (Compact StatStrip)
-        const StatStrip(
+        // Live Headcount Stats (Computed dynamically from team roster)
+        StatStrip(
           cards: [
             StatCard(
-              title: 'On Sites Today',
-              value: '28 Field Staff',
+              title: 'Field Staff',
+              value: '$supervisorsCount Staff',
               icon: Icons.engineering_rounded,
               accentColor: AppColors.brandPeach,
             ),
             StatCard(
               title: 'Design Studio',
-              value: '7 Designers',
+              value: '$designersCount Designers',
               icon: Icons.draw_rounded,
               accentColor: AppColors.brandPeach,
             ),
             StatCard(
-              title: 'Sales & Pitches',
-              value: '4 Reps',
+              title: 'Sales',
+              value: '$salesCount Reps',
               icon: Icons.campaign_rounded,
               accentColor: AppColors.brandPeach,
             ),
             StatCard(
               title: 'Management',
-              value: '5 Leads',
+              value: '$leadsCount Leads',
               icon: Icons.admin_panel_settings_rounded,
               accentColor: AppColors.brandPeach,
             ),
@@ -252,17 +274,9 @@ class _TeamViewState extends State<TeamView> {
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
+                        style: AppSizes.compactElevatedStyle(
                           backgroundColor: AppColors.warning,
                           foregroundColor: Colors.black,
-                          elevation: 0,
-                          minimumSize: const Size(0, 38),
-                          maximumSize: const Size(double.infinity, 38),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
                         ),
                         onPressed: () =>
                             showStaffManagementSheet(context, initialTabIndex: 0),
@@ -278,7 +292,7 @@ class _TeamViewState extends State<TeamView> {
                                 maxLines: 1,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 11.5,
+                                  fontSize: AppSizes.compactButtonFontSize,
                                 ),
                               ),
                             ],
@@ -289,20 +303,11 @@ class _TeamViewState extends State<TeamView> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
+                        style: AppSizes.compactOutlinedStyle(
                           foregroundColor: isDark ? Colors.white : Colors.black87,
-                          side: BorderSide(
-                            color: isDark
-                                ? AppColors.darkBorder
-                                : AppColors.lightBorder,
-                          ),
-                          minimumSize: const Size(0, 38),
-                          maximumSize: const Size(double.infinity, 38),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          borderColor: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.lightBorder,
                         ),
                         onPressed: () =>
                             showStaffManagementSheet(context, initialTabIndex: 1),
@@ -354,10 +359,7 @@ class _TeamViewState extends State<TeamView> {
                   label: dept,
                   isSelected: isSelected,
                   activeColor: AppColors.brandPeach,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 7.5,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   onSelected: () => setState(() => _selectedRoleFilter = dept),
                 ),
               );
@@ -415,16 +417,9 @@ class _TeamViewState extends State<TeamView> {
             ),
             if (auth.canManageTeam)
               OutlinedButton(
-                style: OutlinedButton.styleFrom(
+                style: AppSizes.compactOutlinedStyle(
                   foregroundColor: AppColors.brandPeach,
-                  side: const BorderSide(color: AppColors.brandPeach),
-                  minimumSize: const Size(0, 34),
-                  maximumSize: const Size(220, 34),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4.0),
-                  ),
+                  borderColor: AppColors.brandPeach,
                 ),
                 onPressed: () =>
                     showStaffManagementSheet(context, initialTabIndex: 1),
@@ -439,7 +434,7 @@ class _TeamViewState extends State<TeamView> {
                         'Manage Roles & Access',
                         maxLines: 1,
                         style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: AppSizes.compactButtonFontSize,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -694,16 +689,16 @@ class _TeamViewState extends State<TeamView> {
           ),
           onPressed: () => Navigator.of(dialogCtx).pop(),
         ),
-        if (canEditMember)
+        if (canEditMember) ...[
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.brandPeach,
               side: const BorderSide(color: AppColors.brandPeach),
             ),
             icon: const Icon(Icons.tune_rounded, size: 15),
-            label: const FittedBox(
+            label: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text('Edit Role & Access', maxLines: 1),
+              child: Text(AppStrings.tr('Edit Role & Access'), maxLines: 1),
             ),
             onPressed: () {
               Navigator.of(dialogCtx).pop();
@@ -714,6 +709,22 @@ class _TeamViewState extends State<TeamView> {
               );
             },
           ),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.warning,
+              side: BorderSide(color: AppColors.warning.withValues(alpha: 0.7)),
+            ),
+            icon: const Icon(Icons.lock_reset_rounded, size: 15),
+            label: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(AppStrings.tr('Reset Password'), maxLines: 1),
+            ),
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              ResetStaffPasswordDialog.show(context, targetUser: m);
+            },
+          ),
+        ],
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.brandPeach,

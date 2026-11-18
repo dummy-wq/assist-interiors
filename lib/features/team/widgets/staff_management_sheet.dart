@@ -4,12 +4,14 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/permissions/app_permissions.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 import '../../auth/models/custom_role_model.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/state/auth_provider.dart';
+import 'reset_password_dialog.dart';
 import 'role_permission_config_dialog.dart';
 
 void showStaffManagementSheet(BuildContext context, {int initialTabIndex = 0}) {
@@ -61,7 +63,9 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppSizes.borderRadiusMd,
+        ),
         backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
         title: Row(
           children: [
@@ -103,11 +107,6 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
         ),
         actions: [
           TextButton(
-            style: TextButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4.0),
-              ),
-            ),
             onPressed: () => Navigator.pop(dialogCtx),
             child: const Text('Cancel'),
           ),
@@ -115,9 +114,6 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4.0),
-              ),
             ),
             onPressed: () {
               auth.dismissStaff(user.id);
@@ -522,16 +518,10 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
+                        style: AppSizes.compactOutlinedStyle(
                           foregroundColor: AppColors.brandPeach,
-                          side: const BorderSide(color: AppColors.brandPeach),
-                          minimumSize: const Size(0, 38),
-                          maximumSize: const Size(double.infinity, 38),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          borderColor: AppColors.brandPeach,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
                         ),
                         onPressed: () {
                           RolePermissionConfigDialog.showForApplicantOrStaff(
@@ -546,12 +536,12 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.tune_rounded, size: 14),
-                              SizedBox(width: 5),
+                              SizedBox(width: 4),
                               Text(
                                 'Edit Role & Access',
                                 maxLines: 1,
                                 style: TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: AppSizes.compactButtonFontSize,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -563,16 +553,40 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                          side: const BorderSide(color: AppColors.error),
-                          minimumSize: const Size(0, 38),
-                          maximumSize: const Size(double.infinity, 38),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4.0),
+                        style: AppSizes.compactOutlinedStyle(
+                          foregroundColor: AppColors.warning,
+                          borderColor: AppColors.warning.withValues(alpha: 0.7),
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                        ),
+                        onPressed: () =>
+                            ResetStaffPasswordDialog.show(context, targetUser: u),
+                        child: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.lock_reset_rounded, size: 14),
+                              SizedBox(width: 4),
+                              Text(
+                                'Reset Password',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: AppSizes.compactButtonFontSize,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: AppSizes.compactOutlinedStyle(
+                          foregroundColor: AppColors.error,
+                          borderColor: AppColors.error,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
                         ),
                         onPressed: () => _confirmDismissStaff(context, auth, u),
                         child: const FittedBox(
@@ -581,12 +595,12 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.person_remove_outlined, size: 14),
-                              SizedBox(width: 5),
+                              SizedBox(width: 4),
                               Text(
                                 'Dismiss Staff',
                                 maxLines: 1,
                                 style: TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: AppSizes.compactButtonFontSize,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -677,10 +691,6 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.brandPeach,
               foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6.0),
-              ),
             ),
             onPressed: () {
               RolePermissionConfigDialog.showForCustomRoleDefinition(context);
@@ -862,25 +872,19 @@ class PendingApprovalActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(4.0),
-    );
-    const heightSize = Size(0, 38);
-    const maxSize = Size(double.infinity, 38);
     const pad = EdgeInsets.symmetric(horizontal: 6);
-    const labelStyle = TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600);
+    const labelStyle = TextStyle(
+      fontSize: AppSizes.compactButtonFontSize,
+      fontWeight: FontWeight.w600,
+    );
 
     return Row(
       children: [
         Expanded(
           child: OutlinedButton(
-            style: OutlinedButton.styleFrom(
+            style: AppSizes.compactOutlinedStyle(
               foregroundColor: AppColors.error,
-              side: const BorderSide(color: AppColors.error),
-              minimumSize: heightSize,
-              maximumSize: maxSize,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: shape,
+              borderColor: AppColors.error,
               padding: pad,
             ),
             onPressed: () {
@@ -909,13 +913,9 @@ class PendingApprovalActionRow extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: OutlinedButton(
-            style: OutlinedButton.styleFrom(
+            style: AppSizes.compactOutlinedStyle(
               foregroundColor: AppColors.brandPeach,
-              side: const BorderSide(color: AppColors.brandPeach),
-              minimumSize: heightSize,
-              maximumSize: maxSize,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: shape,
+              borderColor: AppColors.brandPeach,
               padding: pad,
             ),
             onPressed: () {
@@ -941,14 +941,9 @@ class PendingApprovalActionRow extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
+            style: AppSizes.compactElevatedStyle(
               backgroundColor: AppColors.success,
               foregroundColor: Colors.white,
-              elevation: 0,
-              minimumSize: heightSize,
-              maximumSize: maxSize,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: shape,
               padding: pad,
             ),
             onPressed: () {

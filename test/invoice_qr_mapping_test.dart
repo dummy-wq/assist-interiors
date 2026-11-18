@@ -427,7 +427,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Expand project card inline details
-      await tester.tap(find.text('Tap to view stages, photos & design assets'));
+      await tester.tap(find.text('Tap to view Progress, Photos & Files'));
+      await tester.pumpAndSettle();
+
+      // Switch to Billing tab inside expanded project card
+      await tester.tap(find.text('Billing'));
       await tester.pumpAndSettle();
 
       // Project card displays billing info without Pay via QR option

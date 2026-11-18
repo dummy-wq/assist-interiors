@@ -31,8 +31,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify title and header
-      expect(find.text('Upload Design Deliverable'), findsOneWidget);
-      expect(find.text('CAD Drawings, 3D Renders, Mood Boards & BOQ'), findsOneWidget);
+      expect(find.text('Upload Drawing or Material List'), findsOneWidget);
+      expect(find.text('2D Drawings, 3D Renders, Mood Boards & Material Lists'), findsOneWidget);
 
       // Verify CAD file picker dropzone is present
       expect(find.text('SELECT CAD / 3D / BOQ FILE'), findsOneWidget);

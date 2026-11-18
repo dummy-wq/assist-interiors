@@ -129,13 +129,17 @@ void main() {
       await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded).first);
       await tester.pumpAndSettle();
 
+      // Switch to Photos tab inside expanded project card
+      await tester.tap(find.textContaining('Photos (').first);
+      await tester.pumpAndSettle();
+
       expect(find.text('Projects Portfolio'), findsOneWidget);
 
-      // Verify SITE INSPECTION PHOTOS header is displayed
-      expect(find.text('SITE INSPECTION PHOTOS'), findsWidgets);
+      // Verify SITE PHOTOS header is displayed
+      expect(find.text('SITE PHOTOS'), findsWidgets);
 
-      // Verify unified Add Photo button is present for proprietor without redundant buttons
-      expect(find.text('Add Photo'), findsWidgets);
+      // Verify unified Take Site Photo button is present for proprietor without redundant buttons
+      expect(find.text('Take Site Photo'), findsWidgets);
       expect(find.text('Upload Photo'), findsNothing);
     });
 
@@ -158,13 +162,17 @@ void main() {
       await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded).first);
       await tester.pumpAndSettle();
 
+      // Switch to Photos tab inside expanded project card
+      await tester.tap(find.textContaining('Photos (').first);
+      await tester.pumpAndSettle();
+
       expect(find.text('Projects Portfolio'), findsOneWidget);
 
-      // Verify SITE INSPECTION PHOTOS header exists
-      expect(find.text('SITE INSPECTION PHOTOS'), findsWidgets);
+      // Verify SITE PHOTOS header exists
+      expect(find.text('SITE PHOTOS'), findsWidgets);
 
-      // Add Photo button should NOT exist for Sales
-      expect(find.text('Add Photo'), findsNothing);
+      // Take Site Photo button should NOT exist for Sales
+      expect(find.text('Take Site Photo'), findsNothing);
       expect(find.text('Upload Photo'), findsNothing);
     });
 
@@ -187,8 +195,12 @@ void main() {
       await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded).first);
       await tester.pumpAndSettle();
 
-      // Tap Add Photo button on the first card
-      final addPhotoButton = find.text('Add Photo').first;
+      // Switch to Photos tab inside expanded project card
+      await tester.tap(find.textContaining('Photos (').first);
+      await tester.pumpAndSettle();
+
+      // Tap Take Site Photo button on the first card
+      final addPhotoButton = find.text('Take Site Photo').first;
       await tester.ensureVisible(addPhotoButton);
       await tester.tap(addPhotoButton);
       await tester.pumpAndSettle();
@@ -272,6 +284,10 @@ void main() {
 
       // Expand project card
       await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded).first);
+      await tester.pumpAndSettle();
+
+      // Switch to Photos tab inside expanded project card
+      await tester.tap(find.textContaining('Photos (').first);
       await tester.pumpAndSettle();
 
       // Find seeded photo titles

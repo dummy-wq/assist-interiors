@@ -87,12 +87,11 @@ class _PillBoxState extends State<PillBox> with SingleTickerProviderStateMixin {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primary = widget.activeColor ?? AppColors.brandPeach;
 
-    final resolvedPadding =
-        widget.padding ??
-        const EdgeInsets.symmetric(horizontal: 12, vertical: 7.5);
+    final resolvedPadding = widget.padding ?? AppSizes.chipPadding;
     final resolvedFontSize = widget.fontSize ?? AppSizes.chipFontSize;
     final resolvedIconSize = widget.iconSize ?? AppSizes.chipIconSize;
     final resolvedRadius = widget.borderRadius ?? AppSizes.chipRadius;
+    final resolvedHeight = widget.minHeight ?? AppSizes.chipHeight;
 
     return AnimatedBuilder(
       animation: _scaleAnimation,
@@ -106,7 +105,8 @@ class _PillBoxState extends State<PillBox> with SingleTickerProviderStateMixin {
         behavior: HitTestBehavior.opaque,
         child: Container(
           constraints: BoxConstraints(
-            minHeight: widget.minHeight ?? AppSizes.chipHeight,
+            minHeight: resolvedHeight,
+            maxHeight: resolvedHeight,
             minWidth: widget.minWidth ?? 0.0,
           ),
           padding: resolvedPadding,

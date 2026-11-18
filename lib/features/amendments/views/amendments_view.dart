@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/services/backend_manager.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -126,30 +127,26 @@ class _AmendmentsViewState extends State<AmendmentsView> {
     final prev = _previousStatus((amd['status'] ?? '').toString());
     if (prev == null) return const SizedBox.shrink();
     return OutlinedButton.icon(
-      style: OutlinedButton.styleFrom(
+      style: AppSizes.compactOutlinedStyle(
         foregroundColor: isDark
             ? AppColors.textLightSecondary
             : AppColors.textDarkSecondary,
-        side: BorderSide(
-          color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-              .withValues(alpha: 0.8),
-          width: 0.8,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4.0),
-        ),
+        borderColor: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+            .withValues(alpha: 0.8),
       ),
       onPressed: () {
         onBeforeStepBack?.call();
         _stepAmendmentBack(amd);
       },
-      icon: const Icon(Icons.undo_rounded, size: 15),
+      icon: const Icon(Icons.undo_rounded, size: 14),
       label: const Text(
         'Step Back',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontSize: AppSizes.compactButtonFontSize,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -231,10 +228,11 @@ class _AmendmentsViewState extends State<AmendmentsView> {
 
     return ScreenScrollView(
       children: [
-        const ScreenHeader(
-          'Amendments & Scope Variations',
-          subtitle:
-              'Client change orders, architectural deviations, cost & timeline impacts, and sign-offs',
+        ScreenHeader(
+          AppStrings.tr('Change Requests & Scope'),
+          subtitle: AppStrings.tr(
+            'Scope, cost, or timeline changes requested by client or site',
+          ),
         ),
         const SizedBox(height: ScreenLayout.headerGap),
 
@@ -376,37 +374,54 @@ class _AmendmentsViewState extends State<AmendmentsView> {
         if (filteredAmendments.isEmpty)
           EmptyStateCard(
             icon: Icons.published_with_changes_outlined,
-            title: 'No Scope Amendments Found',
-            message: _searchQuery.isNotEmpty || _selectedFilter != 'All'
-                ? 'No variation orders match your current filter criteria.'
-                : 'Log client variation requests, site engineering adjustments, or scope changes.',
-            action: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brandPeach,
-                foregroundColor: Colors.black,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
-              ),
-              onPressed: () {
-                setState(() {
-                  _selectedFilter = 'All';
-                  _selectedProject = 'All';
-                  _searchQuery = '';
-                  _searchController.clear();
-                });
-              },
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text(
-                'Clear Filters & View All',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
-              ),
-            ),
+            title: AppStrings.tr('No Change Requests Found'),
+            message: (_searchQuery.isNotEmpty ||
+                    _selectedFilter != 'All' ||
+                    _selectedProject != 'All')
+                ? 'No change requests match your current filter.'
+                : AppStrings.tr(
+                    'No change requests yet. Tap below to log a scope or cost change.',
+                  ),
+            action: (_searchQuery.isNotEmpty ||
+                    _selectedFilter != 'All' ||
+                    _selectedProject != 'All')
+                ? ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandPeach,
+                      foregroundColor: Colors.black,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _selectedFilter = 'All';
+                        _selectedProject = 'All';
+                        _searchQuery = '';
+                        _searchController.clear();
+                      });
+                    },
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: const Text(
+                      'Clear Filters & View All',
+                      style: TextStyle(
+                        fontSize: AppSizes.buttonFontSize,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                : ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandPeach,
+                      foregroundColor: Colors.black,
+                    ),
+                    onPressed: () => _showAddAmendmentModal(context),
+                    icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                    label: Text(
+                      AppStrings.tr('New Change Request'),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
           )
         else
           ListView.separated(
@@ -729,39 +744,32 @@ class _AmendmentsViewState extends State<AmendmentsView> {
             children: [
               if (status == 'Under Review') ...[
                 Expanded(
-                  child: SizedBox(
-                    height: 36,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        side: BorderSide(
-                          color: AppColors.error.withValues(alpha: 0.55),
-                          width: 0.8,
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6.0),
-                        ),
-                      ),
-                      onPressed: () {
-                        setState(() => _amendments.remove(amd));
-                        _saveAmendments();
-                        BackendManager.instance.deleteDocument(
-                          'amendments',
-                          id,
-                        );
-                        AppNotification.show(
-                          context,
-                          message: 'Amendment $id declined & archived.',
-                        );
-                      },
-                      icon: const Icon(Icons.close_rounded, size: 15),
-                      label: Text(
+                  child: OutlinedButton.icon(
+                    style: AppSizes.compactOutlinedStyle(
+                      foregroundColor: AppColors.error,
+                      borderColor: AppColors.error.withValues(alpha: 0.6),
+                    ),
+                    onPressed: () {
+                      setState(() => _amendments.remove(amd));
+                      _saveAmendments();
+                      BackendManager.instance.deleteDocument(
+                        'amendments',
+                        id,
+                      );
+                      AppNotification.show(
+                        context,
+                        message: 'Amendment $id declined & archived.',
+                      );
+                    },
+                    icon: const Icon(Icons.close_rounded, size: 14),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
                         'Decline',
-                        style: AppTypography.labelSmall(isDark).copyWith(
-                          fontSize: 11.5,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: AppSizes.compactButtonFontSize,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.error,
                         ),
                       ),
                     ),
@@ -769,37 +777,32 @@ class _AmendmentsViewState extends State<AmendmentsView> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: SizedBox(
-                    height: 36,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.brandPeach,
-                        foregroundColor: Colors.black,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6.0),
-                        ),
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          amd['status'] = 'Client Approved';
-                          amd['clientSignOffDate'] =
-                              DateFormat('dd MMM yyyy').format(DateTime.now());
-                        });
-                        _saveAmendments();
-                        AppNotification.show(
-                          context,
-                          message: 'Amendment $id approved by client.',
-                        );
-                      },
-                      icon: const Icon(Icons.thumb_up_alt_rounded, size: 15),
-                      label: Text(
+                  child: ElevatedButton.icon(
+                    style: AppSizes.compactElevatedStyle(
+                      backgroundColor: AppColors.brandPeach,
+                      foregroundColor: Colors.black,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        amd['status'] = 'Client Approved';
+                        amd['clientSignOffDate'] =
+                            DateFormat('dd MMM yyyy').format(DateTime.now());
+                      });
+                      _saveAmendments();
+                      AppNotification.show(
+                        context,
+                        message: 'Amendment $id approved by client.',
+                      );
+                    },
+                    icon: const Icon(Icons.thumb_up_alt_rounded, size: 14),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
                         'Client Approved ✓',
-                        style: AppTypography.labelSmall(isDark).copyWith(
-                          fontSize: 11.5,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: AppSizes.compactButtonFontSize,
                           fontWeight: FontWeight.w700,
-                          color: Colors.black,
                         ),
                       ),
                     ),
@@ -810,14 +813,9 @@ class _AmendmentsViewState extends State<AmendmentsView> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
+                    style: AppSizes.compactElevatedStyle(
                       backgroundColor: AppColors.info,
                       foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
                     ),
                     onPressed: () {
                       setState(() => amd['status'] = 'In Execution');
@@ -827,10 +825,17 @@ class _AmendmentsViewState extends State<AmendmentsView> {
                         message: 'Amendment $id transitioned into Site Execution.',
                       );
                     },
-                    icon: const Icon(Icons.construction_rounded, size: 15),
-                    label: const Text(
-                      'Move to Site Execution',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                    icon: const Icon(Icons.construction_rounded, size: 14),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Move to Site Execution',
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: AppSizes.compactButtonFontSize,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -839,14 +844,9 @@ class _AmendmentsViewState extends State<AmendmentsView> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
+                    style: AppSizes.compactElevatedStyle(
                       backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
                     ),
                     onPressed: () {
                       setState(() => amd['status'] = 'Completed');

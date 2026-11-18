@@ -585,7 +585,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     AppNotification.show(
                       context,
                       message:
-                          'Please contact the Proprietor to reset your password.',
+                          'Ask your Proprietor to open Team & Access and tap Reset Password for your account.',
                     );
                   },
                   child: const Text('Forgot Password?'),

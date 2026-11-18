@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/blueprint_grid_painter.dart';
 import '../../../core/widgets/cloud_network_image.dart';
@@ -245,216 +246,183 @@ class ProjectPhotoViewerDialog {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  photoTimestamp,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: hasRealImage
-                                        ? Colors.white.withValues(alpha: 0.8)
-                                        : (isDark
-                                            ? AppColors.textLightMuted
-                                            : AppColors.textDarkMuted),
+                                Flexible(
+                                  child: Text(
+                                    photoTimestamp,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: hasRealImage
+                                          ? Colors.white.withValues(alpha: 0.9)
+                                          : (isDark
+                                              ? AppColors.textLightMuted
+                                              : AppColors.textDarkMuted),
+                                    ),
                                   ),
                                 ),
-                                Text(
-                                  'by $capturedBy',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: projectAccent,
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    '${AppStrings.tr('Captured By')}: $capturedBy',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.end,
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: projectAccent,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Metadata Details
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.darkCardElevated
-                          : AppColors.lightBackground,
-                      borderRadius: BorderRadius.circular(4.0),
-                      border: Border.all(
-                        color: (isDark
-                                ? AppColors.darkBorder
-                                : AppColors.lightBorder)
-                            .withValues(alpha: 0.6),
-                        width: 0.8,
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.location_on_outlined,
-                              size: 14,
-                              color: AppColors.brandPeach,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Zone: $photoTag',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
-                                color: isDark
-                                    ? AppColors.textLightPrimary
-                                    : AppColors.textDarkPrimary,
-                              ),
-                            ),
-                          ],
+                    const SizedBox(height: 14),
+
+                    // Metadata Details
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.darkCardElevated
+                            : AppColors.lightBackground,
+                        borderRadius: BorderRadius.circular(4.0),
+                        border: Border.all(
+                          color: (isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder)
+                              .withValues(alpha: 0.6),
+                          width: 0.8,
                         ),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.verified_outlined,
-                              size: 14,
-                              color: AppColors.success,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Cloud Synced',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 15,
+                                color: AppColors.brandPeach,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${AppStrings.tr('Zone')}: $photoTag',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? AppColors.textLightPrimary
+                                      : AppColors.textDarkPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.verified_outlined,
+                                size: 15,
                                 color: AppColors.success,
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                              const SizedBox(width: 4),
+                              Text(
+                                AppStrings.tr('Cloud Synced'),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.success,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
+                    const SizedBox(height: 18),
 
-                  // Actions: Delete (if permitted) & Close
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (canDelete) ...[
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (confirmCtx) {
-                                return AlertDialog(
-                                  backgroundColor: isDark
-                                      ? AppColors.darkCard
-                                      : AppColors.lightCard,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6.0),
-                                  ),
-                                  title: const Text(
-                                    'Delete Site Photo?',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                  content: Text(
-                                    'Are you sure you want to remove "$photoTitle"? This action cannot be undone.',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: isDark
-                                          ? AppColors.textLightMuted
-                                          : AppColors.textDarkMuted,
-                                    ),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(confirmCtx),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.error,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      onPressed: () {
-                                        Navigator.pop(confirmCtx);
-                                        Navigator.pop(dialogCtx);
-                                        onDelete?.call();
-                                      },
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                          },
-                          icon: const Icon(
-                            Icons.delete_outline_rounded,
-                            size: 15,
-                            color: AppColors.error,
-                          ),
-                          label: const Text(
-                            'Remove Photo',
-                            style: TextStyle(
-                              fontSize: 12,
+                    // Actions: Remove (with Undo in caller) & Close
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (canDelete) ...[
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(dialogCtx);
+                              onDelete?.call();
+                            },
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 16,
                               color: AppColors.error,
-                              fontWeight: FontWeight.w600,
+                            ),
+                            label: Text(
+                              AppStrings.tr('Remove Photo'),
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: AppColors.error.withValues(alpha: 0.5),
+                                width: 0.8,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 11,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4.0),
+                              ),
                             ),
                           ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                              color: AppColors.error.withValues(alpha: 0.5),
-                              width: 0.8,
-                            ),
+                          const SizedBox(width: 10),
+                        ],
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(dialogCtx),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isDark
+                                ? AppColors.darkCardElevated
+                                : AppColors.lightBackground,
+                            foregroundColor: isDark
+                                ? AppColors.textLightPrimary
+                                : AppColors.textDarkPrimary,
+                            elevation: 0,
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
+                              horizontal: 18,
+                              vertical: 11,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(4.0),
+                              side: BorderSide(
+                                color: isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.lightBorder,
+                                width: 0.8,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            AppStrings.tr('Close'),
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
                       ],
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(dialogCtx),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark
-                              ? AppColors.darkCardElevated
-                              : AppColors.lightBackground,
-                          foregroundColor: isDark
-                              ? AppColors.textLightPrimary
-                              : AppColors.textDarkPrimary,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4.0),
-                            side: BorderSide(
-                              color: isDark
-                                  ? AppColors.darkBorder
-                                  : AppColors.lightBorder,
-                              width: 0.8,
-                            ),
-                          ),
-                        ),
-                        child: const Text(
-                          'Close',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
                 ],
               ),
             ),

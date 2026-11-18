@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/permissions/app_permissions.dart';
-import '../../../core/services/backend_manager.dart';
 import '../../../core/services/permission_service.dart';
 import '../../../core/services/photo_archive_service.dart';
 import '../../../core/services/storage_service.dart';
@@ -15,6 +14,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/widgets/pill_box.dart';
 import '../../../core/widgets/quick_fade_dropdown.dart';
+import '../../../core/widgets/role_onboarding_guide.dart';
+import '../../../core/widgets/sync_status_badge.dart';
 import '../../auth/state/auth_provider.dart';
 import '../../team/widgets/staff_management_sheet.dart';
 import '../views/studio_settings_archive_screen.dart';
@@ -164,45 +165,8 @@ class _StudioSidePaneDrawerState extends State<StudioSidePaneDrawer> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 3),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              BackendManager.instance.isAuthenticatedCloud
-                                  ? Icons.cloud_done_rounded
-                                  : Icons.cloud_off_rounded,
-                              size: 12,
-                              color:
-                                  BackendManager.instance.isAuthenticatedCloud
-                                  ? AppColors.success
-                                  : (isDark
-                                        ? AppColors.textLightMuted
-                                        : AppColors.textDarkMuted),
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                BackendManager.instance.isAuthenticatedCloud
-                                    ? AppStrings.tr('Cloud Sync On')
-                                    : AppStrings.tr('Saved on Phone (Offline)'),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.labelSmall(isDark).copyWith(
-                                  fontSize: 10,
-                                  color:
-                                      BackendManager
-                                          .instance
-                                          .isAuthenticatedCloud
-                                      ? AppColors.success
-                                      : (isDark
-                                            ? AppColors.textLightMuted
-                                            : AppColors.textDarkMuted),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        const SizedBox(height: 5),
+                        const SyncStatusBadge(),
                       ],
                     ),
                   ),
@@ -447,7 +411,7 @@ class _StudioSidePaneDrawerState extends State<StudioSidePaneDrawer> {
                     const SizedBox(height: 16),
 
                     // 4. Language Selector
-                    _buildSectionLabel('INTERFACE LANGUAGE', isDark),
+                    _buildSectionLabel(AppStrings.tr('INTERFACE LANGUAGE'), isDark),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,
@@ -455,7 +419,7 @@ class _StudioSidePaneDrawerState extends State<StudioSidePaneDrawer> {
                       children: [
                         for (final lang in AppLanguage.values)
                           PillBox(
-                            label: lang.shortCode,
+                            label: lang.nativeName,
                             isSelected: auth.language == lang,
                             activeColor: AppColors.brandPeach,
                             onSelected: () {
@@ -467,6 +431,62 @@ class _StudioSidePaneDrawerState extends State<StudioSidePaneDrawer> {
                             },
                           ),
                       ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 4b. Text Size Selector for Easier Reading
+                    _buildSectionLabel(AppStrings.tr('Text Size').toUpperCase(), isDark),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: PillBox(
+                            label: AppStrings.tr('Normal'),
+                            isSelected: auth.textScaleFactor <= 1.05,
+                            activeColor: AppColors.brandPeach,
+                            onSelected: () => auth.setTextScaleFactor(1.0),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: PillBox(
+                            label: AppStrings.tr('Large'),
+                            isSelected: auth.textScaleFactor > 1.05 &&
+                                auth.textScaleFactor < 1.25,
+                            activeColor: AppColors.brandPeach,
+                            onSelected: () => auth.setTextScaleFactor(1.15),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: PillBox(
+                            label: AppStrings.tr('Extra Large'),
+                            isSelected: auth.textScaleFactor >= 1.25,
+                            activeColor: AppColors.brandPeach,
+                            onSelected: () => auth.setTextScaleFactor(1.30),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 4c. First-Time Quick Guide Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 40,
+                      child: OutlinedButton.icon(
+                        key: const Key('side_pane_quick_guide_btn'),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          RoleOnboardingGuide.show(
+                            context,
+                            role: auth.currentRole,
+                            force: true,
+                          );
+                        },
+                        icon: const Icon(Icons.help_outline_rounded, size: 17),
+                        label: Text(AppStrings.tr('Show Quick Guide')),
+                      ),
                     ),
                     const SizedBox(height: 16),
 
@@ -660,7 +680,7 @@ class _StudioSidePaneDrawerState extends State<StudioSidePaneDrawer> {
                       auth.logout();
                     },
                     icon: const Icon(Icons.logout_rounded, size: 16),
-                    label: const Text('Sign Out'),
+                    label: Text(AppStrings.tr('Sign Out')),
                   ),
                 ),
               ),
@@ -675,9 +695,9 @@ class _StudioSidePaneDrawerState extends State<StudioSidePaneDrawer> {
     return Text(
       text,
       style: AppTypography.labelSmall(isDark).copyWith(
-        fontSize: 10,
+        fontSize: 11.5,
         fontWeight: FontWeight.w800,
-        letterSpacing: 0.8,
+        letterSpacing: 0.7,
         color: isDark ? AppColors.textLightMuted : AppColors.textDarkMuted,
       ),
     );

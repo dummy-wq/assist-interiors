@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/permissions/app_permissions.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -220,10 +221,9 @@ class _DesignViewState extends State<DesignView> {
 
     return ScreenScrollView(
       children: [
-        const ScreenHeader(
-          'Design Studio & Technical Drawings',
-          subtitle:
-              '2D Architectural CAD plans, 3D photorealistic visualizations, GFC packages & palettes',
+        ScreenHeader(
+          AppStrings.tr('Drawings & Renders'),
+          subtitle: AppStrings.tr('Drawings, 3D views & material lists'),
         ),
         const SizedBox(height: ScreenLayout.headerGap),
 
@@ -231,7 +231,7 @@ class _DesignViewState extends State<DesignView> {
         StatStrip(
           cards: [
             StatCard(
-              title: 'Total Deliverables',
+              title: 'Total Drawings',
               value: '${_designItems.length}',
               icon: Icons.folder_special_rounded,
               accentColor: AppColors.brandPeach,
@@ -243,7 +243,7 @@ class _DesignViewState extends State<DesignView> {
               accentColor: AppColors.info,
             ),
             StatCard(
-              title: 'CAD & GFC Sets',
+              title: 'Site Drawings (CAD)',
               value: '$totalCad Drawings',
               icon: Icons.architecture_rounded,
               accentColor: AppColors.warning,
@@ -363,37 +363,55 @@ class _DesignViewState extends State<DesignView> {
         if (filteredItems.isEmpty)
           EmptyStateCard(
             icon: Icons.draw_outlined,
-            title: 'No Technical Drawings or Renders Found',
-            message: _searchQuery.isNotEmpty || _selectedCategory != 'All'
-                ? 'No deliverables match your current filter criteria.'
-                : 'Upload your first 2D architectural CAD plan, 3D render, or GFC set.',
-            action: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brandPeach,
-                foregroundColor: Colors.black,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
-              ),
-              onPressed: () {
-                setState(() {
-                  _selectedCategory = 'All';
-                  _selectedProject = 'All';
-                  _searchQuery = '';
-                  _searchController.clear();
-                });
-              },
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text(
-                'Clear Filters & View All',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
-              ),
-            ),
+            title: AppStrings.tr('Drawings & Renders'),
+            message: (_searchQuery.isNotEmpty ||
+                    _selectedCategory != 'All' ||
+                    _selectedProject != 'All')
+                ? 'No drawings match your current filter.'
+                : 'No drawings uploaded yet. Tap below to add your first drawing or render.',
+            action: (_searchQuery.isNotEmpty ||
+                    _selectedCategory != 'All' ||
+                    _selectedProject != 'All')
+                ? ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandPeach,
+                      foregroundColor: Colors.black,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _selectedCategory = 'All';
+                        _selectedProject = 'All';
+                        _searchQuery = '';
+                        _searchController.clear();
+                      });
+                    },
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: const Text(
+                      'Clear Filters & View All',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                : (canManageDesign
+                      ? ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.brandPeach,
+                            foregroundColor: Colors.black,
+                          ),
+                          onPressed: () =>
+                              MobileActionSheets.showUploadRenderSheet(context),
+                          icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                          label: Text(
+                            AppStrings.tr('Upload Drawing'),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        )
+                      : null),
           )
         else
           ListView.separated(
@@ -582,79 +600,63 @@ class _DesignViewState extends State<DesignView> {
           Row(
             children: [
               Expanded(
-                child: SizedBox(
-                  height: 36,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: isDark
+                child: OutlinedButton.icon(
+                  style: AppSizes.compactOutlinedStyle(
+                    foregroundColor: isDark
+                        ? AppColors.textLightPrimary
+                        : AppColors.textDarkPrimary,
+                    borderColor: (isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder)
+                        .withValues(alpha: 0.7),
+                  ),
+                  onPressed: () => _viewDesignDetails(context, item, isDark),
+                  icon: const Icon(Icons.fullscreen_rounded, size: 15),
+                  label: Text(
+                    'Inspect & Preview',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelSmall(isDark).copyWith(
+                      fontSize: AppSizes.compactButtonFontSize,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
                           ? AppColors.textLightPrimary
                           : AppColors.textDarkPrimary,
-                      side: BorderSide(
-                        color: (isDark
-                                ? AppColors.darkBorder
-                                : AppColors.lightBorder)
-                            .withValues(alpha: 0.7),
-                        width: 0.8,
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6.0),
-                      ),
-                    ),
-                    onPressed: () => _viewDesignDetails(context, item, isDark),
-                    icon: const Icon(Icons.fullscreen_rounded, size: 15),
-                    label: Text(
-                      'Inspect & Preview',
-                      style: AppTypography.labelSmall(isDark).copyWith(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? AppColors.textLightPrimary
-                            : AppColors.textDarkPrimary,
-                      ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: SizedBox(
-                  height: 36,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.brandPeach,
-                      side: BorderSide(
-                        color: AppColors.brandPeach.withValues(alpha: 0.5),
-                        width: 0.8,
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6.0),
-                      ),
-                    ),
-                    onPressed: () async {
-                      final cloudUrl =
-                          (item['fileUrl'] ?? item['downloadUrl'])?.toString();
-                      if (cloudUrl != null && cloudUrl.startsWith('http')) {
-                        await launchUrl(
-                          Uri.parse(cloudUrl),
-                          mode: LaunchMode.externalApplication,
-                        );
-                        return;
-                      }
-                      AppNotification.show(
-                        context,
-                        message: 'Exporting $title ($format) - $fileSize',
+                child: OutlinedButton.icon(
+                  style: AppSizes.compactOutlinedStyle(
+                    foregroundColor: AppColors.brandPeach,
+                    borderColor: AppColors.brandPeach.withValues(alpha: 0.6),
+                  ),
+                  onPressed: () async {
+                    final cloudUrl =
+                        (item['fileUrl'] ?? item['downloadUrl'])?.toString();
+                    if (cloudUrl != null && cloudUrl.startsWith('http')) {
+                      await launchUrl(
+                        Uri.parse(cloudUrl),
+                        mode: LaunchMode.externalApplication,
                       );
-                    },
-                    icon: const Icon(Icons.download_rounded, size: 15),
-                    label: Text(
-                      'Export',
-                      style: AppTypography.labelSmall(isDark).copyWith(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.brandPeach,
-                      ),
+                      return;
+                    }
+                    AppNotification.show(
+                      context,
+                      message: 'Exporting $title ($format) - $fileSize',
+                    );
+                  },
+                  icon: const Icon(Icons.download_rounded, size: 15),
+                  label: Text(
+                    'Export',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelSmall(isDark).copyWith(
+                      fontSize: AppSizes.compactButtonFontSize,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.brandPeach,
                     ),
                   ),
                 ),
@@ -710,7 +712,7 @@ class _DesignViewState extends State<DesignView> {
                     ),
                     const PopupMenuItem(
                       value: 'gfc',
-                      child: Text('Issue as GFC'),
+                      child: Text('Issue as Site Drawing (GFC)'),
                     ),
                     const PopupMenuItem(
                       value: 'revision',

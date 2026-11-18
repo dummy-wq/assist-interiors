@@ -5,7 +5,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/services/backend_manager.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/app_sizes.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/utils/currency_utils.dart';
 import '../../../core/widgets/expanded_detail_dialog.dart';
@@ -123,30 +123,26 @@ class _MaterialRequestsViewState extends State<MaterialRequestsView> {
     final prev = _previousStatus((req['status'] ?? '').toString());
     if (prev == null) return const SizedBox.shrink();
     return OutlinedButton.icon(
-      style: OutlinedButton.styleFrom(
+      style: AppSizes.compactOutlinedStyle(
         foregroundColor: isDark
             ? AppColors.textLightSecondary
             : AppColors.textDarkSecondary,
-        side: BorderSide(
-          color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-              .withValues(alpha: 0.8),
-          width: 0.8,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4.0),
-        ),
+        borderColor: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+            .withValues(alpha: 0.8),
       ),
       onPressed: () {
         onBeforeStepBack?.call();
         _stepRequestBack(req);
       },
-      icon: const Icon(Icons.undo_rounded, size: 15),
+      icon: const Icon(Icons.undo_rounded, size: 14),
       label: const Text(
         'Step Back',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontSize: AppSizes.compactButtonFontSize,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -369,14 +365,6 @@ class _MaterialRequestsViewState extends State<MaterialRequestsView> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.brandPeach,
                 foregroundColor: Colors.black,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
               ),
               onPressed: () {
                 setState(() {
@@ -695,39 +683,32 @@ class _MaterialRequestsViewState extends State<MaterialRequestsView> {
             children: [
               if (status == 'Pending Approval') ...[
                 Expanded(
-                  child: SizedBox(
-                    height: 36,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        side: BorderSide(
-                          color: AppColors.error.withValues(alpha: 0.55),
-                          width: 0.8,
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6.0),
-                        ),
-                      ),
-                      onPressed: () {
-                        setState(() => _requests.remove(req));
-                        _saveRequests();
-                        BackendManager.instance.deleteDocument(
-                          'material_requests',
-                          id,
-                        );
-                        AppNotification.show(
-                          context,
-                          message: 'Request $id cancelled.',
-                        );
-                      },
-                      icon: const Icon(Icons.close_rounded, size: 15),
-                      label: Text(
+                  child: OutlinedButton.icon(
+                    style: AppSizes.compactOutlinedStyle(
+                      foregroundColor: AppColors.error,
+                      borderColor: AppColors.error.withValues(alpha: 0.6),
+                    ),
+                    onPressed: () {
+                      setState(() => _requests.remove(req));
+                      _saveRequests();
+                      BackendManager.instance.deleteDocument(
+                        'material_requests',
+                        id,
+                      );
+                      AppNotification.show(
+                        context,
+                        message: 'Request $id cancelled.',
+                      );
+                    },
+                    icon: const Icon(Icons.close_rounded, size: 14),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
                         'Reject',
-                        style: AppTypography.labelSmall(isDark).copyWith(
-                          fontSize: 11.5,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: AppSizes.compactButtonFontSize,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.error,
                         ),
                       ),
                     ),
@@ -735,36 +716,31 @@ class _MaterialRequestsViewState extends State<MaterialRequestsView> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: SizedBox(
-                    height: 36,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.brandPeach,
-                        foregroundColor: Colors.black,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6.0),
-                        ),
-                      ),
-                      onPressed: () {
-                        setState(() => req['status'] = 'Approved');
-                        _saveRequests();
-                        AppNotification.show(
-                          context,
-                          message: 'Indent $id approved for procurement.',
-                        );
-                      },
-                      icon: const Icon(
-                        Icons.check_circle_outline_rounded,
-                        size: 15,
-                      ),
-                      label: Text(
+                  child: ElevatedButton.icon(
+                    style: AppSizes.compactElevatedStyle(
+                      backgroundColor: AppColors.brandPeach,
+                      foregroundColor: Colors.black,
+                    ),
+                    onPressed: () {
+                      setState(() => req['status'] = 'Approved');
+                      _saveRequests();
+                      AppNotification.show(
+                        context,
+                        message: 'Indent $id approved for procurement.',
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 14,
+                    ),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
                         'Approve Indent',
-                        style: AppTypography.labelSmall(isDark).copyWith(
-                          fontSize: 11.5,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: AppSizes.compactButtonFontSize,
                           fontWeight: FontWeight.w700,
-                          color: Colors.black,
                         ),
                       ),
                     ),
@@ -775,14 +751,9 @@ class _MaterialRequestsViewState extends State<MaterialRequestsView> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
+                    style: AppSizes.compactElevatedStyle(
                       backgroundColor: const Color(0xFF9B51E0),
                       foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
                     ),
                     onPressed: () {
                       setState(() => req['status'] = 'Dispatched');
@@ -792,10 +763,17 @@ class _MaterialRequestsViewState extends State<MaterialRequestsView> {
                         message: 'Materials for $id marked as Dispatched & In Transit.',
                       );
                     },
-                    icon: const Icon(Icons.local_shipping_rounded, size: 16),
-                    label: const Text(
-                      'Mark Dispatched & In Transit',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                    icon: const Icon(Icons.local_shipping_rounded, size: 15),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Mark Dispatched & In Transit',
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: AppSizes.compactButtonFontSize,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -804,14 +782,9 @@ class _MaterialRequestsViewState extends State<MaterialRequestsView> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
+                    style: AppSizes.compactElevatedStyle(
                       backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
                     ),
                     onPressed: () {
                       setState(() => req['status'] = 'Delivered');

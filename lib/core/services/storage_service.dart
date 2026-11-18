@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
 import '../theme/app_colors.dart';
 import 'backend_manager.dart';
-import 'spreadsheet_service.dart';
 
 /// Centralized local persistent storage service for Assist Interiors.
 /// Backed by SharedPreferences (NSUserDefaults on iOS, Android SharedPreferences on Android,
@@ -35,6 +34,8 @@ class StorageService {
   static const String _keyCustomRoles = 'assist_custom_roles_v1';
   static const String _keyCurrentUserId = 'assist_current_user_id_v1';
   static const String _keyAppLanguage = 'assist_app_language_v1';
+  static const String _keyTextScaleFactor = 'assist_text_scale_v1';
+  static const String _keyOnboardingPrefix = 'assist_onboarding_seen_v1_';
   static const String _keyPhotoRetentionMonths =
       'assist_photo_retention_months_v1';
   static const String _keyCadRetentionMonths = 'assist_cad_retention_months_v1';
@@ -219,22 +220,19 @@ class StorageService {
         } else {
           map['photos'] = <Map<String, dynamic>>[];
         }
-        if (map['designAssets'] is List &&
-            (map['designAssets'] as List).isNotEmpty) {
+        if (map['designAssets'] is List) {
           map['designAssets'] = (map['designAssets'] as List)
               .map((d) => Map<String, dynamic>.from(d as Map))
               .toList();
         } else {
-          map['designAssets'] = _defaultDesignAssetsForProject(projName);
+          map['designAssets'] = <Map<String, dynamic>>[];
         }
         if (map['timelineSpreadsheet'] is Map) {
           map['timelineSpreadsheet'] = Map<String, dynamic>.from(
             map['timelineSpreadsheet'] as Map,
           );
         } else {
-          map['timelineSpreadsheet'] =
-              SpreadsheetService.generateDefaultTimelineForProject(projName)
-                  .toMap();
+          map['timelineSpreadsheet'] = null;
         }
         syncProjectProgressAndStatus(map);
         return map;
@@ -791,7 +789,7 @@ class StorageService {
     }
   }
 
-  // ==================== LANGUAGE PREFERENCE ====================
+  // ==================== LANGUAGE & ACCESSIBILITY PREFERENCES ====================
 
   static String getLanguage() {
     return _prefs?.getString(_keyAppLanguage) ?? 'en';
@@ -799,6 +797,28 @@ class StorageService {
 
   static Future<void> saveLanguage(String code) async {
     await _prefs?.setString(_keyAppLanguage, code);
+  }
+
+  static double getTextScaleFactor() {
+    final val = _prefs?.getDouble(_keyTextScaleFactor);
+    if (val != null && val >= 0.9 && val <= 1.5) return val;
+    return 1.0;
+  }
+
+  static Future<void> saveTextScaleFactor(double factor) async {
+    await _prefs?.setDouble(_keyTextScaleFactor, factor);
+  }
+
+  static bool hasSeenOnboardingTips(String roleName) {
+    return _prefs?.getBool('$_keyOnboardingPrefix$roleName') ?? false;
+  }
+
+  static Future<void> markOnboardingTipsSeen(String roleName) async {
+    await _prefs?.setBool('$_keyOnboardingPrefix$roleName', true);
+  }
+
+  static Future<void> resetOnboardingTips(String roleName) async {
+    await _prefs?.setBool('$_keyOnboardingPrefix$roleName', false);
   }
 
   // ==================== CLEAR / RESET ====================
@@ -1517,221 +1537,6 @@ class StorageService {
     ];
 
     await saveLeads(defaultLeads);
-  }
-
-  static List<Map<String, dynamic>> _defaultDesignAssetsForProject(
-    String projectName,
-  ) {
-    if (projectName.contains('Aurelia') || projectName.contains('Magnolias')) {
-      return [
-        {
-          'id': 'asset_aur_01',
-          'title': 'As-Built Architectural Floor Plan & LiDAR Grid CAD',
-          'type': 'CAD Plan',
-          'category': 'CAD Plan',
-          'project': projectName,
-          'format': '.DWG',
-          'version': 'v3.0',
-          'fileSize': '18.6 MB',
-          'status': 'Approved',
-          'date': '04 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Final verified dimensional survey with structural column grid and sea-facing terrace levels.',
-        },
-        {
-          'id': 'asset_aur_02',
-          'title': 'Double-Height Sea Lounge & Dining 4K Renders',
-          'type': '3D Render',
-          'category': '3D Render',
-          'project': projectName,
-          'format': '.MAX / .JPG',
-          'version': 'v4.1',
-          'fileSize': '84.5 MB',
-          'status': 'Approved',
-          'date': '06 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Photorealistic Corona renders showcasing bookmatched Statuario wall and bespoke glass chandelier.',
-        },
-        {
-          'id': 'asset_aur_03',
-          'title': 'Smoked Eucalyptus, Brushed Brass & Travertine Mood Board',
-          'type': 'Mood Board',
-          'category': 'Mood Board',
-          'project': projectName,
-          'format': '.PDF / .PNG',
-          'version': 'v2.0',
-          'fileSize': '24.2 MB',
-          'status': 'Approved',
-          'date': '02 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Approved material finish board for master suite, private spa deck, and cigar lounge.',
-        },
-        {
-          'id': 'asset_aur_04',
-          'title': 'Turnkey FF&E Master Schedule & BOQ Package',
-          'type': 'Material BOQ',
-          'category': 'Material BOQ',
-          'project': projectName,
-          'format': '.XLSX / .PDF',
-          'version': 'v3.2',
-          'fileSize': '5.4 MB',
-          'status': 'Approved',
-          'date': '08 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Signed-off line-item schedule for Italian loose furniture, Lutron automation, and sanitaryware.',
-        },
-      ];
-    } else if (projectName.contains('Veridian') ||
-        projectName.contains('Camellias')) {
-      return [
-        {
-          'id': 'asset_ver_01',
-          'title': 'Reflected Ceiling Plan (RCP) & DALI Lighting GFC Set',
-          'type': 'GFC Set',
-          'category': 'GFC Set',
-          'project': projectName,
-          'format': '.DWG / .PDF',
-          'version': 'v3.4',
-          'fileSize': '26.4 MB',
-          'status': 'Approved',
-          'date': '12 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Good-for-Construction ceiling cove profiles, linear magnetic track slots, and HVAC diffuser alignment.',
-        },
-        {
-          'id': 'asset_ver_02',
-          'title': 'Atrium Skylight & Dolby Atmos Screening Room 3D Renders',
-          'type': '3D Render',
-          'category': '3D Render',
-          'project': projectName,
-          'format': '.MAX / .JPG',
-          'version': 'v2.3',
-          'fileSize': '94.0 MB',
-          'status': 'Under Client Review',
-          'date': '15 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Updated renders reflecting acoustic timber slat absorbers and Calacatta Oro bookmatch pattern.',
-        },
-        {
-          'id': 'asset_ver_03',
-          'title': 'Chef Island Kitchen & Butler Pantry Millwork CAD',
-          'type': 'CAD Plan',
-          'category': 'CAD Plan',
-          'project': projectName,
-          'format': '.DWG',
-          'version': 'v2.1',
-          'fileSize': '19.1 MB',
-          'status': 'Approved',
-          'date': '10 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Detailed carcass elevations for Blum Legrabox pull-outs and integrated Miele appliances.',
-        },
-        {
-          'id': 'asset_ver_04',
-          'title': 'Bespoke Joinery & Imported Stone BOQ',
-          'type': 'Material BOQ',
-          'category': 'Material BOQ',
-          'project': projectName,
-          'format': '.PDF / .XLSX',
-          'version': 'v1.8',
-          'fileSize': '6.9 MB',
-          'status': 'Approved',
-          'date': '11 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Itemized slab count and hardware schedule approved for Phase 2 procurement.',
-        },
-      ];
-    } else if (projectName.contains('Solstice') ||
-        projectName.contains('Oberoi')) {
-      return [
-        {
-          'id': 'asset_sol_01',
-          'title': 'Terrace Structural DGU Glazing & Pergola Shop Drawing',
-          'type': 'CAD Plan',
-          'category': 'CAD Plan',
-          'project': projectName,
-          'format': '.DWG',
-          'version': 'v1.4',
-          'fileSize': '21.0 MB',
-          'status': 'Revision Requested',
-          'date': '14 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Revised mullion reinforcement detail for 19th-floor wind-load compliance.',
-        },
-        {
-          'id': 'asset_sol_02',
-          'title': 'Biophilic Double-Height Study & Bar 3D Render',
-          'type': '3D Render',
-          'category': '3D Render',
-          'project': projectName,
-          'format': '.MAX / .PNG',
-          'version': 'v1.2',
-          'fileSize': '68.0 MB',
-          'status': 'Under Client Review',
-          'date': '13 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Perspective views with Saint-Gobain fluted acoustic glass partitions and microtopping floor.',
-        },
-        {
-          'id': 'asset_sol_03',
-          'title': 'Microtopping, Fluted Glass & Charcoal Oak Mood Board',
-          'type': 'Mood Board',
-          'category': 'Mood Board',
-          'project': projectName,
-          'format': '.PDF',
-          'version': 'v1.1',
-          'fileSize': '15.8 MB',
-          'status': 'Approved',
-          'date': '09 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Tactile palette featuring matte black architectural hardware and acoustic felt baffles.',
-        },
-      ];
-    } else {
-      return [
-        {
-          'id': 'asset_saf_01',
-          'title': 'Courtyard Colonade & Spatial Zoning Master CAD',
-          'type': 'CAD Plan',
-          'category': 'CAD Plan',
-          'project': projectName,
-          'format': '.DWG',
-          'version': 'v1.1',
-          'fileSize': '16.2 MB',
-          'status': 'Approved',
-          'date': '14 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Master layout integrating central open-to-sky courtyard with formal living and cantilevered bar.',
-        },
-        {
-          'id': 'asset_saf_02',
-          'title': 'Courtyard Villa & Backlit Honey Onyx Bar 4K Renders',
-          'type': '3D Render',
-          'category': '3D Render',
-          'project': projectName,
-          'format': '.MAX / .JPG',
-          'version': 'v1.0',
-          'fileSize': '58.4 MB',
-          'status': 'Under Client Review',
-          'date': '16 Nov 2026',
-          'designer': 'Vikram Malhotra',
-          'notes':
-              'Warm twilight lighting study with Burma teak coffered ceilings and handcrafted Athangudi tiles.',
-        },
-      ];
-    }
   }
 
   // ==================== BACKEND RETENTION POLICIES ====================

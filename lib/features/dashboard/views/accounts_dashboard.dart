@@ -3,7 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/stat_strip.dart';
@@ -313,10 +315,25 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'All invoice records have been cleared. Tap "Add Invoice" to log milestone billings.',
+                              'No invoices yet. Tap below to create your first invoice.',
                               textAlign: TextAlign.center,
                               style: AppTypography.bodySmall(isDark),
                             ),
+                            if (canManageAccounts) ...[
+                              const SizedBox(height: 14),
+                              FilledButton.icon(
+                                onPressed: () =>
+                                    MobileActionSheets.showCreateInvoiceSheet(
+                                      context,
+                                    ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.brandPeach,
+                                  foregroundColor: Colors.black,
+                                ),
+                                icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                                label: Text(AppStrings.tr('New Invoice')),
+                              ),
+                            ],
                           ],
                         )
                       : ListView.separated(
@@ -507,8 +524,10 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
                                     const SizedBox(width: 2),
                                     IconButton(
                                       style: IconButton.styleFrom(
-                                        minimumSize: Size.zero,
-                                        padding: const EdgeInsets.all(4),
+                                        minimumSize: const Size.square(
+                                          AppSizes.topActionButtonSize,
+                                        ),
+                                        padding: EdgeInsets.zero,
                                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                       ),
                                       icon: Icon(
@@ -557,8 +576,10 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
                                     ),
                                     IconButton(
                                       style: IconButton.styleFrom(
-                                        minimumSize: Size.zero,
-                                        padding: const EdgeInsets.all(4),
+                                        minimumSize: const Size.square(
+                                          AppSizes.topActionButtonSize,
+                                        ),
+                                        padding: EdgeInsets.zero,
                                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                       ),
                                       icon: const Icon(
@@ -602,10 +623,25 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'All expense records have been cleared. Tap "Record Expense" to record site expenses, material purchases, or labour payouts.',
+                              'No expenses logged yet. Tap below to record site or material expenses.',
                               textAlign: TextAlign.center,
                               style: AppTypography.bodySmall(isDark),
                             ),
+                            if (canManageAccounts) ...[
+                              const SizedBox(height: 14),
+                              FilledButton.icon(
+                                onPressed: () =>
+                                    MobileActionSheets.showAddExpenseSheet(
+                                      context,
+                                    ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.brandPeach,
+                                  foregroundColor: Colors.black,
+                                ),
+                                icon: const Icon(Icons.payments_outlined, size: 18),
+                                label: Text(AppStrings.tr('Record Expense')),
+                              ),
+                            ],
                           ],
                         )
                       : ListView.separated(

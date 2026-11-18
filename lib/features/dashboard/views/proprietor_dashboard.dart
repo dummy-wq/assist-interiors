@@ -12,6 +12,7 @@ import '../../../core/widgets/screen_layout.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/permissions/app_permissions.dart';
 import '../../auth/state/auth_provider.dart';
+import '../../projects/sheets/take_site_photo_sheet.dart';
 import '../widgets/mobile_action_sheets.dart';
 import '../widgets/proprietor/compact_stat_tile.dart';
 import '../widgets/proprietor/upcoming_handovers_card.dart';
@@ -234,6 +235,10 @@ class _ProprietorDashboardState extends State<ProprietorDashboard> {
           ),
           const SizedBox(height: 16),
 
+          if (_buildPrimaryRoleHeroButton(context, auth, isDark) case final heroBtn?) ...[
+            heroBtn,
+            const SizedBox(height: 14),
+          ],
           if (isFieldStaff) ...[
             _buildFieldQuickActions(isDark, isWide),
             const SizedBox(height: 14),
@@ -522,6 +527,112 @@ class _ProprietorDashboardState extends State<ProprietorDashboard> {
           ],
         ],
       );
+  }
+
+  Widget? _buildPrimaryRoleHeroButton(
+    BuildContext context,
+    AuthProvider auth,
+    bool isDark,
+  ) {
+    final role = auth.currentRole;
+    final IconData icon;
+    final String title;
+    final String subtitle;
+    final VoidCallback onPressed;
+
+    switch (role) {
+      case UserRole.supervisor:
+        icon = Icons.add_a_photo_rounded;
+        title = AppStrings.tr('Take Site Photo');
+        subtitle = 'Capture & upload today\'s site progress photo';
+        onPressed = () => TakeSitePhotoSheet.openQuickCapture(context);
+        break;
+      case UserRole.designer:
+        icon = Icons.cloud_upload_rounded;
+        title = AppStrings.tr('Upload Drawing');
+        subtitle = 'Share 2D plans, 3D renders or material lists';
+        onPressed = () => MobileActionSheets.showUploadRenderSheet(context);
+        break;
+      case UserRole.accounts:
+        icon = Icons.receipt_long_rounded;
+        title = AppStrings.tr('New Invoice');
+        subtitle = 'Create & send a client milestone bill';
+        onPressed = () => MobileActionSheets.showCreateInvoiceSheet(context);
+        break;
+      case UserRole.sales:
+        icon = Icons.person_add_alt_1_rounded;
+        title = AppStrings.tr('Add New Lead');
+        subtitle = 'Record a new client inquiry & call reminder';
+        onPressed = () => MobileActionSheets.showAddLeadSheet(context);
+        break;
+      case UserRole.projectManager:
+        icon = Icons.add_circle_outline_rounded;
+        title = AppStrings.tr('Add Project');
+        subtitle = 'Start a new interior site & milestone checklist';
+        onPressed = () => MobileActionSheets.showCreateProjectSheet(context);
+        break;
+      case UserRole.proprietor:
+        return null;
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: AppColors.brandPeach,
+        borderRadius: BorderRadius.circular(10.0),
+        elevation: 0,
+        child: InkWell(
+          key: const Key('role_primary_hero_action_btn'),
+          borderRadius: BorderRadius.circular(10.0),
+          onTap: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: Icon(icon, size: 26, color: Colors.black),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: Colors.black,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildFieldQuickActions(bool isDark, bool isWide) {

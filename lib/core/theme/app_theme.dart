@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
+import 'app_sizes.dart';
 import 'app_typography.dart';
 export 'app_sizes.dart';
 
@@ -72,13 +73,34 @@ class AppTheme {
           backgroundColor: AppColors.brandPeach,
           foregroundColor: AppColors.darkBackground,
           elevation: 0,
-          minimumSize: const Size(0, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
+          minimumSize: const Size(0, AppSizes.buttonHeight),
+          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: AppSizes.buttonPadding,
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppSizes.borderRadiusMd,
           ),
           textStyle: AppTypography.labelLarge(true).copyWith(
-            fontSize: 13,
+            fontSize: AppSizes.buttonFontSize,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.25,
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.brandPeach,
+          foregroundColor: AppColors.darkBackground,
+          elevation: 0,
+          minimumSize: const Size(0, AppSizes.buttonHeight),
+          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: AppSizes.buttonPadding,
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppSizes.borderRadiusMd,
+          ),
+          textStyle: AppTypography.labelLarge(true).copyWith(
+            fontSize: AppSizes.buttonFontSize,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.25,
           ),
@@ -91,13 +113,15 @@ class AppTheme {
             color: AppColors.brandPeach.withValues(alpha: 0.8),
             width: 1.0,
           ),
-          minimumSize: const Size(0, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
+          minimumSize: const Size(0, AppSizes.buttonHeight),
+          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: AppSizes.buttonPadding,
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppSizes.borderRadiusMd,
           ),
           textStyle: AppTypography.labelLarge(true).copyWith(
-            fontSize: 13,
+            fontSize: AppSizes.buttonFontSize,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.2,
           ),
@@ -106,13 +130,15 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.brandPeach,
-          minimumSize: const Size(0, 38),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
+          minimumSize: const Size(0, AppSizes.buttonHeight),
+          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppSizes.borderRadiusMd,
           ),
           textStyle: AppTypography.labelLarge(true).copyWith(
-            fontSize: 13,
+            fontSize: AppSizes.buttonFontSize,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -240,13 +266,34 @@ class AppTheme {
           backgroundColor: AppColors.brandPeachDark,
           foregroundColor: Colors.white,
           elevation: 0,
-          minimumSize: const Size(0, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
+          minimumSize: const Size(0, AppSizes.buttonHeight),
+          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: AppSizes.buttonPadding,
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppSizes.borderRadiusMd,
           ),
           textStyle: AppTypography.labelLarge(false).copyWith(
-            fontSize: 13,
+            fontSize: AppSizes.buttonFontSize,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.25,
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.brandPeachDark,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          minimumSize: const Size(0, AppSizes.buttonHeight),
+          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: AppSizes.buttonPadding,
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppSizes.borderRadiusMd,
+          ),
+          textStyle: AppTypography.labelLarge(false).copyWith(
+            fontSize: AppSizes.buttonFontSize,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.25,
           ),
@@ -256,13 +303,15 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.brandPeachDark,
           side: const BorderSide(color: AppColors.brandPeachDark, width: 1.0),
-          minimumSize: const Size(0, 40),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
+          minimumSize: const Size(0, AppSizes.buttonHeight),
+          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: AppSizes.buttonPadding,
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppSizes.borderRadiusMd,
           ),
           textStyle: AppTypography.labelLarge(false).copyWith(
-            fontSize: 13,
+            fontSize: AppSizes.buttonFontSize,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.2,
           ),
@@ -271,13 +320,15 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.brandPeachDark,
-          minimumSize: const Size(0, 38),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6.0),
+          minimumSize: const Size(0, AppSizes.buttonHeight),
+          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppSizes.borderRadiusMd,
           ),
           textStyle: AppTypography.labelLarge(false).copyWith(
-            fontSize: 13,
+            fontSize: AppSizes.buttonFontSize,
             fontWeight: FontWeight.w600,
           ),
         ),

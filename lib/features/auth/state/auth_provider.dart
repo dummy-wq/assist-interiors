@@ -20,6 +20,8 @@ class AuthProvider extends ChangeNotifier {
   AppLanguage _language = AppLanguage.english;
   int _photoRetentionMonths = StorageService.defaultPhotoRetentionMonths;
   int _cadRetentionMonths = StorageService.defaultCadRetentionMonths;
+  double _textScaleFactor = 1.0;
+  bool _isProductionMode = false;
   String? _lastAuthError;
 
   /// Emits whenever a new staff sign-up request arrives so active Proprietor
@@ -127,6 +129,8 @@ class AuthProvider extends ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
   bool get isDarkMode => _themeMode == ThemeMode.dark;
   AppLanguage get language => _language;
+  double get textScaleFactor => _textScaleFactor;
+  bool get shouldShowOnboardingTips => _isProductionMode;
   int get photoRetentionMonths => _photoRetentionMonths;
   int get cadRetentionMonths => _cadRetentionMonths;
   List<AppUser> get pendingUsers => List.unmodifiable(_pendingUsers);
@@ -148,10 +152,12 @@ class AuthProvider extends ChangeNotifier {
   // (production app entrypoint), fresh installs with no saved session start on
   // the LoginScreen instead of auto-opening as Proprietor.
   AuthProvider({bool autoDemoLogin = true}) {
+    _isProductionMode = !autoDemoLogin;
     _loadPersistedLanguage();
+    _textScaleFactor = StorageService.getTextScaleFactor();
     _photoRetentionMonths = StorageService.getPhotoRetentionMonths();
     _cadRetentionMonths = StorageService.getCadRetentionMonths();
-    _loadPersistedUsers();
+    _loadPersistedUsers(seedDemoTeam: autoDemoLogin);
     _loadPersistedCustomRoles();
     final savedUserId = StorageService.getCurrentUserId();
     if (savedUserId != null && savedUserId.isNotEmpty) {
@@ -290,14 +296,19 @@ class AuthProvider extends ChangeNotifier {
     AppStrings.setLanguage(lang);
   }
 
-  void _loadPersistedUsers() {
+  void _loadPersistedUsers({bool seedDemoTeam = true}) {
     final storedApproved = StorageService.getApprovedUsers();
     if (storedApproved.isNotEmpty) {
       _approvedUsers.clear();
       _approvedUsers.addAll(storedApproved.map(AppUser.fromMap));
     } else {
       _approvedUsers.clear();
-      _approvedUsers.addAll(_defaultApprovedUsers);
+      if (seedDemoTeam) {
+        _approvedUsers.addAll(_defaultApprovedUsers);
+      } else {
+        // Production studio starts clean with only the Master Proprietor account
+        _approvedUsers.add(_defaultApprovedUsers.first);
+      }
       StorageService.saveApprovedUsers(
         _approvedUsers.map((u) => u.toMap()).toList(),
       );
@@ -309,10 +320,12 @@ class AuthProvider extends ChangeNotifier {
       _pendingUsers.addAll(storedPending.map(AppUser.fromMap));
     } else {
       _pendingUsers.clear();
-      _pendingUsers.addAll(_defaultPendingUsers);
-      StorageService.savePendingUsers(
-        _pendingUsers.map((u) => u.toMap()).toList(),
-      );
+      if (seedDemoTeam) {
+        _pendingUsers.addAll(_defaultPendingUsers);
+        StorageService.savePendingUsers(
+          _pendingUsers.map((u) => u.toMap()).toList(),
+        );
+      }
     }
   }
 
@@ -1034,6 +1047,43 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Allows the Master Proprietor to set a new temporary or permanent password
+  /// for an approved staff member (resolving forgotten passwords without email links).
+  bool resetStaffPassword({
+    required String userId,
+    required String newPassword,
+  }) {
+    _lastAuthError = null;
+    if (!canManageTeam) {
+      _lastAuthError =
+          'Security restriction: Only the Proprietor can reset staff passwords.';
+      return false;
+    }
+    final cleanPassword = newPassword.trim();
+    if (cleanPassword.length < 6) {
+      _lastAuthError = 'Password must be at least 6 characters long.';
+      return false;
+    }
+    final idx = _approvedUsers.indexWhere((u) => u.id == userId);
+    if (idx == -1) {
+      _lastAuthError = 'Staff member not found.';
+      return false;
+    }
+    final salt = SecurityHash.generateSalt();
+    final hash = SecurityHash.hashPassword(cleanPassword, salt);
+    final updated = _approvedUsers[idx].copyWith(
+      passwordHash: hash,
+      passwordSalt: salt,
+    );
+    _approvedUsers[idx] = updated;
+    if (_currentUser?.id == userId) {
+      _currentUser = updated;
+    }
+    _saveUsersToStorage();
+    notifyListeners();
+    return true;
+  }
+
   /// Sends a password reset email when Firebase Auth is connected.
   Future<String?> sendPasswordReset(String email) async {
     final cleanEmail = email.trim();
@@ -1083,6 +1133,13 @@ class AuthProvider extends ChangeNotifier {
     _language = lang;
     AppStrings.setLanguage(lang);
     StorageService.saveLanguage(lang.code);
+    notifyListeners();
+  }
+
+  void setTextScaleFactor(double factor) {
+    final clamped = factor.clamp(0.95, 1.4).toDouble();
+    _textScaleFactor = clamped;
+    StorageService.saveTextScaleFactor(clamped);
     notifyListeners();
   }
 

@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/localization/app_strings.dart';
 import '../../../core/models/project_model.dart';
 import '../../../core/permissions/app_permissions.dart';
 import '../../../core/services/backend_manager.dart';
 import '../../../core/services/phone_call_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/utils/currency_utils.dart';
@@ -768,8 +770,10 @@ class _SalesViewState extends State<SalesView> {
                     : 'No Matching Leads Found',
                 message: _leads.isEmpty
                     ? (canManageSales
-                        ? 'All sales leads and inquiries have been cleared. Tap "Add Lead" to record a prospective client.'
-                        : 'All sales leads and inquiries have been cleared.')
+                        ? AppStrings.tr(
+                            'No client leads yet. Tap below to add your first lead.',
+                          )
+                        : 'No client inquiries yet.')
                     : 'Try adjusting your search, stage, or referral channel filter to view active leads.',
                 action: (_selectedStageFilter != 'All' ||
                         _selectedReferralFilter != 'All Sources' ||
@@ -787,7 +791,21 @@ class _SalesViewState extends State<SalesView> {
                         icon: const Icon(Icons.refresh_rounded, size: 16),
                         label: const Text('Show All Leads'),
                       )
-                    : null,
+                    : (_leads.isEmpty && canManageSales
+                        ? FilledButton.icon(
+                            onPressed: () =>
+                                MobileActionSheets.showAddLeadSheet(context),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.brandPeach,
+                              foregroundColor: Colors.black,
+                            ),
+                            icon: const Icon(
+                              Icons.person_add_alt_1_rounded,
+                              size: 18,
+                            ),
+                            label: Text(AppStrings.tr('Add New Lead')),
+                          )
+                        : null),
               )
             : ListView.separated(
                 key: ValueKey(
@@ -1488,41 +1506,73 @@ class _SalesViewState extends State<SalesView> {
             },
           ),
 
-          // Row 3: Full-Width Action Buttons (equal width & 36px height across card)
+          // Row 3: Full-Width Action Buttons (uniform 38px height across card)
           Row(
             children: [
               Expanded(
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 36,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6.0),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    icon: const Icon(Icons.phone_rounded, size: 13),
-                    label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        phone,
-                        maxLines: 1,
-                        style: AppTypography.labelSmall(isDark).copyWith(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppColors.brandPeach
-                              : AppColors.brandPeachDark,
-                        ),
+                child: OutlinedButton.icon(
+                  style: AppSizes.compactOutlinedStyle(
+                    foregroundColor: isDark
+                        ? AppColors.brandPeach
+                        : AppColors.brandPeachDark,
+                    borderColor: isDark
+                        ? AppColors.brandPeach
+                        : AppColors.brandPeachDark,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                  ),
+                  icon: const Icon(Icons.phone_rounded, size: 14),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      phone,
+                      maxLines: 1,
+                      style: AppTypography.labelSmall(isDark).copyWith(
+                        fontSize: AppSizes.compactButtonFontSize,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppColors.brandPeach
+                            : AppColors.brandPeachDark,
                       ),
                     ),
-                    onPressed: () => PhoneCallService.dialNumber(
-                      context,
-                      phoneNumber: phone,
-                      contactName: clientName,
+                  ),
+                  onPressed: () => PhoneCallService.dialNumber(
+                    context,
+                    phoneNumber: phone,
+                    contactName: clientName,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: AppSizes.compactOutlinedStyle(
+                    foregroundColor: isDark
+                        ? AppColors.brandPeach
+                        : AppColors.brandPeachDark,
+                    borderColor: isDark
+                        ? AppColors.brandPeach
+                        : AppColors.brandPeachDark,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                  ),
+                  icon: const Icon(Icons.edit_calendar_rounded, size: 14),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Schedule Call',
+                      maxLines: 1,
+                      style: AppTypography.labelSmall(isDark).copyWith(
+                        fontSize: AppSizes.compactButtonFontSize,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppColors.brandPeach
+                            : AppColors.brandPeachDark,
+                      ),
                     ),
+                  ),
+                  onPressed: () => MobileActionSheets.showScheduleCallSheet(
+                    context,
+                    lead,
+                    onUpdated: _loadLeads,
                   ),
                 ),
               ),
@@ -1530,65 +1580,22 @@ class _SalesViewState extends State<SalesView> {
               Expanded(
                 child: SizedBox(
                   width: double.infinity,
-                  height: 36,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6.0),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    icon: const Icon(Icons.edit_calendar_rounded, size: 13),
-                    label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        'Schedule Call',
-                        maxLines: 1,
-                        style: AppTypography.labelSmall(isDark).copyWith(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppColors.brandPeach
-                              : AppColors.brandPeachDark,
-                        ),
-                      ),
-                    ),
-                    onPressed: () => MobileActionSheets.showScheduleCallSheet(
-                      context,
-                      lead,
-                      onUpdated: _loadLeads,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 36,
+                  height: AppSizes.compactButtonHeight,
                   child: isConverted
                       ? OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
+                          style: AppSizes.compactOutlinedStyle(
                             foregroundColor: AppColors.success,
-                            side: const BorderSide(
-                              color: AppColors.success,
-                              width: 0.8,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6.0),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            visualDensity: VisualDensity.compact,
+                            borderColor: AppColors.success,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
                           ),
-                          icon: const Icon(Icons.apartment_rounded, size: 13),
+                          icon: const Icon(Icons.apartment_rounded, size: 14),
                           label: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
                               'View in Projects',
                               maxLines: 1,
                               style: AppTypography.labelSmall(isDark).copyWith(
-                                fontSize: 11,
+                                fontSize: AppSizes.compactButtonFontSize,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.success,
                               ),
@@ -1603,19 +1610,14 @@ class _SalesViewState extends State<SalesView> {
                         )
                       : (canCreateProject
                             ? ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
+                                style: AppSizes.compactElevatedStyle(
                                   backgroundColor: AppColors.brandPeach,
                                   foregroundColor: Colors.black,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6.0),
-                                  ),
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 8),
-                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(horizontal: 6),
                                 ),
                                 icon: const Icon(
                                   Icons.rocket_launch_rounded,
-                                  size: 13,
+                                  size: 14,
                                 ),
                                 label: FittedBox(
                                   fit: BoxFit.scaleDown,
@@ -1625,7 +1627,7 @@ class _SalesViewState extends State<SalesView> {
                                     style: AppTypography.labelSmall(
                                       isDark,
                                     ).copyWith(
-                                      fontSize: 11,
+                                      fontSize: AppSizes.compactButtonFontSize,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.black,
                                     ),
@@ -2323,10 +2325,7 @@ class _SalesViewState extends State<SalesView> {
               width: double.infinity,
               child: PillBox(
                 label: 'All (${_projects.length})',
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 7.5,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 isSelected: _selectedProjectStatusFilter == 'All',
                 activeColor: AppColors.brandPeach,
                 onSelected: () =>
@@ -2341,10 +2340,7 @@ class _SalesViewState extends State<SalesView> {
               child: PillBox(
                 label: 'Ongoing ($ongoingCount)',
                 icon: Icons.construction_rounded,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 7.5,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 isSelected: _selectedProjectStatusFilter == 'Ongoing',
                 activeColor: AppColors.brandPeach,
                 onSelected: () =>
@@ -2359,10 +2355,7 @@ class _SalesViewState extends State<SalesView> {
               child: PillBox(
                 label: 'Completed ($completedCount)',
                 icon: Icons.verified_rounded,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 7.5,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 isSelected: _selectedProjectStatusFilter == 'Completed',
                 activeColor: AppColors.success,
                 onSelected: () =>
@@ -2377,10 +2370,7 @@ class _SalesViewState extends State<SalesView> {
               child: PillBox(
                 label: 'Delayed ($delayedCount)',
                 icon: Icons.warning_amber_rounded,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 7.5,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 isSelected: _selectedProjectStatusFilter == 'Delayed',
                 activeColor: AppColors.error,
                 onSelected: () =>

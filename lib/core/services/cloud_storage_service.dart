@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
+import 'backend_manager.dart';
 import 'storage_service.dart';
 
 class CloudUploadResult {
@@ -122,7 +123,11 @@ class CloudStorageService {
     String? capturedBy,
     int? retentionMonths,
   }) async {
-    if (!await ensureAuthenticated()) return null;
+    if (!await ensureAuthenticated()) {
+      BackendManager.setSyncState(CloudSyncState.offline);
+      return null;
+    }
+    BackendManager.setSyncState(CloudSyncState.syncing);
     try {
       final rawProject = projectId ?? projectName ?? 'general';
       final safeProject = _safeSegment(rawProject);
@@ -161,8 +166,10 @@ class CloudStorageService {
 
       await task.timeout(const Duration(seconds: 30));
       final url = await ref.getDownloadURL();
+      BackendManager.setSyncState(CloudSyncState.synced);
       return CloudUploadResult(storagePath: storagePath, downloadUrl: url);
     } catch (e) {
+      BackendManager.setSyncState(CloudSyncState.offline);
       debugPrint('Firebase Storage uploadSitePhoto error: $e');
       return null;
     }
@@ -357,7 +364,11 @@ class CloudStorageService {
     int? retentionMonths,
     String contentType = 'application/octet-stream',
   }) async {
-    if (!await ensureAuthenticated()) return null;
+    if (!await ensureAuthenticated()) {
+      BackendManager.setSyncState(CloudSyncState.offline);
+      return null;
+    }
+    BackendManager.setSyncState(CloudSyncState.syncing);
     try {
       final rawProject = projectId ?? projectName ?? 'general';
       final safeProject = _safeSegment(rawProject);
