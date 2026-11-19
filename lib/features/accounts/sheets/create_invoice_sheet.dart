@@ -17,6 +17,7 @@ import '../../dashboard/widgets/mobile_action_sheets.dart';
 import '../dialogs/upload_invoice_qr_sheet.dart';
 import '../dialogs/invoice_qr_payment_dialog.dart';
 
+import '../../../core/utils/app_notification.dart';
 class CreateInvoiceSheet {
   CreateInvoiceSheet._();
 
@@ -401,7 +402,6 @@ class CreateInvoiceSheet {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.brandPeach,
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child:
                           const Text('Generate & Send Invoice (GST Compliant)'),
@@ -446,14 +446,7 @@ class CreateInvoiceSheet {
                             newInvoice;
                         Navigator.pop(modalContext);
 
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text(
-                              'GST Tax Invoice generated successfully with Payment QR!',
-                            ),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
-                            action: SnackBarAction(
+                        AppNotification.show(context, message: 'GST Tax Invoice generated successfully with Payment QR!', backgroundColor: AppColors.success, action: SnackBarAction(
                               label: 'Pay via QR',
                               textColor: Colors.white,
                               onPressed: () {
@@ -462,9 +455,7 @@ class CreateInvoiceSheet {
                                   invoice: newInvoice,
                                 );
                               },
-                            ),
-                          ),
-                        );
+                            ));
                       },
                     ),
                   ],

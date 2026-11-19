@@ -10,6 +10,7 @@ import '../../auth/models/custom_role_model.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/state/auth_provider.dart';
 
+import '../../../core/utils/app_notification.dart';
 /// Security-hardened Role & Permission configuration dialog for the Proprietor.
 /// Used to:
 /// 1) Authorize a pending team applicant with a pre-existing OR custom checked-off role.
@@ -711,13 +712,7 @@ class RolePermissionConfigDialog {
             );
             if (err != null) {
               innerSetState?.call(() => validationError = err);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(err),
-                  backgroundColor: AppColors.error,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+              AppNotification.show(context, message: err, backgroundColor: AppColors.error);
               return;
             }
             Navigator.of(dialogCtx).pop();

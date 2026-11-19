@@ -16,6 +16,7 @@ import '../../../core/services/permission_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
+import '../../../core/utils/app_notification.dart';
 class UploadInvoiceQrSheet {
   UploadInvoiceQrSheet._();
 
@@ -297,8 +298,6 @@ class UploadInvoiceQrSheet {
                                 ),
                               ),
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 11),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(4.0),
                                 ),
@@ -358,8 +357,6 @@ class UploadInvoiceQrSheet {
                                 ),
                               ),
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 11),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(4.0),
                                 ),
@@ -416,8 +413,6 @@ class UploadInvoiceQrSheet {
                                 ),
                               ),
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 11),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(4.0),
                                 ),
@@ -471,7 +466,6 @@ class UploadInvoiceQrSheet {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.brandPeach,
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4.0),
                         ),
@@ -510,15 +504,7 @@ class UploadInvoiceQrSheet {
 
                               if (modalContext.mounted) {
                                 Navigator.pop(modalContext);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Payment QR Code attached successfully!',
-                                    ),
-                                    backgroundColor: AppColors.success,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
+                                AppNotification.show(context, message: 'Payment QR Code attached successfully!', backgroundColor: AppColors.success);
                               }
                             },
                       child: Text(

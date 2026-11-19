@@ -9,6 +9,7 @@ import '../../../core/services/storage_service.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
+import '../../../core/utils/app_notification.dart';
 class SiteLogSheet {
   SiteLogSheet._();
 
@@ -229,7 +230,6 @@ class SiteLogSheet {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(4.0),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
                     const SizedBox(height: 18),
@@ -237,7 +237,6 @@ class SiteLogSheet {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.brandPeach,
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: const Text('Submit Site Report to PM'),
                       onPressed: () {
@@ -264,17 +263,9 @@ class SiteLogSheet {
                             newLog;
 
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              attachedPhotos.isNotEmpty
+                        AppNotification.show(context, message: attachedPhotos.isNotEmpty
                                   ? 'Daily site log posted with ${attachedPhotos.length} photos!'
-                                  : 'Daily site log posted!',
-                            ),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                                  : 'Daily site log posted!', backgroundColor: AppColors.success);
                       },
                     ),
                   ],

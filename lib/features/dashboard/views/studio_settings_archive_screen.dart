@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/localization/app_strings.dart';
 import '../../../core/services/permission_service.dart';
 import '../../../core/services/photo_archive_service.dart';
 import '../../../core/services/storage_service.dart';
@@ -25,8 +24,27 @@ class StudioSettingsArchiveScreen extends StatefulWidget {
 
   static Future<void> open(BuildContext context) {
     return Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const StudioSettingsArchiveScreen(),
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 200),
+        reverseTransitionDuration: const Duration(milliseconds: 170),
+        pageBuilder: (_, _, _) => const StudioSettingsArchiveScreen(),
+        transitionsBuilder: (_, animation, _, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.025),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
+        },
       ),
     );
   }
@@ -841,37 +859,6 @@ class _StudioSettingsArchiveScreenState
               }
             },
           ),
-          const SizedBox(height: 14),
-
-          // Language Selector
-          Text(
-            'INTERFACE LANGUAGE',
-            style: AppTypography.labelSmall(isDark).copyWith(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final lang in AppLanguage.values)
-                PillBox(
-                  label: '${lang.shortCode} • ${lang.nativeName}',
-                  isSelected: auth.language == lang,
-                  activeColor: AppColors.brandPeach,
-                  onSelected: () {
-                    auth.setLanguage(lang);
-                    AppNotification.show(
-                      context,
-                      message: 'Language set to ${lang.nativeName}',
-                    );
-                  },
-                ),
-            ],
-          ),
-
           if (auth.canManageTeam) ...[
             const Divider(height: 24),
             SizedBox(

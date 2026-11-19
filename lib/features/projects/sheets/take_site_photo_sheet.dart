@@ -15,6 +15,7 @@ import '../../../core/theme/app_sizes.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 
+import '../../../core/utils/app_notification.dart';
 class TakeSitePhotoSheet {
   TakeSitePhotoSheet._();
 
@@ -526,18 +527,7 @@ class TakeSitePhotoSheet {
                                                 'Camera capture error: $e',
                                               );
                                               if (modalContext.mounted) {
-                                                ScaffoldMessenger.of(modalContext)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'Camera error: ${e.toString()}',
-                                                    ),
-                                                    backgroundColor:
-                                                        AppColors.error,
-                                                    behavior:
-                                                        SnackBarBehavior.floating,
-                                                  ),
-                                                );
+                                                AppNotification.show(modalContext, message: 'Camera error: ${e.toString()}', backgroundColor: AppColors.error);
                                               }
                                             } finally {
                                               setModalState(
@@ -559,9 +549,6 @@ class TakeSitePhotoSheet {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.brandPeach,
                                       foregroundColor: Colors.black,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 11,
-                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius:
                                             BorderRadius.circular(4.0),
@@ -611,18 +598,7 @@ class TakeSitePhotoSheet {
                                                 'Gallery pick error: $e',
                                               );
                                               if (modalContext.mounted) {
-                                                ScaffoldMessenger.of(modalContext)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'Gallery error: ${e.toString()}',
-                                                    ),
-                                                    backgroundColor:
-                                                        AppColors.error,
-                                                    behavior:
-                                                        SnackBarBehavior.floating,
-                                                  ),
-                                                );
+                                                AppNotification.show(modalContext, message: 'Gallery error: ${e.toString()}', backgroundColor: AppColors.error);
                                               }
                                             } finally {
                                               setModalState(
@@ -646,9 +622,6 @@ class TakeSitePhotoSheet {
                                       ),
                                     ),
                                     style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 11,
-                                      ),
                                       side: BorderSide(
                                         color: isDark
                                             ? AppColors.darkBorder
@@ -701,18 +674,7 @@ class TakeSitePhotoSheet {
                                                 'File picker photo error: $e',
                                               );
                                               if (modalContext.mounted) {
-                                                ScaffoldMessenger.of(modalContext)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'File access error: ${e.toString()}',
-                                                    ),
-                                                    backgroundColor:
-                                                        AppColors.error,
-                                                    behavior:
-                                                        SnackBarBehavior.floating,
-                                                  ),
-                                                );
+                                                AppNotification.show(modalContext, message: 'File access error: ${e.toString()}', backgroundColor: AppColors.error);
                                               }
                                             } finally {
                                               setModalState(
@@ -736,9 +698,6 @@ class TakeSitePhotoSheet {
                                       ),
                                     ),
                                     style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 11,
-                                      ),
                                       side: BorderSide(
                                         color: isDark
                                             ? AppColors.darkBorder
@@ -1108,7 +1067,6 @@ class TakeSitePhotoSheet {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.brandPeach,
                           foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(4.0),
                           ),

@@ -410,32 +410,8 @@ class _StudioSidePaneDrawerState extends State<StudioSidePaneDrawer> {
                     ),
                     const SizedBox(height: 16),
 
-                    // 4. Language Selector
-                    _buildSectionLabel(AppStrings.tr('INTERFACE LANGUAGE'), isDark),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final lang in AppLanguage.values)
-                          PillBox(
-                            label: lang.nativeName,
-                            isSelected: auth.language == lang,
-                            activeColor: AppColors.brandPeach,
-                            onSelected: () {
-                              auth.setLanguage(lang);
-                              AppNotification.show(
-                                context,
-                                message: 'Language set to ${lang.nativeName}',
-                              );
-                            },
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // 4b. Text Size Selector for Easier Reading
-                    _buildSectionLabel(AppStrings.tr('Text Size').toUpperCase(), isDark),
+                    // 4. Text Size Selector for Easier Reading
+                    _buildSectionLabel('TEXT SIZE', isDark),
                     const SizedBox(height: 6),
                     Row(
                       children: [

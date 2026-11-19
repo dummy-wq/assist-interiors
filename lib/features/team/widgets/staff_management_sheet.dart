@@ -8,6 +8,7 @@ import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
+import '../../../core/widgets/studio_dialog.dart';
 import '../../auth/models/custom_role_model.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/state/auth_provider.dart';
@@ -60,7 +61,7 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    showDialog(
+    showStudioDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         shape: const RoundedRectangleBorder(
@@ -118,12 +119,10 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
             onPressed: () {
               auth.dismissStaff(user.id);
               Navigator.pop(dialogCtx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Staff access revoked for ${user.fullName}.'),
-                  backgroundColor: AppColors.error,
-                  behavior: SnackBarBehavior.floating,
-                ),
+              AppNotification.show(
+                context,
+                message: 'Staff access revoked for ${user.fullName}.',
+                backgroundColor: AppColors.error,
               );
             },
             child: const Text('Confirm Dismissal'),
@@ -146,14 +145,17 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
         constraints: const BoxConstraints(maxWidth: 720),
         child: Container(
           height: MediaQuery.of(context).size.height * 0.85,
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: isDark
                 ? AppColors.darkBackground
                 : AppColors.lightBackground,
-            borderRadius: BorderRadius.circular(6.0),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(16.0),
+            ),
             border: Border.all(
               color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              width: 1.2,
+              width: 1.0,
             ),
           ),
           child: SafeArea(
@@ -161,6 +163,24 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
             maintainBottomViewPadding: true,
             child: Column(
               children: [
+                // Unified Sheet Drag Handle Bar
+                Container(
+                  width: double.infinity,
+                  color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                  padding: const EdgeInsets.only(top: 10, bottom: 4),
+                  child: Center(
+                    child: Container(
+                      width: 38,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.22)
+                            : Colors.black.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(2.0),
+                      ),
+                    ),
+                  ),
+                ),
                 // Header
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -255,21 +275,29 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
 
                 // Tab View Content
                 Expanded(
-                  child: _activeTab == 0
-                      ? _buildPendingTab(context, isDark, auth, pendingList)
-                      : (_activeTab == 1
-                            ? _buildApprovedTab(
-                                context,
-                                isDark,
-                                auth,
-                                approvedList,
-                              )
-                            : _buildCustomRolesTab(
-                                context,
-                                isDark,
-                                auth,
-                                customRoles,
-                              )),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 160),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: KeyedSubtree(
+                      key: ValueKey('staff_sheet_tab_$_activeTab'),
+                      child: _activeTab == 0
+                          ? _buildPendingTab(context, isDark, auth, pendingList)
+                          : (_activeTab == 1
+                                ? _buildApprovedTab(
+                                    context,
+                                    isDark,
+                                    auth,
+                                    approvedList,
+                                  )
+                                : _buildCustomRolesTab(
+                                    context,
+                                    isDark,
+                                    auth,
+                                    customRoles,
+                                  )),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -629,7 +657,9 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
     return Expanded(
       child: InkWell(
         onTap: () => setState(() => _activeTab = tabIndex),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
           decoration: BoxDecoration(
             border: Border(
@@ -889,12 +919,10 @@ class PendingApprovalActionRow extends StatelessWidget {
             ),
             onPressed: () {
               auth.rejectUser(user.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Registration for ${user.fullName} dismissed.'),
-                  backgroundColor: AppColors.error,
-                  behavior: SnackBarBehavior.floating,
-                ),
+              AppNotification.show(
+                context,
+                message: 'Registration for ${user.fullName} dismissed.',
+                backgroundColor: AppColors.error,
               );
             },
             child: FittedBox(
@@ -948,14 +976,11 @@ class PendingApprovalActionRow extends StatelessWidget {
             ),
             onPressed: () {
               auth.approveUser(user.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
+              AppNotification.show(
+                context,
+                message:
                     '${user.fullName} approved as ${user.effectiveRoleTitle}!',
-                  ),
-                  backgroundColor: AppColors.success,
-                  behavior: SnackBarBehavior.floating,
-                ),
+                backgroundColor: AppColors.success,
               );
             },
             child: FittedBox(

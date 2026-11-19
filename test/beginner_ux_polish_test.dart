@@ -21,7 +21,6 @@ void main() {
     await StorageService.init();
     await StorageService.clearAll();
     await StorageService.clearUsers();
-    AppStrings.setLanguage(AppLanguage.english);
   });
 
   test('Production AuthProvider starts with empty studio (only Master Proprietor)', () {
@@ -66,17 +65,13 @@ void main() {
     expect(StorageService.getTextScaleFactor(), equals(1.15));
   });
 
-  test('Hindi and Kannada translations exist for new UX labels', () {
-    AppStrings.setLanguage(AppLanguage.hindi);
-    expect(AppStrings.tr('Take Site Photo'), equals('साइट फ़ोटो लें'));
-    expect(AppStrings.tr('Reset Password'), equals('पासवर्ड रीसेट करें'));
-
-    AppStrings.setLanguage(AppLanguage.kannada);
-    expect(AppStrings.tr('Take Site Photo'), equals('ಸೈಟ್ ಫೋಟೋ ತೆಗೆಯಿರಿ'));
-    expect(AppStrings.tr('Reset Password'), equals('ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿ'));
+  test('Plain English labels map confusing jargon consistently', () {
+    expect(AppStrings.tr('Upload BOQ'), equals('Upload Material List'));
+    expect(AppStrings.tr('Add Amendment'), equals('New Change Request'));
+    expect(AppStrings.tr('Take Site Photo'), equals('Take Site Photo'));
   });
 
-  testWidgets('SyncStatusBadge renders readable status in English and Kannada', (tester) async {
+  testWidgets('SyncStatusBadge renders readable status cleanly', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(body: Center(child: SyncStatusBadge())),
@@ -85,10 +80,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('⚠ Offline – will sync later'), findsOneWidget);
-
-    AppStrings.setLanguage(AppLanguage.kannada);
-    await tester.pumpAndSettle();
-    expect(find.text('⚠ ಆಫ್‌ಲೈನ್ – ನಂತರ ಸಿಂಕ್ ಆಗುತ್ತದೆ'), findsOneWidget);
   });
 
   testWidgets('RoleOnboardingGuide displays tailored quick tips and navigates steps', (tester) async {

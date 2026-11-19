@@ -9,6 +9,7 @@ import '../../../core/widgets/quick_fade_dropdown.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
+import '../../../core/utils/app_notification.dart';
 class AddVendorSheet {
   AddVendorSheet._();
 
@@ -254,7 +255,6 @@ class AddVendorSheet {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.brandPeach,
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6.0),
                         ),
@@ -325,15 +325,7 @@ class AddVendorSheet {
                         MobileActionSheets.vendorCreatedNotifier.value =
                             newVendor;
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Vendor registered in Assist Interiors procurement ledger!',
-                            ),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                        AppNotification.show(context, message: 'Vendor registered in Assist Interiors procurement ledger!', backgroundColor: AppColors.success);
                       },
                       icon: const Icon(Icons.check_circle_outline_rounded),
                       label: const Text(

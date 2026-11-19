@@ -14,6 +14,7 @@ import '../../../core/services/storage_service.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
+import '../../../core/utils/app_notification.dart';
 class UploadRenderSheet extends StatefulWidget {
   final String? preselectedProject;
   final String? initialType;
@@ -245,13 +246,7 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('File permission error: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppNotification.show(context, message: 'File permission error: ${e.toString()}', backgroundColor: AppColors.error);
       }
     } finally {
       if (mounted) {
@@ -374,13 +369,7 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
     widget.onUploaded?.call(newAsset);
 
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$title uploaded successfully!'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppNotification.show(context, message: '$title uploaded successfully!', backgroundColor: AppColors.success);
   }
 
   @override
@@ -851,7 +840,6 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.brandPeach,
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(4.0),
                 ),

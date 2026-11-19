@@ -5,7 +5,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/blueprint_grid_painter.dart';
 import '../../../core/widgets/expanded_detail_dialog.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
+import '../../../core/widgets/studio_dialog.dart';
 
+import '../../../core/utils/app_notification.dart';
 /// Modal dialog for inspecting architectural CAD drawings, 3D renders, and BOQs.
 class DesignAssetViewerDialog {
   DesignAssetViewerDialog._();
@@ -58,7 +60,7 @@ class DesignAssetViewerDialog {
       return Icons.description_rounded;
     }
 
-    showDialog(
+    showStudioDialog(
       context: context,
       builder: (dialogCtx) {
         return StatefulBuilder(
@@ -582,15 +584,7 @@ class DesignAssetViewerDialog {
                                     );
                                     return;
                                   }
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Exported $title ($format) successfully.',
-                                      ),
-                                      backgroundColor: AppColors.success,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
+                                  AppNotification.show(context, message: 'Exported $title ($format) successfully.', backgroundColor: AppColors.success);
                                 },
                                 icon: const Icon(
                                   Icons.file_download_outlined,

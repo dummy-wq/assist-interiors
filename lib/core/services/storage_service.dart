@@ -33,7 +33,6 @@ class StorageService {
   static const String _keyPendingUsers = 'assist_pending_users_v1';
   static const String _keyCustomRoles = 'assist_custom_roles_v1';
   static const String _keyCurrentUserId = 'assist_current_user_id_v1';
-  static const String _keyAppLanguage = 'assist_app_language_v1';
   static const String _keyTextScaleFactor = 'assist_text_scale_v1';
   static const String _keyOnboardingPrefix = 'assist_onboarding_seen_v1_';
   static const String _keyPhotoRetentionMonths =
@@ -789,15 +788,7 @@ class StorageService {
     }
   }
 
-  // ==================== LANGUAGE & ACCESSIBILITY PREFERENCES ====================
-
-  static String getLanguage() {
-    return _prefs?.getString(_keyAppLanguage) ?? 'en';
-  }
-
-  static Future<void> saveLanguage(String code) async {
-    await _prefs?.setString(_keyAppLanguage, code);
-  }
+  // ==================== ACCESSIBILITY & ONBOARDING PREFERENCES ====================
 
   static double getTextScaleFactor() {
     final val = _prefs?.getDouble(_keyTextScaleFactor);

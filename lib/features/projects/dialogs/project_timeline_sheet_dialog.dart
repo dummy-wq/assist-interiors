@@ -8,7 +8,9 @@ import '../../../core/services/permission_service.dart';
 import '../../../core/services/spreadsheet_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
+import '../../../core/widgets/studio_dialog.dart';
 
+import '../../../core/utils/app_notification.dart';
 /// Compact dialog for linking a project timeline Excel (.xlsx, .xls, .csv)
 /// file and opening it externally in Excel, Google Sheets, or the system viewer.
 class ProjectTimelineSheetDialog {
@@ -50,7 +52,7 @@ class ProjectTimelineSheetDialog {
 
     bool isUploading = false;
 
-    showDialog(
+    showStudioDialog(
       context: context,
       builder: (dialogCtx) {
         return StatefulBuilder(
@@ -134,15 +136,7 @@ class ProjectTimelineSheetDialog {
                 onSheetUpdated?.call(newSheetData);
 
                 if (modalCtx.mounted) {
-                  ScaffoldMessenger.of(modalCtx)
-                    ..clearSnackBars()
-                    ..showSnackBar(
-                      SnackBar(
-                        content: Text('Linked Excel file "${picked.name}".'),
-                        backgroundColor: AppColors.success,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                  AppNotification.show(modalCtx, message: 'Linked Excel file "${picked.name}".', backgroundColor: AppColors.success);
                 }
               } catch (e) {
                 debugPrint('Error linking Excel file: $e');
@@ -167,29 +161,11 @@ class ProjectTimelineSheetDialog {
                   return;
                 }
                 if (modalCtx.mounted) {
-                  ScaffoldMessenger.of(modalCtx)
-                    ..clearSnackBars()
-                    ..showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'File URL not available yet. Please re-upload the Excel file to sync it to cloud storage.',
-                        ),
-                        backgroundColor: AppColors.warning,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                  AppNotification.show(modalCtx, message: 'File URL not available yet. Please re-upload the Excel file to sync it to cloud storage.', backgroundColor: AppColors.warning);
                 }
               } catch (e) {
                 if (modalCtx.mounted) {
-                  ScaffoldMessenger.of(modalCtx)
-                    ..clearSnackBars()
-                    ..showSnackBar(
-                      SnackBar(
-                        content: Text('Could not launch external viewer: $e'),
-                        backgroundColor: AppColors.error,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                  AppNotification.show(modalCtx, message: 'Could not launch external viewer: $e', backgroundColor: AppColors.error);
                 }
               }
             }
@@ -408,9 +384,6 @@ class ProjectTimelineSheetDialog {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: excelGreen,
                                       foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius:
                                             BorderRadius.circular(5.0),
@@ -544,9 +517,6 @@ class ProjectTimelineSheetDialog {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: excelGreen,
                                       foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius:
                                             BorderRadius.circular(5.0),

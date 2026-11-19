@@ -74,7 +74,6 @@ class AppTheme {
           foregroundColor: AppColors.darkBackground,
           elevation: 0,
           minimumSize: const Size(0, AppSizes.buttonHeight),
-          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           padding: AppSizes.buttonPadding,
           shape: const RoundedRectangleBorder(
@@ -93,7 +92,6 @@ class AppTheme {
           foregroundColor: AppColors.darkBackground,
           elevation: 0,
           minimumSize: const Size(0, AppSizes.buttonHeight),
-          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           padding: AppSizes.buttonPadding,
           shape: const RoundedRectangleBorder(
@@ -114,7 +112,6 @@ class AppTheme {
             width: 1.0,
           ),
           minimumSize: const Size(0, AppSizes.buttonHeight),
-          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           padding: AppSizes.buttonPadding,
           shape: const RoundedRectangleBorder(
@@ -131,7 +128,6 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: AppColors.brandPeach,
           minimumSize: const Size(0, AppSizes.buttonHeight),
-          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           shape: const RoundedRectangleBorder(
@@ -267,7 +263,6 @@ class AppTheme {
           foregroundColor: Colors.white,
           elevation: 0,
           minimumSize: const Size(0, AppSizes.buttonHeight),
-          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           padding: AppSizes.buttonPadding,
           shape: const RoundedRectangleBorder(
@@ -286,7 +281,6 @@ class AppTheme {
           foregroundColor: Colors.white,
           elevation: 0,
           minimumSize: const Size(0, AppSizes.buttonHeight),
-          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           padding: AppSizes.buttonPadding,
           shape: const RoundedRectangleBorder(
@@ -304,7 +298,6 @@ class AppTheme {
           foregroundColor: AppColors.brandPeachDark,
           side: const BorderSide(color: AppColors.brandPeachDark, width: 1.0),
           minimumSize: const Size(0, AppSizes.buttonHeight),
-          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           padding: AppSizes.buttonPadding,
           shape: const RoundedRectangleBorder(
@@ -321,7 +314,6 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: AppColors.brandPeachDark,
           minimumSize: const Size(0, AppSizes.buttonHeight),
-          maximumSize: const Size(double.infinity, AppSizes.buttonHeight),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           shape: const RoundedRectangleBorder(

@@ -103,7 +103,9 @@ class _PillBoxState extends State<PillBox> with SingleTickerProviderStateMixin {
         onTapUp: _handleTapUp,
         onTapCancel: _handleTapCancel,
         behavior: HitTestBehavior.opaque,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOut,
           constraints: BoxConstraints(
             minHeight: resolvedHeight,
             maxHeight: resolvedHeight,

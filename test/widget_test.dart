@@ -195,7 +195,6 @@ void main() {
       expect(find.byTooltip('Toggle Theme'), findsOneWidget);
       expect(find.byTooltip('Switch Demo Role'), findsOneWidget);
       expect(find.byTooltip('Sign Out'), findsOneWidget);
-      expect(find.text('English'), findsWidgets);
       expect(find.text('Normal'), findsOneWidget);
       expect(find.text('6 Months (Default)'), findsOneWidget);
       expect(find.text('12 Months'), findsOneWidget);

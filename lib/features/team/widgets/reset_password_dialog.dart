@@ -5,6 +5,7 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/app_notification.dart';
+import '../../../core/widgets/studio_dialog.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/state/auth_provider.dart';
 
@@ -16,7 +17,7 @@ class ResetStaffPasswordDialog {
     BuildContext context, {
     required AppUser targetUser,
   }) {
-    return showDialog<void>(
+    return showStudioDialog<void>(
       context: context,
       builder: (_) => _ResetPasswordDialogBody(
         targetUser: targetUser,

@@ -8,6 +8,7 @@ import '../../../core/services/storage_service.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
+import '../../../core/utils/app_notification.dart';
 class AssignMilestoneSheet {
   AssignMilestoneSheet._();
 
@@ -92,7 +93,6 @@ class AssignMilestoneSheet {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brandPeach,
                   foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: const Text('Dispatch Task Milestone'),
                 onPressed: () {
@@ -136,15 +136,7 @@ class AssignMilestoneSheet {
                   MobileActionSheets.taskCreatedNotifier.value = newTask;
 
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Milestone scheduled and task dispatched to team!',
-                      ),
-                      backgroundColor: AppColors.success,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                  AppNotification.show(context, message: 'Milestone scheduled and task dispatched to team!', backgroundColor: AppColors.success);
                 },
               ),
             ],

@@ -9,6 +9,7 @@ import '../../../core/services/phone_call_service.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
+import '../../../core/utils/app_notification.dart';
 class ScheduleCallSheet {
   ScheduleCallSheet._();
 
@@ -117,7 +118,6 @@ class ScheduleCallSheet {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6.0),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
                           side: BorderSide(
                             color: AppColors.brandPeach.withValues(alpha: 0.6),
                           ),
@@ -157,7 +157,6 @@ class ScheduleCallSheet {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(6.0),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                             icon: const Icon(
                               Icons.calendar_month_rounded,
@@ -188,7 +187,6 @@ class ScheduleCallSheet {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(6.0),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                             icon: const Icon(
                               Icons.access_time_rounded,
@@ -236,7 +234,6 @@ class ScheduleCallSheet {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.brandPeach,
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6.0),
                         ),
@@ -278,15 +275,7 @@ class ScheduleCallSheet {
 
                         if (!context.mounted) return;
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Call scheduled for $dateFormatted at $timeFormatted!',
-                            ),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                        AppNotification.show(context, message: 'Call scheduled for $dateFormatted at $timeFormatted!', backgroundColor: AppColors.success);
                       },
                     ),
                   ],

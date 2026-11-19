@@ -121,9 +121,14 @@ class AssistInteriorsApp extends StatelessWidget {
             ),
           );
         },
-        home: auth.isAuthenticated
-            ? const MainDashboardScreen()
-            : const LoginScreen(),
+        home: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          child: auth.isAuthenticated
+              ? const MainDashboardScreen(key: ValueKey('main_dashboard'))
+              : const LoginScreen(key: ValueKey('login_screen')),
+        ),
       ),
     );
   }

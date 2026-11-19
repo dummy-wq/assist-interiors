@@ -9,6 +9,7 @@ import '../../../core/services/storage_service.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
+import '../../../core/utils/app_notification.dart';
 class AddExpenseSheet {
   AddExpenseSheet._();
 
@@ -116,7 +117,6 @@ class AddExpenseSheet {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brandPeach,
                   foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 onPressed: () {
                   final title = titleController.text.trim();
@@ -140,13 +140,7 @@ class AddExpenseSheet {
                   MobileActionSheets.expenseCreatedNotifier.value = newExpense;
 
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Expense "$title" recorded in ledger!'),
-                      backgroundColor: AppColors.success,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                  AppNotification.show(context, message: 'Expense "$title" recorded in ledger!', backgroundColor: AppColors.success);
                 },
                 icon: const Icon(Icons.check_circle_outline_rounded),
                 label: const Text(

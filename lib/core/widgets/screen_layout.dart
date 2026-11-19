@@ -84,31 +84,26 @@ class ScreenHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return ValueListenableBuilder<AppLanguage>(
-      valueListenable: AppStrings.languageNotifier,
-      builder: (context, _, _) {
-        final translatedTitle = AppStrings.tr(title);
-        if (subtitle == null || subtitle!.isEmpty) {
-          return Text(
-            translatedTitle,
-            style: AppTypography.displayMedium(isDark),
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(translatedTitle, style: AppTypography.displayMedium(isDark)),
-            const SizedBox(height: 5),
-            Text(
-              AppStrings.tr(subtitle!),
-              style: AppTypography.bodySmall(isDark).copyWith(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        );
-      },
+    final resolvedTitle = AppStrings.tr(title);
+    if (subtitle == null || subtitle!.isEmpty) {
+      return Text(
+        resolvedTitle,
+        style: AppTypography.displayMedium(isDark),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(resolvedTitle, style: AppTypography.displayMedium(isDark)),
+        const SizedBox(height: 5),
+        Text(
+          AppStrings.tr(subtitle!),
+          style: AppTypography.bodySmall(isDark).copyWith(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

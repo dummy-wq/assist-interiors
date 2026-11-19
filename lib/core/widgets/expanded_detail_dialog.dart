@@ -26,8 +26,8 @@ Future<T?> showExpandedDetailBox<T>({
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Dismiss detail view',
-    barrierColor: Colors.black.withValues(alpha: 0.58),
-    transitionDuration: const Duration(milliseconds: 170),
+    barrierColor: Colors.black.withValues(alpha: 0.54),
+    transitionDuration: const Duration(milliseconds: 180),
     pageBuilder: (dialogCtx, _, _) {
       return _ExpandedDetailBoxScaffold(
         title: title,
@@ -49,7 +49,7 @@ Future<T?> showExpandedDetailBox<T>({
       return FadeTransition(
         opacity: curved,
         child: ScaleTransition(
-          scale: Tween<double>(begin: 0.86, end: 1.0).animate(curved),
+          scale: Tween<double>(begin: 0.95, end: 1.0).animate(curved),
           alignment: Alignment.center,
           child: child,
         ),

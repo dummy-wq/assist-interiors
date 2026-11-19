@@ -417,48 +417,44 @@ class _ProjectsViewState extends State<ProjectsView> {
     final sitePhotoToRestore = removedSitePhoto;
     final restoreSiteIdx = removedSitePhotoIndex;
 
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    final controller = messenger.showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 5),
-        content: Text(AppStrings.tr('Photo removed')),
-        action: SnackBarAction(
-          label: AppStrings.tr('Undo'),
-          onPressed: () {
-            if (!mounted) return;
-            final pIdx = _projects.indexWhere(
-              (pr) => (pr['id'] ?? pr['name']) == projectKey,
-            );
-            if (pIdx == -1) return;
-            setState(() {
-              final curPhotos = ((_projects[pIdx]['photos'] as List?) ?? [])
-                  .map((p) => Map<String, dynamic>.from(p as Map))
-                  .toList();
-              final insertIdx = photoIndex.clamp(0, curPhotos.length);
-              curPhotos.insert(insertIdx, photoToDelete);
-              _projects[pIdx]['photos'] = curPhotos;
+    final controller = AppNotification.show(
+      context,
+      duration: const Duration(seconds: 5),
+      message: AppStrings.tr('Photo removed'),
+      action: SnackBarAction(
+        label: AppStrings.tr('Undo'),
+        onPressed: () {
+          if (!mounted) return;
+          final pIdx = _projects.indexWhere(
+            (pr) => (pr['id'] ?? pr['name']) == projectKey,
+          );
+          if (pIdx == -1) return;
+          setState(() {
+            final curPhotos = ((_projects[pIdx]['photos'] as List?) ?? [])
+                .map((p) => Map<String, dynamic>.from(p as Map))
+                .toList();
+            final insertIdx = photoIndex.clamp(0, curPhotos.length);
+            curPhotos.insert(insertIdx, photoToDelete);
+            _projects[pIdx]['photos'] = curPhotos;
 
-              if (sitePhotoToRestore != null &&
-                  _projects[pIdx]['sitePhotos'] is List) {
-                final curSite = (_projects[pIdx]['sitePhotos'] as List)
-                    .whereType<Map>()
-                    .map((m) => Map<String, dynamic>.from(m))
-                    .toList();
-                final sInsert = (restoreSiteIdx ?? curSite.length)
-                    .clamp(0, curSite.length);
-                curSite.insert(sInsert, sitePhotoToRestore);
-                _projects[pIdx]['sitePhotos'] = curSite;
-              }
-            });
-            StorageService.saveProjects(_projects);
-          },
-        ),
+            if (sitePhotoToRestore != null &&
+                _projects[pIdx]['sitePhotos'] is List) {
+              final curSite = (_projects[pIdx]['sitePhotos'] as List)
+                  .whereType<Map>()
+                  .map((m) => Map<String, dynamic>.from(m))
+                  .toList();
+              final sInsert = (restoreSiteIdx ?? curSite.length)
+                  .clamp(0, curSite.length);
+              curSite.insert(sInsert, sitePhotoToRestore);
+              _projects[pIdx]['sitePhotos'] = curSite;
+            }
+          });
+          StorageService.saveProjects(_projects);
+        },
       ),
     );
 
-    controller.closed.then((reason) {
+    controller?.closed.then((reason) {
       if (reason == SnackBarClosedReason.action) return;
       final storagePath = photoToDelete['storagePath']?.toString();
       final downloadUrl =
@@ -556,37 +552,33 @@ class _ProjectsViewState extends State<ProjectsView> {
     if (removedAsset == null) return;
 
     final assetToDelete = removedAsset!;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    final controller = messenger.showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 5),
-        content: Text(AppStrings.tr('File removed')),
-        action: SnackBarAction(
-          label: AppStrings.tr('Undo'),
-          onPressed: () {
-            if (!mounted) return;
-            final pIdx = _projects.indexWhere(
-              (pr) => (pr['id'] ?? pr['name']) == projectKey,
-            );
-            if (pIdx == -1) return;
-            setState(() {
-              final curAssets =
-                  ((_projects[pIdx]['designAssets'] as List?) ?? [])
-                      .map((a) => Map<String, dynamic>.from(a as Map))
-                      .toList();
-              final insertIdx = assetIndex.clamp(0, curAssets.length);
-              curAssets.insert(insertIdx, assetToDelete);
-              _projects[pIdx]['designAssets'] = curAssets;
-            });
-            StorageService.saveProjects(_projects);
-          },
-        ),
+    final controller = AppNotification.show(
+      context,
+      duration: const Duration(seconds: 5),
+      message: AppStrings.tr('File removed'),
+      action: SnackBarAction(
+        label: AppStrings.tr('Undo'),
+        onPressed: () {
+          if (!mounted) return;
+          final pIdx = _projects.indexWhere(
+            (pr) => (pr['id'] ?? pr['name']) == projectKey,
+          );
+          if (pIdx == -1) return;
+          setState(() {
+            final curAssets =
+                ((_projects[pIdx]['designAssets'] as List?) ?? [])
+                    .map((a) => Map<String, dynamic>.from(a as Map))
+                    .toList();
+            final insertIdx = assetIndex.clamp(0, curAssets.length);
+            curAssets.insert(insertIdx, assetToDelete);
+            _projects[pIdx]['designAssets'] = curAssets;
+          });
+          StorageService.saveProjects(_projects);
+        },
       ),
     );
 
-    controller.closed.then((reason) {
+    controller?.closed.then((reason) {
       if (reason == SnackBarClosedReason.action) return;
       CloudStorageService.deleteFile(
         storagePath: assetToDelete['storagePath']?.toString(),
@@ -1858,16 +1850,27 @@ class _ProjectsViewState extends State<ProjectsView> {
                                     const SizedBox(height: 8),
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(2.0),
-                                      child: LinearProgressIndicator(
-                                        value: progress.clamp(0.0, 1.0),
-                                        minHeight: 3.5,
-                                        backgroundColor: isDark
-                                            ? AppColors.darkBorder
-                                            : AppColors.lightBorder,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              projectAccent,
-                                            ),
+                                      child: TweenAnimationBuilder<double>(
+                                        duration: const Duration(
+                                          milliseconds: 220,
+                                        ),
+                                        curve: Curves.easeOutCubic,
+                                        tween: Tween<double>(
+                                          end: progress.clamp(0.0, 1.0),
+                                        ),
+                                        builder: (context, val, _) {
+                                          return LinearProgressIndicator(
+                                            value: val,
+                                            minHeight: 3.5,
+                                            backgroundColor: isDark
+                                                ? AppColors.darkBorder
+                                                : AppColors.lightBorder,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  projectAccent,
+                                                ),
+                                          );
+                                        },
                                       ),
                                     ),
                                     const SizedBox(height: 10),
@@ -1984,7 +1987,11 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                           tabKey;
                                                     });
                                                   },
-                                                  child: Container(
+                                                  child: AnimatedContainer(
+                                                    duration: const Duration(
+                                                      milliseconds: 140,
+                                                    ),
+                                                    curve: Curves.easeOut,
                                                     padding:
                                                         const EdgeInsets.symmetric(
                                                           horizontal: 12,
@@ -2045,6 +2052,28 @@ class _ProjectsViewState extends State<ProjectsView> {
                                         ),
                                       ),
                                     ),
+                                    AnimatedSwitcher(
+                                      duration: const Duration(
+                                        milliseconds: 160,
+                                      ),
+                                      switchInCurve: Curves.easeOutCubic,
+                                      switchOutCurve: Curves.easeInCubic,
+                                      layoutBuilder:
+                                          (currentChild, previousChildren) =>
+                                              Stack(
+                                                alignment: Alignment.topCenter,
+                                                children: [
+                                                  ...previousChildren,
+                                                  ?currentChild,
+                                                ],
+                                              ),
+                                      child: Column(
+                                        key: ValueKey(
+                                          '${projectKey}_$activeTab',
+                                        ),
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
                                     if (activeTab == 'progress' &&
                                         canModifyStatus) ...[
                                       const SizedBox(height: 10),
@@ -3734,7 +3763,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                       borderRadius: BorderRadius.circular(4.0),
                                       child: TweenAnimationBuilder<double>(
                                         duration: const Duration(
-                                          milliseconds: 300,
+                                          milliseconds: 220,
                                         ),
                                         curve: Curves.easeOutCubic,
                                         tween: Tween<double>(
@@ -4047,6 +4076,9 @@ class _ProjectsViewState extends State<ProjectsView> {
                                       ],
                                     ),
                                     ],
+                                        ],
+                                      ),
+                                    ),
                                     const SizedBox(height: 10),
                                     InkWell(
                                       borderRadius: BorderRadius.circular(4.0),

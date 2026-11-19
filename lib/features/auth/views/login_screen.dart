@@ -6,9 +6,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
-import '../../../core/localization/app_strings.dart';
 import '../../../core/utils/app_notification.dart';
-import '../../../core/widgets/instant_press_feedback.dart';
 import '../../../core/widgets/quick_fade_dropdown.dart';
 import '../models/user_model.dart';
 import '../state/auth_provider.dart';
@@ -95,119 +93,6 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          // Language Selector Button
-          PopupMenuButton<AppLanguage>(
-            tooltip: 'Language (${auth.language.shortCode})',
-            color: isDark ? AppColors.darkCard : AppColors.lightCard,
-            elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6.0),
-              side: BorderSide(
-                color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-                    .withValues(alpha: 0.8),
-                width: 0.8,
-              ),
-            ),
-            position: PopupMenuPosition.under,
-            onSelected: (AppLanguage selected) {
-              auth.setLanguage(selected);
-              AppNotification.show(
-                context,
-                message: 'Language set to ${selected.nativeName}',
-              );
-            },
-            itemBuilder: (context) {
-              return AppLanguage.values.map((lang) {
-                final isSelected = auth.language == lang;
-                return PopupMenuItem<AppLanguage>(
-                  value: lang,
-                  height: 38,
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.brandPeach.withValues(alpha: 0.2)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(4.0),
-                        ),
-                        child: Text(
-                          lang.shortCode,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: isSelected ? AppColors.brandPeach : null,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        lang.nativeName,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w600,
-                          color: isSelected ? AppColors.brandPeach : null,
-                        ),
-                      ),
-                      if (isSelected) ...[
-                        const Spacer(),
-                        const Icon(
-                          Icons.check_rounded,
-                          size: 16,
-                          color: AppColors.brandPeach,
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              }).toList();
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2.5),
-              child: InstantPressFeedback(
-                child: Material(
-                  color: isDark
-                      ? AppColors.darkCardElevated
-                      : AppColors.lightCard,
-                  borderRadius: BorderRadius.circular(AppSizes.topActionRadius),
-                  child: Container(
-                    width: AppSizes.topActionButtonSize,
-                    height: AppSizes.topActionButtonSize,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(
-                        AppSizes.topActionRadius,
-                      ),
-                      border: Border.all(
-                        color:
-                            (isDark
-                                    ? AppColors.darkBorder
-                                    : AppColors.lightBorder)
-                                .withValues(alpha: 0.7),
-                        width: 0.8,
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      auth.language.shortCode,
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.brandPeach,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
           Padding(
             padding: const EdgeInsets.only(right: 14),
             child: Tooltip(

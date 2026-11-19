@@ -13,6 +13,7 @@ import '../../../core/services/spreadsheet_service.dart';
 import '../../dashboard/views/main_dashboard_screen.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
+import '../../../core/utils/app_notification.dart';
 class AddLeadSheet {
   AddLeadSheet._();
 
@@ -320,9 +321,6 @@ class AddLeadSheet {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(6.0),
                                     ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
                                   ),
                                   icon: const Icon(
                                     Icons.calendar_month_rounded,
@@ -357,9 +355,6 @@ class AddLeadSheet {
                                   style: OutlinedButton.styleFrom(
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(6.0),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
                                     ),
                                   ),
                                   icon: const Icon(
@@ -473,7 +468,6 @@ class AddLeadSheet {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.brandPeach,
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6.0),
                         ),
@@ -634,16 +628,9 @@ class AddLeadSheet {
 
                         if (context.mounted) {
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                autoCreateProject
+                          AppNotification.show(context, message: autoCreateProject
                                     ? 'Lead "$name" saved & Turnkey Project "$projName" initialized!'
-                                    : 'Lead "$name" saved to pipeline with call reminder for $nextCallDateFormatted!',
-                              ),
-                              backgroundColor: AppColors.success,
-                              behavior: SnackBarBehavior.floating,
-                              action: autoCreateProject
+                                    : 'Lead "$name" saved to pipeline with call reminder for $nextCallDateFormatted!', backgroundColor: AppColors.success, action: autoCreateProject
                                   ? SnackBarAction(
                                       label: 'VIEW IN PROJECTS',
                                       textColor: Colors.white,
@@ -651,9 +638,7 @@ class AddLeadSheet {
                                         MainDashboardScreen.navigateToTab(2);
                                       },
                                     )
-                                  : null,
-                            ),
-                          );
+                                  : null);
                         }
                       },
                     ),

@@ -6,6 +6,7 @@ import '../../../core/theme/app_sizes.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
+import '../../../core/utils/app_notification.dart';
 class LabourAttendanceSheet {
   LabourAttendanceSheet._();
 
@@ -54,19 +55,12 @@ class LabourAttendanceSheet {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brandPeach,
                   foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: const Text('Verify & Submit Daily Muster Roll'),
                 onPressed: () {
                   MobileActionSheets.attendanceCountNotifier.value = 26;
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Attendance recorded for 26 workers!'),
-                      backgroundColor: AppColors.success,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                  AppNotification.show(context, message: 'Attendance recorded for 26 workers!', backgroundColor: AppColors.success);
                 },
               ),
             ],

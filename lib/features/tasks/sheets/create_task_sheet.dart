@@ -11,6 +11,7 @@ import '../../../core/widgets/app_modal_sheet.dart';
 import '../../../core/services/storage_service.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
+import '../../../core/utils/app_notification.dart';
 class CreateTaskSheet {
   CreateTaskSheet._();
 
@@ -593,7 +594,6 @@ class CreateTaskSheet {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(4.0),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
                     const SizedBox(height: 20),
@@ -608,7 +608,6 @@ class CreateTaskSheet {
                           foregroundColor: isUrgent
                               ? Colors.white
                               : Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6.0),
                           ),
@@ -616,12 +615,7 @@ class CreateTaskSheet {
                         onPressed: () {
                           final taskTitle = titleController.text.trim();
                           if (taskTitle.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please enter a task title.'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
+                            AppNotification.show(context, message: 'Please enter a task title.');
                             return;
                           }
 
@@ -658,15 +652,9 @@ class CreateTaskSheet {
                               newTask;
 
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Task added to $selectedProject!'),
-                              backgroundColor: selectedPriority == 'Urgent'
+                          AppNotification.show(context, message: 'Task added to $selectedProject!', backgroundColor: selectedPriority == 'Urgent'
                                   ? AppColors.error
-                                  : AppColors.success,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
+                                  : AppColors.success);
                         },
                         icon: const Icon(Icons.add_task_rounded),
                         label: const Text(

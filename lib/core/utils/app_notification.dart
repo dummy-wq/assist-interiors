@@ -14,7 +14,7 @@ class AppNotification {
 
   /// Shows a floating SnackBar after clearing any active or queued SnackBars,
   /// guaranteeing only the most recent status update appears on screen.
-  static void show(
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? show(
     BuildContext context, {
     required String message,
     Duration cooldown = defaultCooldown,
@@ -23,10 +23,10 @@ class AppNotification {
     SnackBarAction? action,
   }) {
     final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
+    if (messenger == null) return null;
 
     messenger.clearSnackBars();
-    messenger.showSnackBar(
+    return messenger.showSnackBar(
       SnackBar(
         content: Text(message),
         duration: duration,

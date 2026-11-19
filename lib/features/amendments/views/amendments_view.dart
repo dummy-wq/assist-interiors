@@ -370,70 +370,81 @@ class _AmendmentsViewState extends State<AmendmentsView> {
         ),
         const SizedBox(height: ScreenLayout.listGap),
 
-        // Amendments List
-        if (filteredAmendments.isEmpty)
-          EmptyStateCard(
-            icon: Icons.published_with_changes_outlined,
-            title: AppStrings.tr('No Change Requests Found'),
-            message: (_searchQuery.isNotEmpty ||
-                    _selectedFilter != 'All' ||
-                    _selectedProject != 'All')
-                ? 'No change requests match your current filter.'
-                : AppStrings.tr(
-                    'No change requests yet. Tap below to log a scope or cost change.',
+        // Amendments List — smooth cross-fade on filter change
+        FilterSwitcher(
+          child: filteredAmendments.isEmpty
+              ? EmptyStateCard(
+                  key: ValueKey(
+                    'empty_amd_${_selectedFilter}_$_selectedProject',
                   ),
-            action: (_searchQuery.isNotEmpty ||
-                    _selectedFilter != 'All' ||
-                    _selectedProject != 'All')
-                ? ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.brandPeach,
-                      foregroundColor: Colors.black,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _selectedFilter = 'All';
-                        _selectedProject = 'All';
-                        _searchQuery = '';
-                        _searchController.clear();
-                      });
-                    },
-                    icon: const Icon(Icons.refresh_rounded, size: 16),
-                    label: const Text(
-                      'Clear Filters & View All',
-                      style: TextStyle(
-                        fontSize: AppSizes.buttonFontSize,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  )
-                : ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.brandPeach,
-                      foregroundColor: Colors.black,
-                    ),
-                    onPressed: () => _showAddAmendmentModal(context),
-                    icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                    label: Text(
-                      AppStrings.tr('New Change Request'),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                  icon: Icons.published_with_changes_outlined,
+                  title: AppStrings.tr('No Change Requests Found'),
+                  message: (_searchQuery.isNotEmpty ||
+                          _selectedFilter != 'All' ||
+                          _selectedProject != 'All')
+                      ? 'No change requests match your current filter.'
+                      : AppStrings.tr(
+                          'No change requests yet. Tap below to log a scope or cost change.',
+                        ),
+                  action: (_searchQuery.isNotEmpty ||
+                          _selectedFilter != 'All' ||
+                          _selectedProject != 'All')
+                      ? ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.brandPeach,
+                            foregroundColor: Colors.black,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _selectedFilter = 'All';
+                              _selectedProject = 'All';
+                              _searchQuery = '';
+                              _searchController.clear();
+                            });
+                          },
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: const Text(
+                            'Clear Filters & View All',
+                            style: TextStyle(
+                              fontSize: AppSizes.buttonFontSize,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.brandPeach,
+                            foregroundColor: Colors.black,
+                          ),
+                          onPressed: () => _showAddAmendmentModal(context),
+                          icon: const Icon(
+                            Icons.add_circle_outline_rounded,
+                            size: 18,
+                          ),
+                          label: Text(
+                            AppStrings.tr('New Change Request'),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                )
+              : ListView.separated(
+                  key: ValueKey(
+                    'amd_${_selectedFilter}_${_selectedProject}_${filteredAmendments.length}',
                   ),
-          )
-        else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: filteredAmendments.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final amd = filteredAmendments[index];
-              return _buildAmendmentCard(context, amd, isDark);
-            },
-          ),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredAmendments.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final amd = filteredAmendments[index];
+                    return _buildAmendmentCard(context, amd, isDark);
+                  },
+                ),
+        ),
       ],
     );
   }

@@ -359,71 +359,89 @@ class _DesignViewState extends State<DesignView> {
         ),
         const SizedBox(height: ScreenLayout.listGap),
 
-        // Deliverables Grid / List
-        if (filteredItems.isEmpty)
-          EmptyStateCard(
-            icon: Icons.draw_outlined,
-            title: AppStrings.tr('Drawings & Renders'),
-            message: (_searchQuery.isNotEmpty ||
-                    _selectedCategory != 'All' ||
-                    _selectedProject != 'All')
-                ? 'No drawings match your current filter.'
-                : 'No drawings uploaded yet. Tap below to add your first drawing or render.',
-            action: (_searchQuery.isNotEmpty ||
-                    _selectedCategory != 'All' ||
-                    _selectedProject != 'All')
-                ? ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.brandPeach,
-                      foregroundColor: Colors.black,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _selectedCategory = 'All';
-                        _selectedProject = 'All';
-                        _searchQuery = '';
-                        _searchController.clear();
-                      });
-                    },
-                    icon: const Icon(Icons.refresh_rounded, size: 16),
-                    label: const Text(
-                      'Clear Filters & View All',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  )
-                : (canManageDesign
+        // Deliverables Grid / List — smooth cross-fade on filter change
+        FilterSwitcher(
+          child: filteredItems.isEmpty
+              ? EmptyStateCard(
+                  key: ValueKey(
+                    'empty_design_${_selectedCategory}_$_selectedProject',
+                  ),
+                  icon: Icons.draw_outlined,
+                  title: AppStrings.tr('Drawings & Renders'),
+                  message: (_searchQuery.isNotEmpty ||
+                          _selectedCategory != 'All' ||
+                          _selectedProject != 'All')
+                      ? 'No drawings match your current filter.'
+                      : 'No drawings uploaded yet. Tap below to add your first drawing or render.',
+                  action: (_searchQuery.isNotEmpty ||
+                          _selectedCategory != 'All' ||
+                          _selectedProject != 'All')
                       ? ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.brandPeach,
                             foregroundColor: Colors.black,
                           ),
-                          onPressed: () =>
-                              MobileActionSheets.showUploadRenderSheet(context),
-                          icon: const Icon(Icons.cloud_upload_outlined, size: 18),
-                          label: Text(
-                            AppStrings.tr('Upload Drawing'),
-                            style: const TextStyle(
-                              fontSize: 13,
+                          onPressed: () {
+                            setState(() {
+                              _selectedCategory = 'All';
+                              _selectedProject = 'All';
+                              _searchQuery = '';
+                              _searchController.clear();
+                            });
+                          },
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: const Text(
+                            'Clear Filters & View All',
+                            style: TextStyle(
+                              fontSize: 12.5,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                         )
-                      : null),
-          )
-        else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: filteredItems.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final item = filteredItems[index];
-              return _buildDesignCard(context, item, isDark, canManageDesign);
-            },
-          ),
+                      : (canManageDesign
+                            ? ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.brandPeach,
+                                  foregroundColor: Colors.black,
+                                ),
+                                onPressed: () =>
+                                    MobileActionSheets.showUploadRenderSheet(
+                                      context,
+                                    ),
+                                icon: const Icon(
+                                  Icons.cloud_upload_outlined,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  AppStrings.tr('Upload Drawing'),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              )
+                            : null),
+                )
+              : ListView.separated(
+                  key: ValueKey(
+                    'design_${_selectedCategory}_${_selectedProject}_${filteredItems.length}',
+                  ),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredItems.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final item = filteredItems[index];
+                    return _buildDesignCard(
+                      context,
+                      item,
+                      isDark,
+                      canManageDesign,
+                    );
+                  },
+                ),
+        ),
       ],
     );
   }

@@ -4,7 +4,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/localization/app_strings.dart';
 import '../../../core/permissions/app_permissions.dart';
 import '../../../core/services/backend_manager.dart';
 import '../../../core/services/storage_service.dart';
@@ -17,7 +16,6 @@ class AuthProvider extends ChangeNotifier {
   AppUser? _currentUser;
   ThemeMode _themeMode = ThemeMode.dark;
   AppFontTheme _fontTheme = AppFontTheme.plusJakartaSans;
-  AppLanguage _language = AppLanguage.english;
   int _photoRetentionMonths = StorageService.defaultPhotoRetentionMonths;
   int _cadRetentionMonths = StorageService.defaultCadRetentionMonths;
   double _textScaleFactor = 1.0;
@@ -128,7 +126,6 @@ class AuthProvider extends ChangeNotifier {
   String? get lastAuthError => _lastAuthError;
   ThemeMode get themeMode => _themeMode;
   bool get isDarkMode => _themeMode == ThemeMode.dark;
-  AppLanguage get language => _language;
   double get textScaleFactor => _textScaleFactor;
   bool get shouldShowOnboardingTips => _isProductionMode;
   int get photoRetentionMonths => _photoRetentionMonths;
@@ -153,7 +150,6 @@ class AuthProvider extends ChangeNotifier {
   // the LoginScreen instead of auto-opening as Proprietor.
   AuthProvider({bool autoDemoLogin = true}) {
     _isProductionMode = !autoDemoLogin;
-    _loadPersistedLanguage();
     _textScaleFactor = StorageService.getTextScaleFactor();
     _photoRetentionMonths = StorageService.getPhotoRetentionMonths();
     _cadRetentionMonths = StorageService.getCadRetentionMonths();
@@ -284,16 +280,6 @@ class AuthProvider extends ChangeNotifier {
   void dispose() {
     newSignupNotificationNotifier.dispose();
     super.dispose();
-  }
-
-  void _loadPersistedLanguage() {
-    final code = StorageService.getLanguage();
-    final lang = AppLanguage.values.firstWhere(
-      (l) => l.code == code,
-      orElse: () => AppLanguage.english,
-    );
-    _language = lang;
-    AppStrings.setLanguage(lang);
   }
 
   void _loadPersistedUsers({bool seedDemoTeam = true}) {
@@ -1126,13 +1112,6 @@ class AuthProvider extends ChangeNotifier {
   void setFontTheme(AppFontTheme theme) {
     _fontTheme = theme;
     AppTypography.activeTheme = theme;
-    notifyListeners();
-  }
-
-  void setLanguage(AppLanguage lang) {
-    _language = lang;
-    AppStrings.setLanguage(lang);
-    StorageService.saveLanguage(lang.code);
     notifyListeners();
   }
 

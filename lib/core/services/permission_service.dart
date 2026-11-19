@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../widgets/studio_dialog.dart';
+
+import '../utils/app_notification.dart';
 /// Centralized runtime permission helper for Camera, Photos/Gallery, and Files.
 /// Gracefully returns `true` on web, desktop, or headless widget tests where
 /// mobile runtime permission channels are unavailable.
@@ -95,12 +98,7 @@ class PermissionService {
           context.mounted) {
         await _showSettingsDialog(context, title: title, rationale: rationale);
       } else if (context.mounted) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(
-            content: Text('$title: $rationale'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        AppNotification.show(context, message: '$title: $rationale');
       }
       return false;
     } on MissingPluginException {
@@ -116,7 +114,7 @@ class PermissionService {
     required String title,
     required String rationale,
   }) async {
-    await showDialog<void>(
+    await showStudioDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(title),

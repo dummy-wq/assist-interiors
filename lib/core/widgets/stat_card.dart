@@ -50,21 +50,18 @@ class StatCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: ValueListenableBuilder<AppLanguage>(
-                  valueListenable: AppStrings.languageNotifier,
-                  builder: (context, _, _) => Text(
-                    AppStrings.tr(title).toUpperCase(),
-                    style: AppTypography.bodySmall(isDark).copyWith(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                      color: isDark
-                          ? AppColors.textLightMuted
-                          : AppColors.textDarkMuted,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                child: Text(
+                  AppStrings.tr(title).toUpperCase(),
+                  style: AppTypography.bodySmall(isDark).copyWith(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: isDark
+                        ? AppColors.textLightMuted
+                        : AppColors.textDarkMuted,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 4),

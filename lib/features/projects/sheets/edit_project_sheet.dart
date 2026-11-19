@@ -9,6 +9,7 @@ import '../../../core/widgets/instant_press_feedback.dart';
 import '../../../core/widgets/quick_fade_dropdown.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 
+import '../../../core/utils/app_notification.dart';
 class EditProjectSheet {
   EditProjectSheet._();
 
@@ -336,7 +337,6 @@ class EditProjectSheet {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.brandPeach,
                           foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6.0),
                           ),
@@ -393,17 +393,9 @@ class EditProjectSheet {
                           onProjectUpdated(updatedProject);
                           Navigator.pop(context);
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                AppStrings.tr(
+                          AppNotification.show(context, message: AppStrings.tr(
                                   'Project details updated successfully!',
-                                ),
-                              ),
-                              backgroundColor: AppColors.success,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
+                                ), backgroundColor: AppColors.success);
                         },
                         icon: const Icon(
                           Icons.check_circle_outline_rounded,

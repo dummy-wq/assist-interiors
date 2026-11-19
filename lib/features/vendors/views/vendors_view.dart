@@ -19,6 +19,7 @@ import '../../../core/permissions/app_permissions.dart';
 import '../../../core/models/vendor_model.dart';
 import '../../auth/state/auth_provider.dart';
 
+import '../../../core/utils/app_notification.dart';
 class VendorsView extends StatefulWidget {
   const VendorsView({super.key});
 
@@ -618,14 +619,7 @@ class _VendorsViewState extends State<VendorsView> {
                                   ),
                                 ),
                                 onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'PO indent dispatched to $name',
-                                      ),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
+                                  AppNotification.show(context, message: 'PO indent dispatched to $name');
                                 },
                                 icon: const Icon(
                                   Icons.receipt_long_rounded,

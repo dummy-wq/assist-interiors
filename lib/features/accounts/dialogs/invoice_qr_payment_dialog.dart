@@ -17,6 +17,7 @@ import '../../../core/services/storage_service.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 import 'upload_invoice_qr_sheet.dart';
 
+import '../../../core/utils/app_notification.dart';
 class InvoiceQrPaymentDialog {
   InvoiceQrPaymentDialog._();
 
@@ -500,13 +501,7 @@ class InvoiceQrPaymentDialog {
                               ),
                               onPressed: () {
                                 Clipboard.setData(ClipboardData(text: upiId));
-                                ScaffoldMessenger.of(modalContext).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Copied "$upiId" to clipboard!'),
-                                    duration: const Duration(seconds: 2),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
+                                AppNotification.show(modalContext, message: 'Copied "$upiId" to clipboard!', duration: const Duration(seconds: 2));
                               },
                             ),
                           ),
@@ -523,7 +518,6 @@ class InvoiceQrPaymentDialog {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.brandPeach,
                               foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(4.0),
                               ),
@@ -549,15 +543,7 @@ class InvoiceQrPaymentDialog {
                                   await launchUrl(uri);
                                 } else {
                                   if (modalContext.mounted) {
-                                    ScaffoldMessenger.of(modalContext)
-                                        .showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'UPI App not detected. Copied $upiId to clipboard.',
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
+                                    AppNotification.show(modalContext, message: 'UPI App not detected. Copied $upiId to clipboard.');
                                   }
                                 }
                               } catch (_) {
@@ -574,9 +560,6 @@ class InvoiceQrPaymentDialog {
                                     foregroundColor: AppColors.success,
                                     side: const BorderSide(
                                       color: AppColors.success,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(4.0),
@@ -617,15 +600,7 @@ class InvoiceQrPaymentDialog {
                                       onStatusChanged();
                                     }
                                     if (modalContext.mounted) {
-                                      ScaffoldMessenger.of(modalContext)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Invoice $invId reverted to Payment Pending.',
-                                          ),
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
+                                      AppNotification.show(modalContext, message: 'Invoice $invId reverted to Payment Pending.');
                                     }
                                   },
                                 )
@@ -633,9 +608,6 @@ class InvoiceQrPaymentDialog {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.success,
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(4.0),
                                     ),
@@ -674,16 +646,7 @@ class InvoiceQrPaymentDialog {
                                       onStatusChanged();
                                     }
                                     if (modalContext.mounted) {
-                                      ScaffoldMessenger.of(modalContext)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Invoice $invId marked as Settled!',
-                                          ),
-                                          backgroundColor: AppColors.success,
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
+                                      AppNotification.show(modalContext, message: 'Invoice $invId marked as Settled!', backgroundColor: AppColors.success);
                                     }
                                   },
                                 ),

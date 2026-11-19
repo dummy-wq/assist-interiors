@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../widgets/studio_dialog.dart';
 import 'pdf/invoice_pdf_builder.dart';
 import 'pdf/pdf_file_utils.dart';
 import 'pdf/pdf_preview_dialog.dart';
@@ -80,7 +81,7 @@ class PdfService {
     required String title,
     required Future<Uint8List> Function() documentBuilder,
   }) async {
-    return showDialog<void>(
+    return showStudioDialog<void>(
       context: context,
       builder: (context) =>
           PdfPreviewDialog(title: title, documentBuilder: documentBuilder),

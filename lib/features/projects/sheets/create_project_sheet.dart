@@ -382,7 +382,6 @@ class CreateProjectSheet {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.brandPeach,
                           foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         onPressed: () async {
                           final projName = nameController.text.trim().isEmpty
@@ -480,15 +479,7 @@ class CreateProjectSheet {
 
                           if (context.mounted) {
                             Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Project "$projName" initialized and synced across studio!',
-                                ),
-                                backgroundColor: AppColors.success,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
+                            AppNotification.show(context, message: 'Project "$projName" initialized and synced across studio!', backgroundColor: AppColors.success);
                           }
                         },
                         icon: const Icon(Icons.check_circle_outline_rounded),

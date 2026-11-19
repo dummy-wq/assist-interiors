@@ -30,7 +30,7 @@ class MoreModulesSheet extends StatelessWidget {
     showAppModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      showDragHandleBar: false,
+      showDragHandleBar: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
@@ -53,28 +53,13 @@ class MoreModulesSheet extends StatelessWidget {
         padding: EdgeInsets.only(
           left: 20,
           right: 20,
-          top: 12,
+          top: 4,
           bottom: AppSizes.sheetBottomPadding(context),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Top Drag Handle (kept outside scroll area so it always drags)
-            Center(
-              child: Container(
-                width: 38,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.2)
-                      : Colors.black.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(2.0),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-
             // Sheet Header
             Row(
               children: [

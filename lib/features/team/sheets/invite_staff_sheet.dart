@@ -255,7 +255,6 @@ class _InviteStaffSheetState extends State<InviteStaffSheet> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.brandPeach,
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ],

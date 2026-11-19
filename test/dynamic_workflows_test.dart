@@ -6,10 +6,8 @@ import 'package:assist_interiors_dashboard/features/auth/state/auth_provider.dar
 import 'package:assist_interiors_dashboard/core/constants/app_constants.dart';
 import 'package:assist_interiors_dashboard/core/services/storage_service.dart';
 import 'package:assist_interiors_dashboard/features/dashboard/widgets/mobile_action_sheets.dart';
+import 'package:assist_interiors_dashboard/features/design/views/design_view.dart';
 import 'package:assist_interiors_dashboard/features/sales/views/sales_view.dart';
-import 'package:assist_interiors_dashboard/features/dashboard/views/supervisor_dashboard.dart';
-import 'package:assist_interiors_dashboard/features/dashboard/views/pm_dashboard.dart';
-import 'package:assist_interiors_dashboard/features/dashboard/views/designer_dashboard.dart';
 import 'package:assist_interiors_dashboard/features/dashboard/views/accounts_dashboard.dart';
 import 'package:assist_interiors_dashboard/features/dashboard/views/proprietor_dashboard.dart';
 
@@ -95,7 +93,7 @@ void main() {
   );
 
   testWidgets(
-    'Supervisor: Site log submission and labour attendance update SupervisorDashboard',
+    'Supervisor: Site log submission and labour attendance work on unified Hub',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 1000);
       tester.view.devicePixelRatio = 1.0;
@@ -103,18 +101,19 @@ void main() {
 
       await tester.pumpWidget(
         createTestWidget(
-          const SupervisorDashboard(),
+          const ProprietorDashboard(),
           role: UserRole.supervisor,
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('No Site Logs Today'), findsOneWidget);
-      expect(find.text('0 Workers'), findsOneWidget);
+      // Primary role CTA is visible on Hub
+      expect(find.text('Take Site Photo'), findsOneWidget);
 
-      // 1. Log Attendance
-      final logAttBtn = find.widgetWithText(OutlinedButton, 'Log Attendance');
-      await tester.tap(logAttBtn);
+      final ctx = tester.element(find.byType(ProprietorDashboard));
+
+      // 1. Log Attendance via sheet
+      MobileActionSheets.showLabourAttendanceSheet(ctx);
       await tester.pumpAndSettle();
 
       final saveAttBtn = find.widgetWithText(
@@ -123,15 +122,10 @@ void main() {
       );
       await tester.tap(saveAttBtn);
       await tester.pumpAndSettle();
+      expect(MobileActionSheets.attendanceCountNotifier.value, 26);
 
-      expect(find.text('26 Workers'), findsOneWidget);
-
-      // 2. Post Daily Site Log
-      final postLogBtn = find.widgetWithText(
-        ElevatedButton,
-        'Post Daily Site Log',
-      );
-      await tester.tap(postLogBtn.first);
+      // 2. Post Daily Site Log via sheet
+      MobileActionSheets.showSiteLogSheet(ctx);
       await tester.pumpAndSettle();
 
       final titleField = find.widgetWithText(
@@ -150,22 +144,15 @@ void main() {
       await tester.tap(saveLogBtn);
       await tester.pumpAndSettle();
 
-      // Verify feed and counter updated
-      expect(find.text('1 Logged'), findsOneWidget);
-      expect(
-        find.textContaining('Italian Marble Flooring Ground Floor'),
-        findsOneWidget,
-      );
-
-      // Verify storage
-      final storedLogs = StorageService.getSiteLogs();
-      expect(storedLogs.length, 1);
-      expect(storedLogs.first['title'], 'Italian Marble Flooring Ground Floor');
+      // Verify notifier emitted the submitted site log
+      final emittedLog = MobileActionSheets.siteLogCreatedNotifier.value;
+      expect(emittedLog, isNotNull);
+      expect(emittedLog!['title'], 'Italian Marble Flooring Ground Floor');
     },
   );
 
   testWidgets(
-    'Project Manager: Assign Milestone updates PM dashboard and dispatches task',
+    'Project Manager: Assign Milestone sheet dispatches task cleanly',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 1000);
       tester.view.devicePixelRatio = 1.0;
@@ -173,21 +160,16 @@ void main() {
 
       await tester.pumpWidget(
         createTestWidget(
-          const ProjectManagerDashboard(),
+          const ProprietorDashboard(),
           role: UserRole.projectManager,
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('No Milestones Scheduled'), findsOneWidget);
-      expect(find.text('0 Tasks'), findsOneWidget);
+      expect(find.text('Add Project'), findsWidgets);
 
-      // Open Assign Milestone Sheet
-      final assignBtn = find.widgetWithText(
-        ElevatedButton,
-        'Assign New Milestone',
-      );
-      await tester.tap(assignBtn.first);
+      final ctx = tester.element(find.byType(ProprietorDashboard));
+      MobileActionSheets.showAssignMilestoneSheet(ctx);
       await tester.pumpAndSettle();
 
       final taskField = find.widgetWithText(
@@ -203,18 +185,6 @@ void main() {
       await tester.tap(assignMilestoneBtn);
       await tester.pumpAndSettle();
 
-      // Verify PM timeline updated
-      expect(find.text('1 Tasks'), findsOneWidget);
-      expect(find.text('HVAC Ducting & AC Piping Signoff'), findsOneWidget);
-
-      // Verify persistent storage
-      final storedMilestones = StorageService.getMilestones();
-      expect(storedMilestones.length, 1);
-      expect(
-        storedMilestones.first['task'],
-        'HVAC Ducting & AC Piping Signoff',
-      );
-
       // Verify cross-dispatched task was queued
       final lastDispatchedTask = MobileActionSheets.taskCreatedNotifier.value;
       expect(lastDispatchedTask, isNotNull);
@@ -223,25 +193,19 @@ void main() {
   );
 
   testWidgets(
-    'Designer: Upload 3D Render / BOQ updates DesignerDashboard deliverables grid',
+    'Designer: Upload 3D Render / BOQ updates DesignView and persists locally',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 1000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
       await tester.pumpWidget(
-        createTestWidget(const DesignerDashboard(), role: UserRole.designer),
+        createTestWidget(const DesignView(), role: UserRole.designer),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('No Design Deliverables'), findsOneWidget);
-      expect(find.text('0 Views'), findsOneWidget);
-
-      // Open Upload Render Sheet
-      final uploadBtn = find.widgetWithText(
-        ElevatedButton,
-        'Upload Render / BOQ',
-      );
+      // Open Upload Render Sheet via EmptyState CTA
+      final uploadBtn = find.widgetWithText(ElevatedButton, 'Upload Drawing');
       await tester.tap(uploadBtn.first);
       await tester.pumpAndSettle();
 
@@ -252,8 +216,7 @@ void main() {
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
-      // Verify Designer deliverables grid updated
-      expect(find.text('1 Views'), findsOneWidget);
+      // Verify DesignView updated
       expect(find.text('3D Photorealistic Render & BOQ'), findsOneWidget);
 
       // Verify persistent storage

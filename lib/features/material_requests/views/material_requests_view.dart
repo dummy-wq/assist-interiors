@@ -353,45 +353,56 @@ class _MaterialRequestsViewState extends State<MaterialRequestsView> {
         ),
         const SizedBox(height: ScreenLayout.listGap),
 
-        // Material Requests List
-        if (filteredRequests.isEmpty)
-          EmptyStateCard(
-            icon: Icons.inventory_2_outlined,
-            title: 'No Material Requests Found',
-            message: _searchQuery.isNotEmpty || _selectedFilter != 'All'
-                ? 'No material indents match your filter criteria.'
-                : 'Create a new material indent for site supervisors or trade contractors.',
-            action: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brandPeach,
-                foregroundColor: Colors.black,
-              ),
-              onPressed: () {
-                setState(() {
-                  _selectedFilter = 'All';
-                  _selectedCategory = 'All';
-                  _searchQuery = '';
-                  _searchController.clear();
-                });
-              },
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text(
-                'Clear Filters & View All',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
-              ),
-            ),
-          )
-        else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: filteredRequests.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final req = filteredRequests[index];
-              return _buildRequestCard(context, req, isDark);
-            },
-          ),
+        // Material Requests List — smooth cross-fade on filter change
+        FilterSwitcher(
+          child: filteredRequests.isEmpty
+              ? EmptyStateCard(
+                  key: ValueKey(
+                    'empty_mat_${_selectedFilter}_$_selectedCategory',
+                  ),
+                  icon: Icons.inventory_2_outlined,
+                  title: 'No Material Requests Found',
+                  message: _searchQuery.isNotEmpty || _selectedFilter != 'All'
+                      ? 'No material indents match your filter criteria.'
+                      : 'Create a new material indent for site supervisors or trade contractors.',
+                  action: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandPeach,
+                      foregroundColor: Colors.black,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _selectedFilter = 'All';
+                        _selectedCategory = 'All';
+                        _searchQuery = '';
+                        _searchController.clear();
+                      });
+                    },
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: const Text(
+                      'Clear Filters & View All',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  key: ValueKey(
+                    'mat_${_selectedFilter}_${_selectedCategory}_${filteredRequests.length}',
+                  ),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredRequests.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final req = filteredRequests[index];
+                    return _buildRequestCard(context, req, isDark);
+                  },
+                ),
+        ),
       ],
     );
   }

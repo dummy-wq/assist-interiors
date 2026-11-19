@@ -199,11 +199,8 @@ class RoleBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return ValueListenableBuilder<AppLanguage>(
-      valueListenable: AppStrings.languageNotifier,
-      builder: (context, _, _) {
-        final primaryTabs = _primaryTabs;
-        return Container(
+    final primaryTabs = _primaryTabs;
+    return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : AppColors.lightCard,
         border: Border(
@@ -253,8 +250,6 @@ class RoleBottomBar extends StatelessWidget {
           ),
         ),
       ),
-    );
-      },
     );
   }
 }

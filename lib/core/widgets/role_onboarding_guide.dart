@@ -5,6 +5,7 @@ import '../localization/app_strings.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import 'studio_dialog.dart';
 
 class _GuideStep {
   final IconData icon;
@@ -115,7 +116,7 @@ class RoleOnboardingGuide {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     int currentStep = 0;
 
-    await showDialog<void>(
+    await showStudioDialog<void>(
       context: context,
       builder: (dialogCtx) {
         return StatefulBuilder(

@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/blueprint_grid_painter.dart';
 import '../../../core/widgets/cloud_network_image.dart';
 import '../../../core/widgets/expanded_detail_dialog.dart';
+import '../../../core/widgets/studio_dialog.dart';
 
 class ProjectPhotoViewerDialog {
   ProjectPhotoViewerDialog._();
@@ -35,7 +36,7 @@ class ProjectPhotoViewerDialog {
     final hasNetworkImage = imageUrl != null && imageUrl.isNotEmpty;
     final hasRealImage = hasLocalImage || hasNetworkImage;
 
-    showDialog(
+    showStudioDialog(
       context: context,
       builder: (dialogCtx) {
         final screenHeight = MediaQuery.of(dialogCtx).size.height;

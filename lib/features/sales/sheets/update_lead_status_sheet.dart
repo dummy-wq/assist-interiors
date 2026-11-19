@@ -12,6 +12,7 @@ import '../services/sales_pipeline_service.dart';
 import '../../dashboard/views/main_dashboard_screen.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
+import '../../../core/utils/app_notification.dart';
 class UpdateLeadStatusSheet {
   UpdateLeadStatusSheet._();
 
@@ -186,7 +187,6 @@ class UpdateLeadStatusSheet {
                         foregroundColor: SalesPipelineService.isApproved(currentStage)
                             ? Colors.white
                             : Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6.0),
                         ),
@@ -269,16 +269,9 @@ class UpdateLeadStatusSheet {
                         if (!context.mounted) return;
                         Navigator.pop(context);
 
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              isAppr
+                        AppNotification.show(context, message: isAppr
                                   ? 'Lead approved! Project "${affectedProject?['name'] ?? clientName}" is live across Projects, Design, Materials & Accounts.'
-                                  : 'Status updated to "$currentStage"!',
-                            ),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
-                            action: isAppr
+                                  : 'Status updated to "$currentStage"!', backgroundColor: AppColors.success, action: isAppr
                                 ? SnackBarAction(
                                     label: 'VIEW IN PROJECTS',
                                     textColor: Colors.white,
@@ -286,9 +279,7 @@ class UpdateLeadStatusSheet {
                                       MainDashboardScreen.navigateToTab(2);
                                     },
                                   )
-                                : null,
-                          ),
-                        );
+                                : null);
                       },
                     ),
                   ],
