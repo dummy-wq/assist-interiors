@@ -42,6 +42,7 @@ class AppColors {
   static const Color roleDesigner = Color(0xFFEC4899);
   static const Color roleAccounts = Color(0xFF10B981);
   static const Color roleSupervisor = Color(0xFFF59E0B);
+  static const Color roleSiteEngineer = Color(0xFF0EA5E9);
 
   // Architectural Typology & Earth Pigments Palette (Option 3)
   static const List<Map<String, dynamic>> architecturalSwatches = [

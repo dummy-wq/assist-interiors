@@ -318,7 +318,7 @@ class CashFlowSnapshotCard extends StatelessWidget {
                         (exp) => _buildRecentActivityRow(
                           isDark: isDark,
                           title:
-                              '${exp['title'] ?? 'Site Expense'} • ${exp['project'] ?? 'Site Claim'}',
+                              '${exp['title'] ?? 'Site Expense'} • ${exp['project'] ?? 'General Expense'}',
                           subtitle: exp['date'] as String? ?? 'Recent',
                           amount: exp['amount'] as String? ?? '₹ 0',
                           isInflow: false,

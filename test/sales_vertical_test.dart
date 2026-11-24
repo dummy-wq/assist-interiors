@@ -70,12 +70,6 @@ void main() {
       final phoneField = find.widgetWithText(TextField, 'Phone Number');
       await tester.enterText(phoneField, '+91 98765 43210');
 
-      final budgetField = find.widgetWithText(
-        TextField,
-        'Est. Budget (e.g. ₹60L)',
-      );
-      await tester.enterText(budgetField, '12000000');
-
       final scopeField = find.widgetWithText(
         TextField,
         'Project Scope (e.g. 4BHK Villa / 5000 sq ft)',
@@ -108,7 +102,7 @@ void main() {
       // Verify Lead card is rendered with 3-step vertical pipeline strip
       expect(find.text('The Oberoi Sky Villa'), findsOneWidget);
       expect(find.text('1 Leads'), findsOneWidget);
-      expect(find.text('₹ 1,20,00,000'), findsWidgets);
+      expect(find.text('₹ 25,00,000'), findsWidgets);
       expect(
         find.text('Ref: Client Referral (Ar. Karan Grover)'),
         findsOneWidget,
@@ -173,8 +167,8 @@ void main() {
         find.text('Ref: Architect Partner (Ar. Sanjay Puri)'),
         findsOneWidget,
       );
-      expect(find.text('Due Today: 04:30 PM'), findsOneWidget);
-      expect(find.text('1 Calls'), findsOneWidget); // Due calls KPI
+      expect(find.text('Due Today: 04:30 PM'), findsNothing);
+      expect(find.text('Schedule Call'), findsNothing);
 
       // Tap on Status to open update status sheet
       await tester.tap(find.text('New Inquiry').last);
@@ -183,51 +177,19 @@ void main() {
       expect(find.text('Update Pipeline Status'), findsOneWidget);
       expect(find.text('Client: Aman Gupta Mansion'), findsOneWidget);
 
-      // Select 'Site Visit Scheduled'
-      await tester.tap(find.text('Site Visit Scheduled').last);
+      // Select 'Site Visit'
+      await tester.tap(find.text('Site Visit').last);
       await tester.pumpAndSettle();
 
       final updateStatusBtn = find.widgetWithText(
         ElevatedButton,
-        'Update Status to Site Visit Scheduled',
+        'Update Status to Site Visit',
       );
       await tester.tap(updateStatusBtn);
       await tester.pumpAndSettle();
 
       // Verify stage updated
-      expect(find.text('Site Visit Scheduled'), findsWidgets);
-
-      // Tap 'Schedule Call' button on card
-      final scheduleCallBtn = find.widgetWithText(
-        OutlinedButton,
-        'Schedule Call',
-      );
-      await tester.tap(scheduleCallBtn);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Schedule Call & Reminder'), findsOneWidget);
-
-      final reasonField = find.widgetWithText(
-        TextField,
-        'Reminder Reason / Deliverable Target',
-      );
-      await tester.enterText(
-        reasonField,
-        'Finalize electrical & plumbing layouts',
-      );
-
-      final saveScheduleBtn = find.widgetWithText(
-        ElevatedButton,
-        'Save Call Schedule & Reminder',
-      );
-      await tester.tap(saveScheduleBtn);
-      await tester.pumpAndSettle();
-
-      // Verify updated reminder note
-      expect(
-        find.text('Reminder: "Finalize electrical & plumbing layouts"'),
-        findsOneWidget,
-      );
+      expect(find.text('Site Visit'), findsWidgets);
     },
   );
 
@@ -286,15 +248,6 @@ void main() {
 
       expect(find.text('Client Beta'), findsOneWidget);
       expect(find.text('Client Alpha'), findsNothing);
-
-      // Filter by 'Due Calls'
-      final duePill = find.widgetWithText(PillBox, 'Due Calls (1)');
-      await tester.ensureVisible(duePill);
-      await tester.tap(duePill);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Client Alpha'), findsOneWidget);
-      expect(find.text('Client Beta'), findsNothing);
     },
   );
 
@@ -355,7 +308,7 @@ void main() {
       // Verify lead is converted in StorageService
       final updatedLeads = StorageService.getLeads();
       expect(updatedLeads.first['isConverted'], isTrue);
-      expect(updatedLeads.first['stage'], 'Closed Won');
+      expect(updatedLeads.first['stage'], 'Approved');
       expect(
         updatedLeads.first['convertedToProject'],
         'Anand Mahindra Residence',
@@ -630,14 +583,14 @@ void main() {
       expect(find.text('Update Pipeline Status'), findsOneWidget);
       expect(find.text('Client: Kavita Verma'), findsOneWidget);
 
-      // Select 'Closed Won'
-      await tester.tap(find.text('Closed Won').last);
+      // Select 'Approved'
+      await tester.tap(find.text('Approved').last);
       await tester.pumpAndSettle();
 
-      // Submit update: 'Mark Won & Update Projects'
+      // Submit update: 'Approve & Move to Projects'
       final wonBtn = find.widgetWithText(
         ElevatedButton,
-        'Mark Won & Update Projects',
+        'Approve & Move to Projects',
       );
       expect(wonBtn, findsOneWidget);
       await tester.tap(wonBtn);
@@ -662,7 +615,7 @@ void main() {
       // 2. Verify lead is marked converted in StorageService
       final storedLeads = StorageService.getLeads();
       expect(storedLeads.first['isConverted'], isTrue);
-      expect(storedLeads.first['stage'], 'Closed Won');
+      expect(storedLeads.first['stage'], 'Approved');
       expect(
         storedLeads.first['convertedToProject'],
         'Kavita Verma Residence',
@@ -869,21 +822,170 @@ void main() {
         'BOQ',
         'Approved',
         'Lost / Dropped',
-        'Site Visit Scheduled',
-        'Closed Won',
       ];
 
       expect(currentChipLabels(), expectedOrder);
+      expect(find.text('Site Visit Scheduled'), findsNothing);
+      expect(find.text('Closed Won'), findsNothing);
 
-      // Select Site Visit Scheduled -> order must stay identical
-      await tester.tap(find.text('Site Visit Scheduled').last);
+      // Select Site Visit -> order must stay identical
+      await tester.tap(find.text('Site Visit').last);
       await tester.pumpAndSettle();
       expect(currentChipLabels(), expectedOrder);
 
-      // Select Closed Won -> order must stay identical
-      await tester.tap(find.text('Closed Won').last);
+      // Select Approved -> order must stay identical
+      await tester.tap(find.text('Approved').last);
       await tester.pumpAndSettle();
       expect(currentChipLabels(), expectedOrder);
+    },
+  );
+
+  testWidgets(
+    'Sales Vertical: Call scheduling UI and dial actions are removed from Sales screen',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final today = DateFormat('dd MMM yyyy').format(DateTime.now());
+      await StorageService.saveLeads([
+        {
+          'id': 'lead_no_call_ui',
+          'client': 'Meera Nair',
+          'name': 'Meera Nair',
+          'phone': '+91 98200 22222',
+          'scope': 'Villa Interiors',
+          'estValue': '₹ 75,00,000',
+          'stage': 'Followup (Call)',
+          'status': 'Followup (Call)',
+          'nextCallDate': today,
+          'nextCallTime': '05:30 PM',
+          'reminderNote': 'Quote discussion',
+          'hasReminder': true,
+          'isReminderDismissed': false,
+          'color': Colors.amber,
+        },
+      ]);
+
+      await tester.pumpWidget(
+        createTestWidget(const SalesView(), role: UserRole.sales),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Schedule Call'), findsNothing);
+      expect(find.text('+ Set Call Reminder'), findsNothing);
+      expect(find.text('Due Calls (1)'), findsNothing);
+      expect(find.text('Mark Made'), findsNothing);
+      expect(find.byIcon(Icons.phone_rounded), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'SalesView Conv. percentage updates dynamically when lead stage becomes Approved',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final lead1 = {
+        'id': 'lead_conv_1',
+        'client': 'Client Alpha',
+        'name': 'Client Alpha',
+        'phone': '+91 98200 11111',
+        'scope': '3BHK Turnkey',
+        'estValue': '₹ 50,00,000',
+        'stage': 'Lead',
+        'status': 'Lead',
+        'color': Colors.amber,
+      };
+      final lead2 = {
+        'id': 'lead_conv_2',
+        'client': 'Client Beta',
+        'name': 'Client Beta',
+        'phone': '+91 98200 22222',
+        'scope': '4BHK Penthouse',
+        'estValue': '₹ 50,00,000',
+        'stage': 'BOQ',
+        'status': 'BOQ',
+        'color': Colors.amber,
+      };
+      await StorageService.saveLeads([lead1, lead2]);
+
+      await tester.pumpWidget(
+        createTestWidget(const SalesView(), role: UserRole.sales),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('0.0%'), findsOneWidget);
+
+      final approvedLead1 = {...lead1, 'stage': 'Approved', 'status': 'Approved'};
+      await StorageService.saveLeads([approvedLead1, lead2]);
+      MobileActionSheets.leadUpdatedNotifier.value = approvedLead1;
+      await tester.pumpAndSettle();
+
+      expect(find.text('50.0%'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'SalesView Project Status Report Handover Target opens calendar picker and updates project handover date',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await StorageService.saveProjects([
+        {
+          'id': 'proj_cal_1',
+          'name': 'Calendar Test Villa',
+          'client': 'Rohan Mehta',
+          'location': 'Bandra West',
+          'type': 'Turnkey Villa',
+          'budget': '₹ 1,50,00,000',
+          'spent': '₹ 20,00,000',
+          'status': 'On Track',
+          'handover': '15 Dec 2026',
+          'pm': 'Arjun',
+          'supervisor': 'Kiran',
+          'stages': [
+            {'title': 'Civil Work', 'isDone': false},
+          ],
+          'photos': <Map<String, dynamic>>[],
+          'designAssets': <Map<String, dynamic>>[],
+        },
+      ]);
+
+      await tester.pumpWidget(
+        createTestWidget(const SalesView(), role: UserRole.sales),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to Project Status Report tab
+      await tester.tap(find.text('Project Status Report'));
+      await tester.pumpAndSettle();
+
+      final handoverCell = find.byKey(const Key('sales_handover_calendar_proj_cal_1'));
+      expect(handoverCell, findsOneWidget);
+      expect(find.text('15 Dec 2026'), findsOneWidget);
+
+      await tester.ensureVisible(handoverCell);
+      await tester.tap(handoverCell);
+      await tester.pumpAndSettle();
+
+      // Calendar date picker dialog should open
+      expect(find.text('Select Target Handover Date'), findsOneWidget);
+      expect(find.byType(CalendarDatePicker), findsOneWidget);
+
+      // Select day 20 in Dec 2026 and tap OK
+      await tester.tap(find.text('20'));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('20 Dec 2026'), findsOneWidget);
+      expect(
+        StorageService.getProjects().first['handover'],
+        equals('20 Dec 2026'),
+      );
     },
   );
 }

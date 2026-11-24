@@ -482,8 +482,13 @@ void main() {
         );
         expect(expandedCard, findsOneWidget);
 
-        // Flick the expanded card away with a medium gesture and verify it dismisses
-        await tester.fling(expandedCard, const Offset(0, 140), 480);
+        // Small swipe does NOT dismiss the fullscreen detail box
+        await tester.fling(expandedCard, const Offset(0, 75), 350);
+        await tester.pumpAndSettle();
+        expect(expandedCard, findsOneWidget);
+
+        // Larger deliberate swipe dismisses the fullscreen detail box
+        await tester.fling(expandedCard, const Offset(0, 240), 680);
         await tester.pumpAndSettle();
 
         expect(expandedCard, findsNothing);

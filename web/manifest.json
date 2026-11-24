@@ -1,12 +1,12 @@
 {
-    "name": "assist_interiors_dashboard",
-    "short_name": "assist_interiors_dashboard",
+    "name": "Assist Interiors",
+    "short_name": "Assist Interiors",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#121318",
+    "theme_color": "#F3B9A8",
+    "description": "Assist Interiors — Interior Architecture & Project Management.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

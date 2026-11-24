@@ -5,8 +5,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/localization/app_strings.dart';
+import '../../../core/widgets/custom_entry_dropdown.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
-import '../../../core/widgets/quick_fade_dropdown.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 
 import '../../../core/utils/app_notification.dart';
@@ -127,7 +127,11 @@ class EditProjectSheet {
                       keyboardType: TextInputType.text,
                       textCapitalization: TextCapitalization.words,
                       decoration: InputDecoration(
-                        labelText: AppStrings.tr('Project Name'),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(AppStrings.tr('Project Name')),
+                        ),
                         prefixIcon: const Icon(Icons.apartment_outlined),
                       ),
                     ),
@@ -139,115 +143,100 @@ class EditProjectSheet {
                       keyboardType: TextInputType.text,
                       textCapitalization: TextCapitalization.words,
                       decoration: InputDecoration(
-                        labelText: AppStrings.tr('Client & Site Location'),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(AppStrings.tr('Client & Site Location')),
+                        ),
                         prefixIcon: const Icon(Icons.pin_drop_outlined),
                       ),
                     ),
                     const SizedBox(height: 12),
 
                     // Scope / Typology & Budget
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: typeController,
-                            keyboardType: TextInputType.text,
-                            decoration: InputDecoration(
-                              labelText: AppStrings.tr('Typology / Area'),
-                              hintText: 'e.g. 5400 sq ft Villa',
-                              prefixIcon: const Icon(
-                                Icons.architecture_rounded,
-                              ),
-                            ),
-                          ),
+                    TextField(
+                      controller: typeController,
+                      keyboardType: TextInputType.text,
+                      decoration: InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(AppStrings.tr('Typology / Area')),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: budgetController,
-                            keyboardType: TextInputType.text,
-                            decoration: InputDecoration(
-                              labelText: AppStrings.tr('Contract Budget (₹)'),
-                              prefixIcon: const Icon(
-                                Icons.currency_rupee_rounded,
-                              ),
-                            ),
-                          ),
+                        hintText: 'e.g. 5400 sq ft Villa',
+                        prefixIcon: const Icon(
+                          Icons.architecture_rounded,
                         ),
-                      ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: budgetController,
+                      keyboardType: TextInputType.text,
+                      decoration: InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(AppStrings.tr('Contract Budget (₹)')),
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.currency_rupee_rounded,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
                     // Status Dropdown
-                    QuickFadeDropdown<String>(
-                      isExpanded: true,
-                      initialValue: selectedStatus,
-                      dropdownColor: isDark
-                          ? AppColors.darkCardElevated
-                          : AppColors.lightCard,
+                    CustomEntryDropdown(
+                      value: selectedStatus,
+                      options: const [
+                        'Design and Planning',
+                        'On Track',
+                        'Delayed',
+                        'Completed',
+                      ],
                       borderRadius: BorderRadius.circular(4.0),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.brandPeach,
-                      ),
+                      customFieldLabel: 'Custom Project Status',
+                      customFieldHint: 'Enter custom status...',
                       decoration: InputDecoration(
                         labelText: AppStrings.tr('Project Status'),
                         prefixIcon: const Icon(Icons.flag_outlined),
                       ),
-                      items: [
-                        DropdownMenuItem(
-                          value: 'Design and Planning',
-                          child: Text(AppStrings.tr('Design and Planning')),
-                        ),
-                        DropdownMenuItem(
-                          value: 'On Track',
-                          child: Text(AppStrings.tr('On Track')),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Delayed',
-                          child: Text(AppStrings.tr('Delayed')),
-                        ),
-                        DropdownMenuItem(
-                          value: 'Completed',
-                          child: Text(AppStrings.tr('Completed')),
-                        ),
-                      ],
+                      itemLabelBuilder: (s) => Text(AppStrings.tr(s)),
                       onChanged: (val) {
-                        if (val != null) {
-                          setModalState(() => selectedStatus = val);
-                        }
+                        setModalState(() => selectedStatus = val);
                       },
                     ),
                     const SizedBox(height: 12),
 
                     // Handover Target & Project Manager
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: handoverController,
-                            keyboardType: TextInputType.text,
-                            decoration: InputDecoration(
-                              labelText: AppStrings.tr('Target Handover Date'),
-                              hintText: 'e.g. 28 Nov 2026',
-                              prefixIcon: const Icon(
-                                Icons.calendar_month_outlined,
-                              ),
-                            ),
-                          ),
+                    TextField(
+                      controller: handoverController,
+                      keyboardType: TextInputType.text,
+                      decoration: InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(AppStrings.tr('Target Handover Date')),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: pmController,
-                            keyboardType: TextInputType.name,
-                            decoration: InputDecoration(
-                              labelText: AppStrings.tr('Project Manager'),
-                              prefixIcon: const Icon(Icons.person_pin_outlined),
-                            ),
-                          ),
+                        hintText: 'e.g. 28 Nov 2026',
+                        prefixIcon: const Icon(
+                          Icons.calendar_month_outlined,
                         ),
-                      ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: pmController,
+                      keyboardType: TextInputType.name,
+                      decoration: InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(AppStrings.tr('Project Manager')),
+                        ),
+                        prefixIcon: const Icon(Icons.person_pin_outlined),
+                      ),
                     ),
                     const SizedBox(height: 16),
 
@@ -369,6 +358,7 @@ class EditProjectSheet {
                               : project['type'];
                           updatedProject['budget'] = updatedBudget;
                           updatedProject['status'] = selectedStatus;
+                          updatedProject['manualStatus'] = selectedStatus;
                           updatedProject['isDelayed'] =
                               selectedStatus == 'Delayed';
                           updatedProject['handover'] =

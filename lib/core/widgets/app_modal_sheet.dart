@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 /// Displays a modal bottom sheet that reliably supports swipe-down dismissal,
@@ -33,8 +35,16 @@ Future<T?> showAppModalBottomSheet<T>({
     isScrollControlled: isScrollControlled,
     useRootNavigator: useRootNavigator,
     isDismissible: isDismissible,
-    enableDrag: enableDrag,
+    // SwipeDismissibleSheet is the single drag owner so Flutter's built-in
+    // BottomSheet drag handler never fights or double-translates the sheet.
+    enableDrag: false,
     useSafeArea: useSafeArea,
+    sheetAnimationStyle: const AnimationStyle(
+      duration: Duration(milliseconds: 220),
+      reverseDuration: Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    ),
     builder: (ctx) {
       final isDark = Theme.of(ctx).brightness == Brightness.dark;
       final theme = Theme.of(ctx);
@@ -72,12 +82,33 @@ Future<T?> showAppModalBottomSheet<T>({
               child: sheetBody,
             );
 
-      return SwipeDismissibleSheet(
-        enabled: enableDrag && isDismissible,
-        child: decoratedSheet,
+      return ScrollConfiguration(
+        behavior: const _SheetScrollBehavior(),
+        child: SwipeDismissibleSheet(
+          enabled: enableDrag && isDismissible,
+          child: decoratedSheet,
+        ),
       );
     },
   );
+}
+
+/// Clamping scroll behavior for modal bottom sheets so pulling down at the top
+/// hands off 1:1 to [SwipeDismissibleSheet] without double-bouncing inner lists.
+class _SheetScrollBehavior extends MaterialScrollBehavior {
+  const _SheetScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.trackpad,
+  };
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const ClampingScrollPhysics();
 }
 
 class _SheetDragHandle extends StatelessWidget {
@@ -126,9 +157,10 @@ class SwipeDismissibleSheet extends StatefulWidget {
 class _SwipeDismissibleSheetState extends State<SwipeDismissibleSheet>
     with SingleTickerProviderStateMixin {
   late final AnimationController _resetController;
-  Animation<double>? _resetAnimation;
+  late final Animation<double> _resetCurve;
 
   double _dragOffset = 0.0;
+  double _resetStartOffset = 0.0;
   bool _dragStartedAtTop = false;
   bool _isPullingDown = false;
   bool _isDismissing = false;
@@ -142,6 +174,16 @@ class _SwipeDismissibleSheetState extends State<SwipeDismissibleSheet>
       vsync: this,
       duration: const Duration(milliseconds: 180),
     );
+    _resetCurve = CurvedAnimation(
+      parent: _resetController,
+      curve: Curves.easeOutCubic,
+    )..addListener(() {
+        if (mounted && !_isDismissing) {
+          setState(() {
+            _dragOffset = lerpDouble(_resetStartOffset, 0.0, _resetCurve.value)!;
+          });
+        }
+      });
   }
 
   @override
@@ -159,14 +201,7 @@ class _SwipeDismissibleSheetState extends State<SwipeDismissibleSheet>
       return;
     }
 
-    _resetAnimation = Tween<double>(begin: start, end: 0.0).animate(
-      CurvedAnimation(parent: _resetController, curve: Curves.easeOutCubic),
-    )..addListener(() {
-        if (mounted) {
-          setState(() => _dragOffset = _resetAnimation!.value);
-        }
-      });
-
+    _resetStartOffset = start;
     _resetController.forward(from: 0.0);
   }
 
@@ -186,10 +221,10 @@ class _SwipeDismissibleSheetState extends State<SwipeDismissibleSheet>
 
     final velocityY = releaseVelocityY ?? _lastVelocityY;
     final sheetHeight = context.size?.height ?? 400.0;
-    final dismissDistance = (sheetHeight * 0.16).clamp(56.0, 100.0);
+    final dismissDistance = (sheetHeight * 0.18).clamp(64.0, 104.0);
     final shouldDismiss =
         _dragOffset >= dismissDistance ||
-        (_dragOffset >= 16.0 && velocityY >= 240.0);
+        (_dragOffset >= 40.0 && velocityY >= 320.0);
 
     _dragStartedAtTop = false;
     _isPullingDown = false;

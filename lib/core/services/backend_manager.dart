@@ -280,6 +280,7 @@ class BackendManager {
         'material_requests': StorageService.getMaterialRequests(),
         'amendments': StorageService.getAmendments(),
         'expenses': StorageService.getExpenses(),
+        'receipts': StorageService.getReceipts(),
         'custom_roles': StorageService.getCustomRoles(),
       };
 
@@ -345,6 +346,7 @@ class BackendManager {
       'material_requests',
       'amendments',
       'expenses',
+      'receipts',
     ];
 
     for (final col in syncedCollections) {

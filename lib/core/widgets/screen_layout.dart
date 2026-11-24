@@ -361,8 +361,8 @@ class EmptyStateCard extends StatelessWidget {
   }
 }
 
-/// Cross-fades (with a subtle upward drift) between list states when a
-/// filter, search query, or section toggle changes.
+/// Cleanly cross-fades between list states when a filter, search query,
+/// or section toggle changes.
 ///
 /// The [child] must carry a [Key] that changes whenever the content should
 /// animate (e.g. `ValueKey('tasks_$filter')`).
@@ -385,13 +385,7 @@ class FilterSwitcher extends StatelessWidget {
       ),
       transitionBuilder: (child, animation) => FadeTransition(
         opacity: animation,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.015),
-            end: Offset.zero,
-          ).animate(animation),
-          child: child,
-        ),
+        child: child,
       ),
       child: child,
     );

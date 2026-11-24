@@ -89,6 +89,16 @@ class AuthProvider extends ChangeNotifier {
       createdAt: DateTime(2025, 5, 12),
       seenByProprietor: true,
     ),
+    AppUser(
+      id: 'USR-007',
+      fullName: 'Vikram Nair',
+      email: 'vikram.engineer@assistinteriors.in',
+      phone: '+91 98506 78901',
+      role: UserRole.siteEngineer,
+      status: UserAccountStatus.approved,
+      createdAt: DateTime(2025, 5, 18),
+      seenByProprietor: true,
+    ),
   ];
 
   // Default pending sign-ups requiring Proprietor approval

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,12 +8,24 @@ import '../../../core/services/cloud_storage_service.dart';
 import '../../../core/services/permission_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
-import '../../../core/widgets/instant_press_feedback.dart';
-import '../../../core/widgets/app_modal_sheet.dart';
-
+import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/app_notification.dart';
+import '../../../core/widgets/app_modal_sheet.dart';
+import '../../../core/widgets/instant_press_feedback.dart';
+
+class _QueuedSitePhoto {
+  final String path;
+  final Uint8List bytes;
+  final DateTime capturedAt;
+
+  const _QueuedSitePhoto({
+    required this.path,
+    required this.bytes,
+    required this.capturedAt,
+  });
+}
+
 class TakeSitePhotoSheet {
   TakeSitePhotoSheet._();
 
@@ -24,17 +34,11 @@ class TakeSitePhotoSheet {
   static void openQuickCapture(BuildContext context) {
     final projects = StorageService.getProjects();
     if (projects.isEmpty) {
-      ScaffoldMessenger.maybeOf(context)
-        ?..clearSnackBars()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No projects yet. Add a project first, then take site photos.',
-            ),
-            backgroundColor: AppColors.warning,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      AppNotification.show(
+        context,
+        message: 'No projects yet. Add a project first, then take site photos.',
+        backgroundColor: AppColors.warning,
+      );
       return;
     }
 
@@ -56,17 +60,12 @@ class TakeSitePhotoSheet {
                 StorageService.cloudSyncNotifier.value + 1;
           }
           if (context.mounted) {
-            ScaffoldMessenger.maybeOf(context)
-              ?..clearSnackBars()
-              ..showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Site inspection photo added to ${projects[index]['name']}',
-                  ),
-                  backgroundColor: AppColors.success,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+            AppNotification.show(
+              context,
+              message:
+                  'Site inspection photo added to ${projects[index]['name']}',
+              backgroundColor: AppColors.success,
+            );
           }
         },
       );
@@ -99,7 +98,7 @@ class TakeSitePhotoSheet {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Select which site you are taking a photo of:',
+                  'Select which site you are adding photos to:',
                   style: AppTypography.bodySmall(isDark),
                 ),
                 const SizedBox(height: 12),
@@ -160,37 +159,8 @@ class TakeSitePhotoSheet {
     final projectName = project['name'] as String? ?? 'Project Site';
 
     final textController = TextEditingController();
-    String selectedTag = 'Living Room';
-    String? selectedPreset;
-    String? capturedImagePath;
-    Uint8List? capturedImageBytes;
-    DateTime? capturedAt;
+    final List<_QueuedSitePhoto> queuedPhotos = [];
     bool isCapturing = false;
-
-    final tags = [
-      'Living Room',
-      'Master Bed',
-      'Kitchen',
-      'Bath',
-      'Balcony',
-      'MEP & Ceiling',
-      'Flooring',
-      'Joinery',
-      'Entire Site',
-    ];
-
-    final presets = [
-      'Civil Demolition & Wet Masonry',
-      'False Ceiling Framing & Laser Alignment',
-      'Electrical Conduiting & Switchbox Grooves',
-      'Italian Marble Laying & Leveling',
-      'Modular Kitchen Carcass & Countertop Fitting',
-      'Wardrobe Carcass & Veneer Pressing',
-      'Bathroom Waterproofing & Vitrified Tiling',
-      'Wall Primer, Putty & PU Painting',
-      'Architectural Lighting & Fixtures',
-      'Final Snag Rectification & Deep Clean',
-    ];
 
     showAppModalBottomSheet(
       context: context,
@@ -202,6 +172,10 @@ class TakeSitePhotoSheet {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (modalContext, setModalState) {
+            final latestTime = queuedPhotos.isNotEmpty
+                ? queuedPhotos.last.capturedAt
+                : DateTime.now();
+
             return AnimatedPadding(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
@@ -209,7 +183,8 @@ class TakeSitePhotoSheet {
                 left: 20,
                 right: 20,
                 top: 20,
-                bottom: MediaQuery.of(modalContext).viewInsets.bottom +
+                bottom:
+                    MediaQuery.of(modalContext).viewInsets.bottom +
                     AppSizes.sheetBottomPadding(modalContext),
               ),
               child: SingleChildScrollView(
@@ -298,7 +273,7 @@ class TakeSitePhotoSheet {
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Upload Mode: Choose an existing photo from Gallery or Files',
+                                'Upload Mode: Choose an existing photo or multiple photos from Gallery or Files',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
@@ -312,7 +287,7 @@ class TakeSitePhotoSheet {
                       const SizedBox(height: 12),
                     ],
 
-                    // Photo Capture & Timestamp Card
+                    // Photo Capture & Multi-Select Card (with Date & Time)
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
@@ -341,8 +316,8 @@ class TakeSitePhotoSheet {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    capturedAt != null
-                                        ? 'CAPTURED AT'
+                                    queuedPhotos.isNotEmpty
+                                        ? 'CAPTURED AT (${queuedPhotos.length} PHOTO${queuedPhotos.length == 1 ? '' : 'S'})'
                                         : 'CURRENT TIME & DATE',
                                     style: TextStyle(
                                       fontSize: 9.5,
@@ -359,7 +334,7 @@ class TakeSitePhotoSheet {
                                 child: Text(
                                   DateFormat(
                                     'dd MMM yyyy, hh:mm:ss a',
-                                  ).format(capturedAt ?? DateTime.now()),
+                                  ).format(latestTime),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -372,118 +347,93 @@ class TakeSitePhotoSheet {
                               ),
                             ],
                           ),
-                          if (capturedImagePath != null &&
-                              !kIsWeb &&
-                              File(capturedImagePath!).existsSync()) ...[
+
+                          if (queuedPhotos.isNotEmpty) ...[
                             const SizedBox(height: 12),
                             SizedBox(
-                              height: 155,
-                              width: double.infinity,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4.0),
-                                child: Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    Image.file(
-                                      File(capturedImagePath!),
-                                      fit: BoxFit.cover,
-                                    ),
-                                    Positioned(
-                                      top: 8,
-                                      right: 8,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 3.5,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black
-                                              .withValues(alpha: 0.75),
-                                          borderRadius:
-                                              BorderRadius.circular(3.0),
-                                          border: Border.all(
-                                            color: AppColors.brandPeach,
-                                            width: 0.8,
+                              height: 112,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: queuedPhotos.length,
+                                separatorBuilder: (_, _) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (_, idx) {
+                                  final item = queuedPhotos[idx];
+                                  return SizedBox(
+                                    width: 126,
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            4.0,
+                                          ),
+                                          child: Image.memory(
+                                            item.bytes,
+                                            fit: BoxFit.cover,
                                           ),
                                         ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.check_circle_rounded,
-                                              size: 11,
-                                              color: AppColors.brandPeach,
-                                            ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              'PHOTO ATTACHED',
-                                              style: TextStyle(
-                                                fontSize: 9,
-                                                fontWeight: FontWeight.w700,
-                                                letterSpacing: 0.6,
-                                                color: AppColors.brandPeach,
+                                        Positioned(
+                                          top: 4,
+                                          right: 4,
+                                          child: InkWell(
+                                            onTap: () => setModalState(() {
+                                              queuedPhotos.removeAt(idx);
+                                            }),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(3),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.7,
+                                                ),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.close_rounded,
+                                                size: 13,
+                                                color: Colors.white,
                                               ),
                                             ),
-                                          ],
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      left: 8,
-                                      bottom: 8,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black
-                                              .withValues(alpha: 0.78),
-                                          borderRadius:
-                                              BorderRadius.circular(4.0),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.calendar_today_rounded,
-                                              size: 10,
-                                              color: AppColors.brandPeach,
+                                        Positioned(
+                                          left: 4,
+                                          right: 4,
+                                          bottom: 4,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 5,
+                                              vertical: 2,
                                             ),
-                                            const SizedBox(width: 5),
-                                            Text(
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withValues(
+                                                alpha: 0.72,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(3.0),
+                                            ),
+                                            child: Text(
                                               DateFormat(
-                                                'dd MMM yyyy • hh:mm a',
-                                              ).format(
-                                                capturedAt ?? DateTime.now(),
-                                              ),
+                                                'dd MMM • hh:mm a',
+                                              ).format(item.capturedAt),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                               style: const TextStyle(
-                                                fontSize: 9.5,
+                                                fontSize: 8.5,
                                                 fontWeight: FontWeight.w600,
                                                 color: Colors.white,
                                               ),
                                             ),
-                                          ],
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ] else ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              'Zone: $selectedTag — Tap Take Photo, Gallery, or File below.',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: isDark
-                                    ? AppColors.textLightSecondary
-                                    : AppColors.textDarkSecondary,
+                                  );
+                                },
                               ),
                             ),
                           ],
+
                           const SizedBox(height: 12),
                           Row(
                             children: [
@@ -515,11 +465,14 @@ class TakeSitePhotoSheet {
                                                 final pickedBytes =
                                                     await file.readAsBytes();
                                                 setModalState(() {
-                                                  capturedImagePath =
-                                                      file.path;
-                                                  capturedImageBytes =
-                                                      pickedBytes;
-                                                  capturedAt = DateTime.now();
+                                                  queuedPhotos.add(
+                                                    _QueuedSitePhoto(
+                                                      path: file.path,
+                                                      bytes: pickedBytes,
+                                                      capturedAt:
+                                                          DateTime.now(),
+                                                    ),
+                                                  );
                                                 });
                                               }
                                             } catch (e) {
@@ -527,7 +480,13 @@ class TakeSitePhotoSheet {
                                                 'Camera capture error: $e',
                                               );
                                               if (modalContext.mounted) {
-                                                AppNotification.show(modalContext, message: 'Camera error: ${e.toString()}', backgroundColor: AppColors.error);
+                                                AppNotification.show(
+                                                  modalContext,
+                                                  message:
+                                                      'Camera error: ${e.toString()}',
+                                                  backgroundColor:
+                                                      AppColors.error,
+                                                );
                                               }
                                             } finally {
                                               setModalState(
@@ -550,8 +509,9 @@ class TakeSitePhotoSheet {
                                       backgroundColor: AppColors.brandPeach,
                                       foregroundColor: Colors.black,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(4.0),
+                                        borderRadius: BorderRadius.circular(
+                                          4.0,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -575,22 +535,29 @@ class TakeSitePhotoSheet {
                                                 () => isCapturing = true,
                                               );
                                               final picker = ImagePicker();
-                                              final XFile? file =
-                                                  await picker.pickImage(
-                                                source: ImageSource.gallery,
+                                              final List<XFile> files =
+                                                  await picker.pickMultiImage(
                                                 maxWidth: 1920,
                                                 maxHeight: 1080,
                                                 imageQuality: 85,
                                               );
-                                              if (file != null) {
-                                                final pickedBytes =
-                                                    await file.readAsBytes();
+                                              if (files.isNotEmpty) {
+                                                final loaded =
+                                                    <_QueuedSitePhoto>[];
+                                                for (final f in files) {
+                                                  final b =
+                                                      await f.readAsBytes();
+                                                  loaded.add(
+                                                    _QueuedSitePhoto(
+                                                      path: f.path,
+                                                      bytes: b,
+                                                      capturedAt:
+                                                          DateTime.now(),
+                                                    ),
+                                                  );
+                                                }
                                                 setModalState(() {
-                                                  capturedImagePath =
-                                                      file.path;
-                                                  capturedImageBytes =
-                                                      pickedBytes;
-                                                  capturedAt = DateTime.now();
+                                                  queuedPhotos.addAll(loaded);
                                                 });
                                               }
                                             } catch (e) {
@@ -598,7 +565,13 @@ class TakeSitePhotoSheet {
                                                 'Gallery pick error: $e',
                                               );
                                               if (modalContext.mounted) {
-                                                AppNotification.show(modalContext, message: 'Gallery error: ${e.toString()}', backgroundColor: AppColors.error);
+                                                AppNotification.show(
+                                                  modalContext,
+                                                  message:
+                                                      'Gallery error: ${e.toString()}',
+                                                  backgroundColor:
+                                                      AppColors.error,
+                                                );
                                               }
                                             } finally {
                                               setModalState(
@@ -629,8 +602,9 @@ class TakeSitePhotoSheet {
                                         width: 0.8,
                                       ),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(4.0),
+                                        borderRadius: BorderRadius.circular(
+                                          4.0,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -653,20 +627,27 @@ class TakeSitePhotoSheet {
                                               setModalState(
                                                 () => isCapturing = true,
                                               );
-                                              final result =
-                                                  await FilePicker.pickFile(
+                                              final results =
+                                                  await FilePicker.pickFiles(
                                                 type: FileType.image,
                                               );
-                                              if (result != null) {
-                                                final pickedBytes =
-                                                    await result.readAsBytes();
+                                              if (results.isNotEmpty) {
+                                                final loaded =
+                                                    <_QueuedSitePhoto>[];
+                                                for (final r in results) {
+                                                  final b =
+                                                      await r.readAsBytes();
+                                                  loaded.add(
+                                                    _QueuedSitePhoto(
+                                                      path: r.path ?? r.name,
+                                                      bytes: b,
+                                                      capturedAt:
+                                                          DateTime.now(),
+                                                    ),
+                                                  );
+                                                }
                                                 setModalState(() {
-                                                  capturedImagePath =
-                                                      result.path ??
-                                                      result.name;
-                                                  capturedImageBytes =
-                                                      pickedBytes;
-                                                  capturedAt = DateTime.now();
+                                                  queuedPhotos.addAll(loaded);
                                                 });
                                               }
                                             } catch (e) {
@@ -674,7 +655,13 @@ class TakeSitePhotoSheet {
                                                 'File picker photo error: $e',
                                               );
                                               if (modalContext.mounted) {
-                                                AppNotification.show(modalContext, message: 'File access error: ${e.toString()}', backgroundColor: AppColors.error);
+                                                AppNotification.show(
+                                                  modalContext,
+                                                  message:
+                                                      'File access error: ${e.toString()}',
+                                                  backgroundColor:
+                                                      AppColors.error,
+                                                );
                                               }
                                             } finally {
                                               setModalState(
@@ -705,8 +692,9 @@ class TakeSitePhotoSheet {
                                         width: 0.8,
                                       ),
                                       shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(4.0),
+                                        borderRadius: BorderRadius.circular(
+                                          4.0,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -714,20 +702,19 @@ class TakeSitePhotoSheet {
                               ),
                             ],
                           ),
-                          if (capturedImagePath != null) ...[
+                          if (queuedPhotos.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             InkWell(
                               onTap: () => setModalState(() {
-                                capturedImagePath = null;
-                                capturedAt = null;
+                                queuedPhotos.clear();
                               }),
                               borderRadius: BorderRadius.circular(3.0),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
                                   vertical: 4,
                                   horizontal: 6,
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
@@ -737,7 +724,7 @@ class TakeSitePhotoSheet {
                                     ),
                                     SizedBox(width: 4),
                                     Text(
-                                      'Retake / Clear Photo',
+                                      'Clear Selected Photos',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
@@ -754,168 +741,9 @@ class TakeSitePhotoSheet {
                     ),
                     const SizedBox(height: 14),
 
-                    // Area / Zone Selector
+                    // Optional Note / Title
                     Text(
-                      'SITE ZONE / ROOM',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                        color: isDark
-                            ? AppColors.textLightMuted
-                            : AppColors.textDarkMuted,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: tags.map((tag) {
-                          final isSelected = selectedTag == tag;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: ChoiceChip(
-                              label: Text(
-                                tag,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w700
-                                      : FontWeight.w600,
-                                  color: isSelected
-                                      ? Colors.black
-                                      : (isDark
-                                          ? AppColors.textLightPrimary
-                                          : AppColors.textDarkPrimary),
-                                ),
-                              ),
-                              selected: isSelected,
-                              selectedColor: AppColors.brandPeach,
-                              backgroundColor: isDark
-                                  ? AppColors.darkCardElevated
-                                  : AppColors.lightBackground,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4.0),
-                                side: BorderSide(
-                                  color: isSelected
-                                      ? AppColors.brandPeach
-                                      : (isDark
-                                          ? AppColors.darkBorder
-                                          : AppColors.lightBorder),
-                                  width: 0.8,
-                                ),
-                              ),
-                              onSelected: (val) {
-                                if (val) {
-                                  setModalState(() => selectedTag = tag);
-                                }
-                              },
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Milestone Presets
-                    Text(
-                      'OR CHOOSE INSPECTION MILESTONE PRESET',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                        color: isDark
-                            ? AppColors.textLightMuted
-                            : AppColors.textDarkMuted,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      constraints: const BoxConstraints(maxHeight: 140),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.darkCardElevated
-                            : AppColors.lightBackground,
-                        borderRadius: BorderRadius.circular(4.0),
-                        border: Border.all(
-                          color: (isDark
-                                  ? AppColors.darkBorder
-                                  : AppColors.lightBorder)
-                              .withValues(alpha: 0.8),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: presets.length,
-                        separatorBuilder: (context, index) => Divider(
-                          height: 1,
-                          color: (isDark
-                                  ? AppColors.darkBorder
-                                  : AppColors.lightBorder)
-                              .withValues(alpha: 0.5),
-                        ),
-                        itemBuilder: (context, index) {
-                          final item = presets[index];
-                          final isSelected = selectedPreset == item;
-                          return InkWell(
-                            onTap: () {
-                              setModalState(() {
-                                selectedPreset = item;
-                                textController.text = item;
-                              });
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 8,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    isSelected
-                                        ? Icons.check_circle_rounded
-                                        : Icons.camera_alt_outlined,
-                                    size: 14,
-                                    color: isSelected
-                                        ? AppColors.brandPeach
-                                        : (isDark
-                                            ? AppColors.textLightMuted
-                                            : AppColors.textDarkMuted),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      item,
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w700
-                                            : FontWeight.w600,
-                                        color: isSelected
-                                            ? AppColors.brandPeach
-                                            : (isDark
-                                                ? AppColors.textLightPrimary
-                                                : AppColors.textDarkPrimary),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Custom Description
-                    Text(
-                      'CUSTOM PHOTO TITLE / OBSERVATION NOTE',
+                      'PHOTO TITLE / NOTE (OPTIONAL)',
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
@@ -930,7 +758,7 @@ class TakeSitePhotoSheet {
                       controller: textController,
                       style: const TextStyle(fontSize: 12.5),
                       decoration: InputDecoration(
-                        hintText: 'e.g. Master bathroom Italian marble tile dry lay...',
+                        hintText: 'Optional note for these site photos...',
                         hintStyle: TextStyle(
                           fontSize: 12,
                           color: isDark
@@ -959,100 +787,128 @@ class TakeSitePhotoSheet {
                     InstantPressFeedback(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          final title = textController.text.trim().isNotEmpty
+                          final baseTitle = textController.text.trim().isNotEmpty
                               ? textController.text.trim()
-                              : (selectedPreset ??
-                                  '$selectedTag Inspection Photo');
+                              : 'Site Photo';
                           final now = DateTime.now();
-                          final photoTime = capturedAt ?? now;
-                          final timestamp = DateFormat(
-                            'dd MMM yyyy, hh:mm a',
-                          ).format(photoTime);
                           final retentionMonths =
                               StorageService.getPhotoRetentionMonths();
                           final reservedUntil = DateFormat('dd MMM yyyy').format(
                             now.add(Duration(days: retentionMonths * 30)),
                           );
-                          final photoId = 'photo_${now.millisecondsSinceEpoch}';
                           final projId = (project['id'] ?? '').toString();
 
-                          final photoPayload = <String, dynamic>{
-                            'id': photoId,
-                            'title': title,
-                            'tag': selectedTag,
-                            'timestamp': timestamp,
-                            'capturedAt': photoTime.toIso8601String(),
-                            'uploadedAt': now.toIso8601String(),
-                            'retentionMonths': retentionMonths,
-                            'reservedUntil': reservedUntil,
-                            'capturedBy': 'Site Supervisor',
-                            'imagePath': capturedImagePath,
-                            'hasImage': capturedImagePath != null,
-                            'isUploaded': capturedImagePath != null,
-                          };
+                          final itemsToSave = queuedPhotos.isNotEmpty
+                              ? queuedPhotos
+                              : <_QueuedSitePhoto>[];
 
-                          onPhotoAdded(photoPayload);
+                          if (itemsToSave.isEmpty) {
+                            final timestamp = DateFormat(
+                              'dd MMM yyyy, hh:mm a',
+                            ).format(now);
+                            final photoPayload = <String, dynamic>{
+                              'id': 'photo_${now.millisecondsSinceEpoch}',
+                              'title': baseTitle,
+                              'tag': 'Site Photo',
+                              'timestamp': timestamp,
+                              'capturedAt': now.toIso8601String(),
+                              'uploadedAt': now.toIso8601String(),
+                              'retentionMonths': retentionMonths,
+                              'reservedUntil': reservedUntil,
+                              'capturedBy': 'Site Supervisor',
+                              'imagePath': null,
+                              'hasImage': false,
+                              'isUploaded': false,
+                            };
+                            onPhotoAdded(photoPayload);
+                            Navigator.pop(modalContext);
+                            return;
+                          }
 
-                          if ((capturedImagePath != null ||
-                                  capturedImageBytes != null) &&
-                              CloudStorageService.isAvailable) {
-                            CloudStorageService.uploadSitePhoto(
-                              projectId: projId,
-                              projectName: projectName,
-                              filePath: capturedImagePath,
-                              bytes: capturedImageBytes,
-                              title: title,
-                              tag: selectedTag,
-                              capturedBy: 'Site Supervisor',
-                              retentionMonths: retentionMonths,
-                            ).then((uploadRes) {
-                              if (uploadRes == null) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.maybeOf(context)
-                                    ?..clearSnackBars()
-                                    ..showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
+                          for (var i = 0; i < itemsToSave.length; i++) {
+                            final item = itemsToSave[i];
+                            final photoTime = item.capturedAt;
+                            final timestamp = DateFormat(
+                              'dd MMM yyyy, hh:mm a',
+                            ).format(photoTime);
+                            final photoId =
+                                'photo_${now.millisecondsSinceEpoch}_$i';
+                            final itemTitle = itemsToSave.length > 1
+                                ? '$baseTitle (${i + 1})'
+                                : baseTitle;
+
+                            final photoPayload = <String, dynamic>{
+                              'id': photoId,
+                              'title': itemTitle,
+                              'tag': 'Site Photo',
+                              'timestamp': timestamp,
+                              'capturedAt': photoTime.toIso8601String(),
+                              'uploadedAt': now.toIso8601String(),
+                              'retentionMonths': retentionMonths,
+                              'reservedUntil': reservedUntil,
+                              'capturedBy': 'Site Supervisor',
+                              'imagePath': item.path,
+                              'hasImage': true,
+                              'isUploaded': true,
+                            };
+
+                            onPhotoAdded(photoPayload);
+
+                            if (CloudStorageService.isAvailable) {
+                              CloudStorageService.uploadSitePhoto(
+                                projectId: projId,
+                                projectName: projectName,
+                                filePath: item.path,
+                                bytes: item.bytes,
+                                title: itemTitle,
+                                tag: 'Site Photo',
+                                capturedBy: 'Site Supervisor',
+                                retentionMonths: retentionMonths,
+                              ).then((uploadRes) {
+                                if (uploadRes == null) {
+                                  if (context.mounted) {
+                                    AppNotification.show(
+                                      context,
+                                      message:
                                           'Photo saved on phone. It will upload when you\'re back online.',
-                                        ),
-                                        backgroundColor: AppColors.warning,
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
+                                      backgroundColor: AppColors.warning,
                                     );
+                                  }
+                                  return;
                                 }
-                                return;
-                              }
-                              final projects = StorageService.getProjects();
-                              final pIdx = projects.indexWhere(
-                                (p) =>
-                                    p['id'] == project['id'] ||
-                                    p['name'] == projectName,
-                              );
-                              if (pIdx != -1 &&
-                                  projects[pIdx]['photos'] is List) {
-                                final photos = List<Map<String, dynamic>>.from(
-                                  (projects[pIdx]['photos'] as List).map(
-                                    (e) => Map<String, dynamic>.from(e as Map),
-                                  ),
+                                final projects = StorageService.getProjects();
+                                final pIdx = projects.indexWhere(
+                                  (p) =>
+                                      p['id'] == project['id'] ||
+                                      p['name'] == projectName,
                                 );
-                                final phIdx = photos.indexWhere(
-                                  (ph) => ph['id'] == photoId,
-                                );
-                                if (phIdx != -1) {
-                                  photos[phIdx]['storagePath'] =
-                                      uploadRes.storagePath;
-                                  photos[phIdx]['downloadUrl'] =
-                                      uploadRes.downloadUrl;
-                                  photos[phIdx]['imageUrl'] =
-                                      uploadRes.downloadUrl;
-                                  projects[pIdx]['photos'] = photos;
-                                  StorageService.saveProjects(projects);
-                                  StorageService.cloudSyncNotifier.value =
-                                      StorageService.cloudSyncNotifier.value +
-                                      1;
+                                if (pIdx != -1 &&
+                                    projects[pIdx]['photos'] is List) {
+                                  final photos = List<Map<String, dynamic>>.from(
+                                    (projects[pIdx]['photos'] as List).map(
+                                      (e) =>
+                                          Map<String, dynamic>.from(e as Map),
+                                    ),
+                                  );
+                                  final phIdx = photos.indexWhere(
+                                    (ph) => ph['id'] == photoId,
+                                  );
+                                  if (phIdx != -1) {
+                                    photos[phIdx]['storagePath'] =
+                                        uploadRes.storagePath;
+                                    photos[phIdx]['downloadUrl'] =
+                                        uploadRes.downloadUrl;
+                                    photos[phIdx]['imageUrl'] =
+                                        uploadRes.downloadUrl;
+                                    projects[pIdx]['photos'] = photos;
+                                    StorageService.saveProjects(projects);
+                                    StorageService.cloudSyncNotifier.value =
+                                        StorageService.cloudSyncNotifier.value +
+                                        1;
+                                  }
                                 }
-                              }
-                            });
+                              });
+                            }
                           }
                           Navigator.pop(modalContext);
                         },

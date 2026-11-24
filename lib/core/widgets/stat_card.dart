@@ -50,18 +50,21 @@ class StatCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Text(
-                  AppStrings.tr(title).toUpperCase(),
-                  style: AppTypography.bodySmall(isDark).copyWith(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: isDark
-                        ? AppColors.textLightMuted
-                        : AppColors.textDarkMuted,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    AppStrings.tr(title).toUpperCase(),
+                    style: AppTypography.bodySmall(isDark).copyWith(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: isDark
+                          ? AppColors.textLightMuted
+                          : AppColors.textDarkMuted,
+                    ),
+                    maxLines: 1,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 4),
@@ -120,21 +123,24 @@ class StatCard extends StatelessWidget {
                           const SizedBox(width: 1),
                         ],
                         Flexible(
-                          child: Text(
-                            trend ?? subtitle!,
-                            style: TextStyle(
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w600,
-                              color: trend != null
-                                  ? (isPositiveTrend
-                                        ? AppColors.success
-                                        : AppColors.error)
-                                  : (isDark
-                                        ? AppColors.textLightMuted
-                                        : AppColors.textDarkMuted),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              trend ?? subtitle!,
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w600,
+                                color: trend != null
+                                    ? (isPositiveTrend
+                                          ? AppColors.success
+                                          : AppColors.error)
+                                    : (isDark
+                                          ? AppColors.textLightMuted
+                                          : AppColors.textDarkMuted),
+                              ),
+                              maxLines: 1,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

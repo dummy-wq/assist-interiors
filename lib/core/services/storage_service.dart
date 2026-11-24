@@ -23,12 +23,14 @@ class StorageService {
   static const String _keyVendors = 'assist_vendors_v1';
   static const String _keyInvoices = 'assist_invoices_v1';
   static const String _keyExpenses = 'assist_expenses_v1';
+  static const String _keyReceipts = 'assist_receipts_v1';
   static const String _keyLeads = 'assist_leads_v1';
   static const String _keySiteLogs = 'assist_sitelogs_v1';
   static const String _keyMilestones = 'assist_milestones_v1';
   static const String _keyDesignItems = 'assist_design_items_v1';
   static const String _keyMaterialRequests = 'assist_material_requests_v1';
   static const String _keyAmendments = 'assist_amendments_v1';
+  static const String _keyLabourRoll = 'assist_labour_roll_v1';
   static const String _keyApprovedUsers = 'assist_approved_users_v1';
   static const String _keyPendingUsers = 'assist_pending_users_v1';
   static const String _keyCustomRoles = 'assist_custom_roles_v1';
@@ -39,6 +41,7 @@ class StorageService {
       'assist_photo_retention_months_v1';
   static const String _keyCadRetentionMonths = 'assist_cad_retention_months_v1';
   static const String _keySeedVersion = 'assist_seed_version_v1';
+  static const String _keyCleanDeliveryWipe = 'assist_clean_delivery_wiped_v1';
   static const int _currentSeedVersion = 3;
 
   /// Default backend reservation period for uploaded site photos (6 months).
@@ -54,10 +57,18 @@ class StorageService {
   static Future<void> init([SharedPreferences? mockPrefs]) async {
     _prefs = mockPrefs ?? await SharedPreferences.getInstance();
 
+    final hasWipedForCleanDelivery =
+        _prefs?.getBool(_keyCleanDeliveryWipe) ?? false;
+    if (!hasWipedForCleanDelivery) {
+      await clearAll();
+      await clearUsers();
+      await _prefs?.setBool(_keyCleanDeliveryWipe, true);
+    }
+
     // Populate preExistingProjects from stored projects
     final storedProjects = getProjects();
+    AppConstants.preExistingProjects.clear();
     if (storedProjects.isNotEmpty) {
-      AppConstants.preExistingProjects.clear();
       for (final p in storedProjects) {
         final name = p['name'] as String?;
         if (name != null && !AppConstants.preExistingProjects.contains(name)) {
@@ -138,6 +149,11 @@ class StorageService {
     final stages = project['stages'];
     if (project['isDelayed'] == true) {
       project['status'] = 'Delayed';
+      return;
+    }
+    final manualStatus = (project['manualStatus'] ?? '').toString().trim();
+    if (manualStatus.isNotEmpty) {
+      project['status'] = manualStatus;
       return;
     }
     if (stages is List && stages.isNotEmpty) {
@@ -387,13 +403,55 @@ class StorageService {
 
   // ==================== EXPENSES / VOUCHERS ====================
 
-  static List<Map<String, dynamic>> getExpenses() => _readMapList(_keyExpenses);
+  static List<Map<String, dynamic>> getExpenses() => _readMapList(
+    _keyExpenses,
+    colorFields: const ['color', 'statusColor'],
+  );
 
   static Future<void> saveExpenses(List<Map<String, dynamic>> expenses) async {
-    await _writeMapList(_keyExpenses, expenses, label: 'expenses');
+    await _writeMapList(
+      _keyExpenses,
+      expenses,
+      colorFields: const ['color', 'statusColor'],
+      label: 'expenses',
+    );
     if (!_isApplyingRemoteUpdate) {
       BackendManager.instance.syncCollection('expenses', expenses);
     }
+  }
+
+  // ==================== RECEIPTS ====================
+
+  static List<Map<String, dynamic>> getReceipts() => _readMapList(
+    _keyReceipts,
+    colorFields: const ['color', 'statusColor'],
+  );
+
+  static Future<void> saveReceipts(List<Map<String, dynamic>> receipts) async {
+    await _writeMapList(
+      _keyReceipts,
+      receipts,
+      colorFields: const ['color', 'statusColor'],
+      label: 'receipts',
+    );
+    if (!_isApplyingRemoteUpdate) {
+      BackendManager.instance.syncCollection('receipts', receipts);
+    }
+  }
+
+  // ==================== LABOUR ROLL CALL ====================
+
+  static List<Map<String, dynamic>> getLabourRoll() =>
+      _readMapList(_keyLabourRoll);
+
+  static Future<void> saveLabourRoll(
+    List<Map<String, dynamic>> entries,
+  ) async {
+    await _writeMapList(
+      _keyLabourRoll,
+      entries,
+      label: 'labour_roll',
+    );
   }
 
   // ==================== LEADS (SALES) ====================
@@ -524,112 +582,7 @@ class StorageService {
   }
 
   static Future<void> seedFillerMaterialRequestsIfEmpty() async {
-    final existing = getMaterialRequests();
-    if (existing.isNotEmpty) return;
-
-    final defaultRequests = <Map<String, dynamic>>[
-      {
-        'id': 'MR-2026-201',
-        'itemName': 'Calacatta Oro Bookmatched Italian Marble (20mm)',
-        'category': 'Italian Marble & Tiles',
-        'project': 'Veridian Golf Links Residence',
-        'quantity': '1,120 sq ft',
-        'urgency': 'Urgent',
-        'status': 'Pending Approval',
-        'requestedBy': 'Suresh Kumar (Supervisor)',
-        'assignedSupplier': 'Carrara Stone & Surfaces',
-        'estimatedCost': '₹ 8,96,000',
-        'requestDate': '15 Nov 2026',
-        'requiredDate': '20 Nov 2026',
-        'notes':
-            'Required for double-height atrium lobby and formal dining dry-lay.',
-        'color': AppColors.warning,
-        'createdAt': DateTime.now()
-            .subtract(const Duration(hours: 3))
-            .toIso8601String(),
-      },
-      {
-        'id': 'MR-2026-202',
-        'itemName': 'Blum Legrabox Pure Matte Servo-Drive Channels',
-        'category': 'Hardware & Fittings',
-        'project': 'Veridian Golf Links Residence',
-        'quantity': '48 Sets',
-        'urgency': 'Standard',
-        'status': 'Approved',
-        'requestedBy': 'Ananya Sen (PM)',
-        'assignedSupplier': 'Hafele & Blum Architectural Hub',
-        'estimatedCost': '₹ 2,64,000',
-        'requestDate': '13 Nov 2026',
-        'requiredDate': '22 Nov 2026',
-        'notes':
-            'Approved for chef kitchen island and butler pantry pull-out units.',
-        'color': AppColors.info,
-        'createdAt': DateTime.now()
-            .subtract(const Duration(days: 1))
-            .toIso8601String(),
-      },
-      {
-        'id': 'MR-2026-203',
-        'itemName': 'Saint-Gobain 12mm Acoustic Laminated Fluted Glass',
-        'category': 'Carpentry & Joinery',
-        'project': 'Solstice Terrace Duplex 19B',
-        'quantity': '340 sq ft',
-        'urgency': 'Urgent',
-        'status': 'Dispatched',
-        'requestedBy': 'Suresh Kumar (Supervisor)',
-        'assignedSupplier': 'Saint-Gobain Studio Glassworks',
-        'estimatedCost': '₹ 3,06,000',
-        'requestDate': '11 Nov 2026',
-        'requiredDate': '19 Nov 2026',
-        'notes':
-            'Toughened & acoustic-laminated panels in transit for study partition.',
-        'color': AppColors.brandPeach,
-        'createdAt': DateTime.now()
-            .subtract(const Duration(days: 2))
-            .toIso8601String(),
-      },
-      {
-        'id': 'MR-2026-204',
-        'itemName': 'Lutron HomeWorks QSX DALI Dimming Modules',
-        'category': 'Electrical & Automation',
-        'project': 'Aurelia Sea-Facing Penthouse 42',
-        'quantity': '24 Panels',
-        'urgency': 'Standard',
-        'status': 'Delivered',
-        'requestedBy': 'Ananya Sen (PM)',
-        'assignedSupplier': 'Lumina Smart Controls',
-        'estimatedCost': '₹ 4,80,000',
-        'requestDate': '06 Nov 2026',
-        'requiredDate': '10 Nov 2026',
-        'notes': 'Installed and commissioned across all 5 suites and sky deck.',
-        'color': AppColors.success,
-        'createdAt': DateTime.now()
-            .subtract(const Duration(days: 4))
-            .toIso8601String(),
-      },
-      {
-        'id': 'MR-2026-205',
-        'itemName': 'Burma Teak Crown-Cut Architectural Veneer Sheets',
-        'category': 'Carpentry & Joinery',
-        'project': 'Saffron Heritage Courtyard Villa',
-        'quantity': '85 Sheets',
-        'urgency': 'Standard',
-        'status': 'Pending Approval',
-        'requestedBy': 'Vikram Malhotra (Designer)',
-        'assignedSupplier': 'Decowood & Century Veneers',
-        'estimatedCost': '₹ 3,82,500',
-        'requestDate': '16 Nov 2026',
-        'requiredDate': '26 Nov 2026',
-        'notes':
-            'Lot-matched sequential grain bundles selected for courtyard lounge ceiling.',
-        'color': AppColors.warning,
-        'createdAt': DateTime.now()
-            .subtract(const Duration(hours: 9))
-            .toIso8601String(),
-      },
-    ];
-
-    await saveMaterialRequests(defaultRequests);
+    // Intentionally empty: materials start clean with zero pre-filled boxes.
   }
 
   // ==================== AMENDMENTS ====================
@@ -820,12 +773,14 @@ class StorageService {
     await _prefs?.remove(_keyVendors);
     await _prefs?.remove(_keyInvoices);
     await _prefs?.remove(_keyExpenses);
+    await _prefs?.remove(_keyReceipts);
     await _prefs?.remove(_keyLeads);
     await _prefs?.remove(_keySiteLogs);
     await _prefs?.remove(_keyMilestones);
     await _prefs?.remove(_keyDesignItems);
     await _prefs?.remove(_keyMaterialRequests);
     await _prefs?.remove(_keyAmendments);
+    await _prefs?.remove(_keyLabourRoll);
     await _prefs?.remove(_keySeedVersion);
     AppConstants.preExistingProjects.clear();
   }
@@ -1657,6 +1612,9 @@ class StorageService {
           break;
         case 'expenses':
           await saveExpenses(hydrated);
+          break;
+        case 'receipts':
+          await saveReceipts(hydrated);
           break;
         case 'leads':
           await saveLeads(hydrated);

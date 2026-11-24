@@ -18,6 +18,7 @@ import '../../projects/sheets/project_filter_sheet.dart';
 import '../../vendors/sheets/add_vendor_sheet.dart';
 import '../../tasks/sheets/create_task_sheet.dart';
 import '../../accounts/sheets/add_expense_sheet.dart';
+import '../../accounts/sheets/add_receipt_sheet.dart';
 import '../../projects/sheets/review_snags_sheet.dart';
 import '../../team/sheets/invite_staff_sheet.dart';
 
@@ -35,6 +36,7 @@ export '../../projects/sheets/review_snags_sheet.dart';
 export '../../vendors/sheets/add_vendor_sheet.dart';
 export '../../tasks/sheets/create_task_sheet.dart';
 export '../../accounts/sheets/add_expense_sheet.dart';
+export '../../accounts/sheets/add_receipt_sheet.dart';
 export '../../team/sheets/invite_staff_sheet.dart';
 
 /// Central Facade for all bottom modal action sheets in Assist Interiors.
@@ -54,6 +56,8 @@ class MobileActionSheets {
   static final ValueNotifier<Map<String, dynamic>?> renderCreatedNotifier =
       ValueNotifier(null);
   static final ValueNotifier<Map<String, dynamic>?> expenseCreatedNotifier =
+      ValueNotifier(null);
+  static final ValueNotifier<Map<String, dynamic>?> receiptCreatedNotifier =
       ValueNotifier(null);
   static final ValueNotifier<int> attendanceCountNotifier = ValueNotifier(0);
   static final ValueNotifier<Map<String, dynamic>?> invoiceCreatedNotifier =
@@ -208,6 +212,25 @@ class MobileActionSheets {
       return;
     }
     AddExpenseSheet.show(context);
+  }
+
+  static void showAddReceiptSheet(
+    BuildContext context, {
+    String? initialProject,
+  }) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!AppPermissions.canManageAccounts(
+      auth.currentRole,
+      user: auth.currentUser,
+    )) {
+      AppNotification.show(
+        context,
+        message:
+            'Action restricted: Only Proprietor and Accounts can add receipts.',
+      );
+      return;
+    }
+    AddReceiptSheet.show(context, initialProject: initialProject);
   }
 
   // 4. Procurement & Vendor Onboarding

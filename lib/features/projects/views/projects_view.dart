@@ -8,12 +8,12 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/permissions/app_permissions.dart';
 import '../../../core/utils/app_notification.dart';
+import '../../../core/utils/currency_utils.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/cloud_network_image.dart';
 import '../../../core/widgets/expanded_detail_dialog.dart';
-import '../../../core/widgets/pill_box.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/stat_strip.dart';
 import '../../../core/widgets/screen_layout.dart';
@@ -54,6 +54,7 @@ class _ProjectsViewState extends State<ProjectsView> {
     late List<String> tabs;
     switch (role) {
       case UserRole.supervisor:
+      case UserRole.siteEngineer:
         tabs = ['progress', 'photos', 'files'];
         break;
       case UserRole.designer:
@@ -118,6 +119,7 @@ class _ProjectsViewState extends State<ProjectsView> {
     MobileActionSheets.projectFilterNotifier.value = 'All';
     MobileActionSheets.projectCreatedNotifier.addListener(_onProjectCreated);
     MobileActionSheets.projectUpdatedNotifier.addListener(_onProjectUpdated);
+    MobileActionSheets.renderCreatedNotifier.addListener(_onProjectUpdated);
     MobileActionSheets.projectFilterNotifier.addListener(_onFilterChanged);
     MobileActionSheets.invoiceCreatedNotifier.addListener(_onInvoiceChanged);
     MobileActionSheets.invoiceUpdatedNotifier.addListener(_onInvoiceChanged);
@@ -129,6 +131,7 @@ class _ProjectsViewState extends State<ProjectsView> {
     StorageService.cloudSyncNotifier.removeListener(_onProjectUpdated);
     MobileActionSheets.projectCreatedNotifier.removeListener(_onProjectCreated);
     MobileActionSheets.projectUpdatedNotifier.removeListener(_onProjectUpdated);
+    MobileActionSheets.renderCreatedNotifier.removeListener(_onProjectUpdated);
     MobileActionSheets.projectFilterNotifier.removeListener(_onFilterChanged);
     MobileActionSheets.invoiceCreatedNotifier.removeListener(_onInvoiceChanged);
     MobileActionSheets.invoiceUpdatedNotifier.removeListener(_onInvoiceChanged);
@@ -205,6 +208,7 @@ class _ProjectsViewState extends State<ProjectsView> {
       return;
     }
     setState(() {
+      _projects[projectIndex].remove('manualStatus');
       final stages =
           _projects[projectIndex]['stages'] as List<Map<String, dynamic>>;
       stages[stageIndex]['isDone'] = !(stages[stageIndex]['isDone'] as bool);
@@ -252,6 +256,7 @@ class _ProjectsViewState extends State<ProjectsView> {
     if (title.isEmpty) return;
 
     setState(() {
+      _projects[projectIndex].remove('manualStatus');
       final stages =
           _projects[projectIndex]['stages'] as List<Map<String, dynamic>>;
       stages.add({
@@ -278,6 +283,7 @@ class _ProjectsViewState extends State<ProjectsView> {
       return;
     }
     setState(() {
+      _projects[projectIndex].remove('manualStatus');
       final stages =
           _projects[projectIndex]['stages'] as List<Map<String, dynamic>>;
       if (stageIndex >= 0 && stageIndex < stages.length) {
@@ -419,7 +425,6 @@ class _ProjectsViewState extends State<ProjectsView> {
 
     final controller = AppNotification.show(
       context,
-      duration: const Duration(seconds: 5),
       message: AppStrings.tr('Photo removed'),
       action: SnackBarAction(
         label: AppStrings.tr('Undo'),
@@ -509,7 +514,9 @@ class _ProjectsViewState extends State<ProjectsView> {
           final list = assetsRaw
               .map((a) => Map<String, dynamic>.from(a as Map))
               .toList();
-          list.insert(0, newAsset);
+          if (!list.any((a) => a['id'] == newAsset['id'])) {
+            list.insert(0, newAsset);
+          }
           _projects[projectIndex]['designAssets'] = list;
         });
         StorageService.saveProjects(_projects);
@@ -522,7 +529,70 @@ class _ProjectsViewState extends State<ProjectsView> {
     );
   }
 
-  void _deleteDesignAsset(int projectIndex, int assetIndex) {
+  /// Merges embedded `p['designAssets']` with any project-linked files
+  /// stored in `StorageService.getDesignItems()` (e.g. synced from Firestore
+  /// `design_items` or uploaded via Drawings & Renders).
+  List<Map<String, dynamic>> _mergedDesignAssetsForProject(
+    Map<String, dynamic> p,
+  ) {
+    final projId = (p['id'] ?? '').toString().trim();
+    final projName = (p['name'] ?? '').toString().trim().toLowerCase();
+
+    final embedded = ((p['designAssets'] as List?) ?? [])
+        .whereType<Map>()
+        .map((a) => Map<String, dynamic>.from(a))
+        .toList();
+
+    final globalItems = StorageService.getDesignItems().where((item) {
+      final itemProjId = (item['projectId'] ?? '').toString().trim();
+      final itemProjName = (item['project'] ?? '').toString().trim().toLowerCase();
+      if (projId.isNotEmpty && itemProjId.isNotEmpty && itemProjId == projId) {
+        return true;
+      }
+      if (projName.isNotEmpty && itemProjName == projName) {
+        return true;
+      }
+      return false;
+    }).toList();
+
+    final byId = <String, Map<String, dynamic>>{};
+    final ordered = <Map<String, dynamic>>[];
+
+    void addOrMerge(Map<String, dynamic> item) {
+      final id = (item['id'] ?? '').toString();
+      if (id.isEmpty) {
+        ordered.add(item);
+        return;
+      }
+      final existing = byId[id];
+      if (existing == null) {
+        final copy = Map<String, dynamic>.from(item);
+        byId[id] = copy;
+        ordered.add(copy);
+      } else {
+        for (final k in const ['downloadUrl', 'fileUrl', 'storagePath']) {
+          final v = item[k]?.toString() ?? '';
+          if (v.isNotEmpty && (existing[k]?.toString() ?? '').isEmpty) {
+            existing[k] = v;
+          }
+        }
+      }
+    }
+
+    for (final a in embedded) {
+      addOrMerge(a);
+    }
+    for (final g in globalItems) {
+      addOrMerge(g);
+    }
+    return ordered;
+  }
+
+  void _deleteDesignAsset(
+    int projectIndex,
+    int assetIndex, {
+    Map<String, dynamic>? asset,
+  }) {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (!AppPermissions.canManageDesignAssets(
       auth.currentRole,
@@ -537,13 +607,21 @@ class _ProjectsViewState extends State<ProjectsView> {
     Map<String, dynamic>? removedAsset;
     final projectKey =
         _projects[projectIndex]['id'] ?? _projects[projectIndex]['name'];
+    final targetId = asset?['id']?.toString();
     setState(() {
       final assetsRaw =
           (_projects[projectIndex]['designAssets'] as List?) ?? [];
       final list = assetsRaw
           .map((a) => Map<String, dynamic>.from(a as Map))
           .toList();
-      if (assetIndex >= 0 && assetIndex < list.length) {
+      if (targetId != null && targetId.isNotEmpty) {
+        final foundIdx = list.indexWhere((a) => a['id']?.toString() == targetId);
+        if (foundIdx != -1) {
+          removedAsset = list.removeAt(foundIdx);
+        } else {
+          removedAsset = Map<String, dynamic>.from(asset!);
+        }
+      } else if (assetIndex >= 0 && assetIndex < list.length) {
         removedAsset = list.removeAt(assetIndex);
       }
       _projects[projectIndex]['designAssets'] = list;
@@ -552,9 +630,18 @@ class _ProjectsViewState extends State<ProjectsView> {
     if (removedAsset == null) return;
 
     final assetToDelete = removedAsset!;
+    final removedId = assetToDelete['id']?.toString();
+    if (removedId != null && removedId.isNotEmpty) {
+      final designItems = StorageService.getDesignItems();
+      final before = designItems.length;
+      designItems.removeWhere((d) => d['id']?.toString() == removedId);
+      if (designItems.length != before) {
+        StorageService.saveDesignItems(designItems);
+      }
+    }
+
     final controller = AppNotification.show(
       context,
-      duration: const Duration(seconds: 5),
       message: AppStrings.tr('File removed'),
       action: SnackBarAction(
         label: AppStrings.tr('Undo'),
@@ -574,6 +661,11 @@ class _ProjectsViewState extends State<ProjectsView> {
             _projects[pIdx]['designAssets'] = curAssets;
           });
           StorageService.saveProjects(_projects);
+          final designItems = StorageService.getDesignItems();
+          if (!designItems.any((d) => d['id'] == assetToDelete['id'])) {
+            designItems.insert(0, assetToDelete);
+            StorageService.saveDesignItems(designItems);
+          }
         },
       ),
     );
@@ -592,20 +684,37 @@ class _ProjectsViewState extends State<ProjectsView> {
   void _updateDesignAssetStatus(
     int projectIndex,
     int assetIndex,
-    String newStatus,
-  ) {
+    String newStatus, {
+    Map<String, dynamic>? asset,
+  }) {
+    final targetId = asset?['id']?.toString();
     setState(() {
       final assetsRaw =
           (_projects[projectIndex]['designAssets'] as List?) ?? [];
       final list = assetsRaw
           .map((a) => Map<String, dynamic>.from(a as Map))
           .toList();
-      if (assetIndex >= 0 && assetIndex < list.length) {
+      if (targetId != null && targetId.isNotEmpty) {
+        final foundIdx = list.indexWhere((a) => a['id']?.toString() == targetId);
+        if (foundIdx != -1) {
+          list[foundIdx]['status'] = newStatus;
+        } else if (asset != null) {
+          list.insert(0, {...asset, 'status': newStatus});
+        }
+      } else if (assetIndex >= 0 && assetIndex < list.length) {
         list[assetIndex]['status'] = newStatus;
       }
       _projects[projectIndex]['designAssets'] = list;
     });
     StorageService.saveProjects(_projects);
+    if (targetId != null && targetId.isNotEmpty) {
+      final designItems = StorageService.getDesignItems();
+      final idx = designItems.indexWhere((d) => d['id']?.toString() == targetId);
+      if (idx != -1) {
+        designItems[idx]['status'] = newStatus;
+        StorageService.saveDesignItems(designItems);
+      }
+    }
   }
 
   double _calculateProgress(List<Map<String, dynamic>> stages) {
@@ -627,15 +736,267 @@ class _ProjectsViewState extends State<ProjectsView> {
     if (project['isDelayed'] == true) {
       return 'Delayed';
     }
-    final stages = project['stages'] as List<Map<String, dynamic>>? ?? [];
+    final manualStatus = (project['manualStatus'] ?? '').toString().trim();
+    if (manualStatus.isNotEmpty) {
+      return manualStatus == 'Design & Planning'
+          ? 'Design and Planning'
+          : manualStatus;
+    }
+    final rawStages = project['stages'];
+    final stages = rawStages is List
+        ? rawStages
+              .whereType<Map>()
+              .map((s) => Map<String, dynamic>.from(s))
+              .toList()
+        : <Map<String, dynamic>>[];
+    final explicitStatus = (project['status'] ?? '').toString().trim();
     if (stages.isEmpty) {
+      if (explicitStatus.isNotEmpty && explicitStatus != 'Delayed') {
+        return explicitStatus == 'Design & Planning'
+            ? 'Design and Planning'
+            : explicitStatus;
+      }
       return 'Design and Planning';
     }
     final doneCount = stages.where((s) => s['isDone'] == true).length;
     if (doneCount == stages.length) {
       return 'Completed';
     }
+    if (explicitStatus == 'Design and Planning' ||
+        explicitStatus == 'Design & Planning') {
+      return 'Design and Planning';
+    }
     return 'On Track';
+  }
+
+  void _setManualProjectStatus(int projectIndex, String newStatus) {
+    if (projectIndex < 0 || projectIndex >= _projects.length) return;
+    final normalized = newStatus == 'Design & Planning'
+        ? 'Design and Planning'
+        : newStatus;
+    setState(() {
+      final p = _projects[projectIndex];
+      p['manualStatus'] = normalized;
+      p['status'] = normalized;
+      p['isDelayed'] = normalized == 'Delayed';
+      StorageService.syncProjectProgressAndStatus(p);
+    });
+    _persistAndNotifyProject(projectIndex);
+    if (mounted) {
+      AppNotification.show(
+        context,
+        message: 'Project status updated to "${_getStatusLabel(normalized)}".',
+        backgroundColor: AppColors.success,
+      );
+    }
+  }
+
+  Future<void> _promptCustomProjectStatus(int projectIndex) async {
+    if (projectIndex < 0 || projectIndex >= _projects.length) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6.0),
+          ),
+          title: Text(
+            'Custom Project Status',
+            style: AppTypography.titleMedium(isDark),
+          ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text('Enter Custom Status'),
+              ),
+              hintText: 'e.g. Snagging & Handover',
+              prefixIcon: Icon(Icons.flag_outlined),
+            ),
+            onSubmitted: (val) => Navigator.of(dialogCtx).pop(val.trim()),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () =>
+                  Navigator.of(dialogCtx).pop(controller.text.trim()),
+              child: const Text('Apply'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result != null && result.isNotEmpty) {
+      _setManualProjectStatus(projectIndex, result);
+    }
+  }
+
+  Widget _buildProjectStatusDropdown({
+    required int rawIndex,
+    required String currentStatus,
+    required Color statusColor,
+    required bool isDark,
+    required bool canChangeStatus,
+  }) {
+    const presetStatuses = <String>[
+      'Design and Planning',
+      'On Track',
+      'Delayed',
+      'Completed',
+    ];
+    final allStatuses = <String>[
+      ...presetStatuses,
+      if (!presetStatuses.contains(currentStatus)) currentStatus,
+    ];
+
+    final badgeChild = ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 145),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+        decoration: BoxDecoration(
+          color: statusColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(6.0),
+          border: Border.all(
+            color: statusColor.withValues(alpha: 0.4),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _getStatusLabel(currentStatus),
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 11.0,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ),
+            if (canChangeStatus) ...[
+              const SizedBox(width: 2),
+              Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 16,
+                color: statusColor,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+
+    if (!canChangeStatus) {
+      return badgeChild;
+    }
+
+    return Theme(
+      data: Theme.of(context).copyWith(
+        popupMenuTheme: PopupMenuThemeData(
+          color: isDark ? AppColors.darkCard : AppColors.lightCard,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6.0),
+            side: BorderSide(
+              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              width: 0.8,
+            ),
+          ),
+        ),
+      ),
+      child: PopupMenuButton<String>(
+        key: ValueKey('project_status_dropdown_$rawIndex'),
+        tooltip: 'Change Project Status',
+        padding: EdgeInsets.zero,
+        position: PopupMenuPosition.under,
+        onSelected: (selected) {
+          if (selected == '__custom__') {
+            _promptCustomProjectStatus(rawIndex);
+          } else {
+            _setManualProjectStatus(rawIndex, selected);
+          }
+        },
+        itemBuilder: (context) => [
+          for (final status in allStatuses)
+            PopupMenuItem<String>(
+              value: status,
+              height: 38,
+              child: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(status),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _getStatusLabel(status),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: status == currentStatus
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                        color: isDark
+                            ? AppColors.textLightPrimary
+                            : AppColors.textDarkPrimary,
+                      ),
+                    ),
+                  ),
+                  if (status == currentStatus)
+                    Icon(
+                      Icons.check_rounded,
+                      size: 15,
+                      color: _getStatusColor(status),
+                    ),
+                ],
+              ),
+            ),
+          const PopupMenuDivider(height: 1),
+          const PopupMenuItem<String>(
+            value: '__custom__',
+            height: 38,
+            child: Row(
+              children: [
+                Icon(
+                  Icons.edit_outlined,
+                  size: 14,
+                  color: AppColors.brandPeach,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Custom...',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.brandPeach,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        child: badgeChild,
+      ),
+    );
   }
 
   Color _getStatusColor(String status) {
@@ -652,33 +1013,6 @@ class _ProjectsViewState extends State<ProjectsView> {
       default:
         return const Color(0xFFD4AF87);
     }
-  }
-
-  IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'All':
-        return Icons.grid_view_rounded;
-      case 'Completed':
-        return Icons.check_circle_outline_rounded;
-      case 'On Track':
-        return Icons.trending_up_rounded;
-      case 'Delayed':
-        return Icons.warning_amber_rounded;
-      case 'Design and Planning':
-      case 'Design & Planning':
-        return Icons.architecture_rounded;
-      default:
-        return Icons.lens_rounded;
-    }
-  }
-
-  int _getCountForStatus(String status) {
-    if (status == 'All') return _projects.length;
-    return _projects.where((p) {
-      final s = _getProjectStatus(p);
-      return s.toLowerCase().replaceAll('&', 'and') ==
-          status.toLowerCase().replaceAll('&', 'and');
-    }).length;
   }
 
   String _getStatusLabel(String status) {
@@ -756,6 +1090,31 @@ class _ProjectsViewState extends State<ProjectsView> {
       return true;
     }).toList();
 
+    int totalContractValue = 0;
+    double totalProgressSum = 0.0;
+    int handoverCount = 0;
+    for (final p in _projects) {
+      totalContractValue += CurrencyUtils.parseBudget(p['budget']);
+      final rawStages = p['stages'];
+      final stages = rawStages is List
+          ? rawStages.whereType<Map>().map((s) => Map<String, dynamic>.from(s)).toList()
+          : <Map<String, dynamic>>[];
+      totalProgressSum += stages.isNotEmpty
+          ? _calculateProgress(stages)
+          : ((p['progress'] as num?)?.toDouble() ?? 0.0);
+      final status = _getProjectStatus(p);
+      final handoverStr = (p['handover'] ?? '').toString().trim();
+      if (status == 'Completed' || handoverStr.isNotEmpty) {
+        handoverCount++;
+      }
+    }
+    final contractValueStr = totalContractValue > 0
+        ? CurrencyUtils.formatInr(totalContractValue)
+        : '₹ 0';
+    final avgProgressPct = _projects.isEmpty
+        ? 0
+        : ((totalProgressSum / _projects.length) * 100).round();
+
     return ScreenScrollView(
       children: [
         ScreenHeader(AppStrings.projectsPortfolio),
@@ -772,20 +1131,19 @@ class _ProjectsViewState extends State<ProjectsView> {
             ),
             StatCard(
               title: AppStrings.contractValue,
-              value: _projects.isEmpty ? '₹ 0' : '₹ 4.62 Cr',
-              trend: _projects.isEmpty ? null : '+12%',
+              value: contractValueStr,
               icon: Icons.account_balance_wallet_outlined,
               accentColor: AppColors.success,
             ),
             StatCard(
               title: AppStrings.averageProgress,
-              value: _projects.isEmpty ? '0%' : '68%',
+              value: '$avgProgressPct%',
               icon: Icons.donut_large_rounded,
               accentColor: AppColors.brandPeach,
             ),
             StatCard(
               title: AppStrings.handovers,
-              value: _projects.isEmpty ? '0 Projects' : '2 Projects',
+              value: '$handoverCount Projects',
               icon: Icons.key_rounded,
               accentColor: AppColors.brandOrange,
             ),
@@ -806,62 +1164,76 @@ class _ProjectsViewState extends State<ProjectsView> {
         ),
         const SizedBox(height: ScreenLayout.controlGap),
 
-        // Status Filter Pills
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children:
-                [
-                  'All',
-                  'Completed',
-                  'On Track',
-                  'Delayed',
-                  'Design and Planning',
-                ].map((status) {
-                  final isSelected = _selectedStatus == status;
-                  final count = _getCountForStatus(status);
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: PillBox(
-                      label: _getStatusLabel(status),
-                      isSelected: isSelected,
-                      activeColor: AppColors.brandPeach,
-                      icon: _getStatusIcon(status),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.brandPeach.withValues(
-                                  alpha: isDark ? 0.35 : 0.22,
-                                )
-                              : (isDark
-                                    ? AppColors.darkBorder
-                                    : AppColors.lightBorder),
-                          borderRadius: BorderRadius.circular(4.0),
-                        ),
-                        child: Text(
-                          '$count',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: isSelected
-                                ? AppColors.brandPeach
-                                : (isDark
-                                      ? AppColors.textLightMuted
-                                      : AppColors.textDarkMuted),
-                          ),
-                        ),
-                      ),
-                      onSelected: () {
-                        setState(() => _selectedStatus = status);
-                        MobileActionSheets.projectFilterNotifier.value = status;
-                      },
+        // Full-Width Filter Projects Button (replaces status pill boxes)
+        SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: OutlinedButton(
+            key: const Key('action_bar_filter_projects'),
+            onPressed: () => MobileActionSheets.showProjectFilterSheet(context),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: _selectedStatus != 'All'
+                  ? AppColors.brandPeach.withValues(alpha: isDark ? 0.16 : 0.12)
+                  : (isDark ? AppColors.darkCard : AppColors.lightCard),
+              foregroundColor: _selectedStatus != 'All'
+                  ? AppColors.brandPeach
+                  : (isDark
+                        ? AppColors.textLightPrimary
+                        : AppColors.textDarkPrimary),
+              side: BorderSide(
+                color: _selectedStatus != 'All'
+                    ? AppColors.brandPeach.withValues(alpha: 0.7)
+                    : (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+                          .withValues(alpha: 0.8),
+                width: 0.9,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.filter_list_rounded,
+                  size: 18,
+                  color: _selectedStatus != 'All'
+                      ? AppColors.brandPeach
+                      : (isDark
+                            ? AppColors.textLightSecondary
+                            : AppColors.textDarkSecondary),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    _selectedStatus == 'All'
+                        ? 'Filter Projects (${_projects.length})'
+                        : 'Filter: ${_getStatusLabel(_selectedStatus)} (${filteredProjects.length})',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
-                  );
-                }).toList(),
+                  ),
+                ),
+                if (_selectedStatus != 'All') ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => _selectedStatus = 'All');
+                      MobileActionSheets.projectFilterNotifier.value = 'All';
+                    },
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: AppColors.brandPeach,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
         const SizedBox(height: ScreenLayout.listGap),
@@ -969,7 +1341,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                     final int tabPhotoCount =
                         ((p['photos'] as List?) ?? []).length;
                     final int tabFileCount =
-                        ((p['designAssets'] as List?) ?? []).length;
+                        _mergedDesignAssetsForProject(p).length;
 
                     final double progress = _calculateProgress(stages);
                     final int progressPercent = (progress * 100).round();
@@ -1198,6 +1570,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                           } else if (val ==
                                                               'delay') {
                                                             setState(() {
+                                                              p.remove('manualStatus');
                                                               p['isDelayed'] =
                                                                   !isDelayed;
                                                               StorageService
@@ -1729,41 +2102,13 @@ class _ProjectsViewState extends State<ProjectsView> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      ConstrainedBox(
-                                        constraints: const BoxConstraints(
-                                          maxWidth: 125,
-                                        ),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3.5,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: statusColor.withValues(
-                                              alpha: 0.12,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              6.0,
-                                            ),
-                                            border: Border.all(
-                                              color: statusColor.withValues(
-                                                alpha: 0.4,
-                                              ),
-                                              width: 0.8,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            _getStatusLabel(currentStatus),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 11.0,
-                                              fontWeight: FontWeight.w700,
-                                              color: statusColor,
-                                              letterSpacing: 0.2,
-                                            ),
-                                          ),
-                                        ),
+                                      _buildProjectStatusDropdown(
+                                        rawIndex: rawIndex,
+                                        currentStatus: currentStatus,
+                                        statusColor: statusColor,
+                                        isDark: isDark,
+                                        canChangeStatus:
+                                            canEditProject || canModifyStages,
                                       ),
                                       const SizedBox(width: 4),
                                       IconButton(
@@ -2083,6 +2428,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                           child: OutlinedButton.icon(
                                             onPressed: () {
                                               setState(() {
+                                                p.remove('manualStatus');
                                                 p['isDelayed'] = !isDelayed;
                                                 StorageService
                                                     .syncProjectProgressAndStatus(
@@ -2985,15 +3331,8 @@ class _ProjectsViewState extends State<ProjectsView> {
                                     if (activeTab == 'files')
                                       Builder(
                                       builder: (context) {
-                                        final assetsRaw =
-                                            (p['designAssets'] as List?) ?? [];
-                                        final assets = assetsRaw
-                                            .map(
-                                              (a) => Map<String, dynamic>.from(
-                                                a as Map,
-                                              ),
-                                            )
-                                            .toList();
+                                        final assets =
+                                            _mergedDesignAssetsForProject(p);
 
                                         return Column(
                                           crossAxisAlignment:
@@ -3052,7 +3391,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                             ),
                                                             Text(
                                                               AppStrings.tr(
-                                                                'Drawings, 3D views & material lists',
+                                                                'Drawings, 3D views & PDFs',
                                                               ),
                                                               maxLines: 1,
                                                               overflow:
@@ -3107,48 +3446,6 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                       spacing: 6,
                                                       runSpacing: 6,
                                                       children: [
-                                                        InstantPressFeedback(
-                                                          child: OutlinedButton.icon(
-                                                            onPressed: () =>
-                                                                _openUploadDesignAsset(
-                                                              rawIndex,
-                                                              initialType:
-                                                                  'Material BOQ',
-                                                            ),
-                                                            icon: const Icon(
-                                                              Icons
-                                                                  .table_view_rounded,
-                                                              size: 14,
-                                                              color: AppColors
-                                                                  .brandPeach,
-                                                            ),
-                                                            label: Text(
-                                                              AppStrings.tr(
-                                                                'Upload Material List',
-                                                              ),
-                                                              style: const TextStyle(
-                                                                fontSize: AppSizes
-                                                                    .compactButtonFontSize,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w700,
-                                                                color: AppColors
-                                                                    .brandPeach,
-                                                              ),
-                                                            ),
-                                                            style: AppSizes
-                                                                .compactOutlinedStyle(
-                                                              foregroundColor:
-                                                                  AppColors
-                                                                      .brandPeach,
-                                                              borderColor: AppColors
-                                                                  .brandPeach
-                                                                  .withValues(
-                                                                    alpha: 0.7,
-                                                                  ),
-                                                            ),
-                                                          ),
-                                                        ),
                                                         InstantPressFeedback(
                                                           child: OutlinedButton.icon(
                                                             onPressed: () =>
@@ -3301,6 +3598,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                                 _deleteDesignAsset(
                                                                   rawIndex,
                                                                   assetIdx,
+                                                                  asset: asset,
                                                                 ),
                                                             onStatusChanged:
                                                                 (newSt) =>
@@ -3308,6 +3606,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                                       rawIndex,
                                                                       assetIdx,
                                                                       newSt,
+                                                                      asset: asset,
                                                                     ),
                                                           );
                                                         },
@@ -3559,7 +3858,7 @@ class _ProjectsViewState extends State<ProjectsView> {
                                                             Flexible(
                                                               child: Text(
                                                                 AppStrings.tr(
-                                                                  'No drawings or material lists yet. Tap below to upload one.',
+                                                                  'No drawings or 3D renders yet. Tap below to upload one.',
                                                                 ),
                                                                 maxLines: 2,
                                                                 overflow:

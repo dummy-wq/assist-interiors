@@ -168,14 +168,14 @@ class CreateProjectSheet {
                       initialValue: selectedLeadId,
                       isExpanded: true,
                       decoration: const InputDecoration(
-                        labelText: 'Convert from Sales Lead (Pipeline Origin)',
+                        labelText: 'Sales Lead (Optional)',
                         prefixIcon: Icon(Icons.hub_rounded),
                       ),
                       items: [
                         const DropdownMenuItem<String?>(
                           value: null,
                           child: Text(
-                            'None (Direct Site Creation)',
+                            'None',
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontSize: 13),
                           ),
@@ -184,15 +184,10 @@ class CreateProjectSheet {
                           final lId = l['id'] as String;
                           final cName =
                               (l['client'] ?? l['name'] ?? 'Lead') as String;
-                          final scp = (l['scope'] ?? 'Scope') as String;
-                          final val = (l['estValue'] ?? '') as String;
-                          final conv = l['isConverted'] == true ||
-                              (l['convertedToProject'] as String? ?? '')
-                                  .isNotEmpty;
                           return DropdownMenuItem<String?>(
                             value: lId,
                             child: Text(
-                              '$cName • $scp ($val)${conv ? ' [Converted]' : ''}',
+                              cName,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 13,
@@ -237,43 +232,47 @@ class CreateProjectSheet {
                       keyboardType: TextInputType.text,
                       textCapitalization: TextCapitalization.words,
                       decoration: const InputDecoration(
-                        labelText: 'Project Name (e.g. DLF Magnolias 4BHK)',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Project Name (e.g. DLF Magnolias 4BHK)'),
+                        ),
                         prefixIcon: Icon(Icons.business_outlined),
                       ),
                     ),
                     const SizedBox(height: 12),
 
                     // 3. Client & Budget
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: clientController,
-                            keyboardType: TextInputType.name,
-                            textCapitalization: TextCapitalization.words,
-                            decoration: const InputDecoration(
-                              labelText: 'Client Name',
-                              prefixIcon: Icon(Icons.person_outline),
-                            ),
-                          ),
+                    TextField(
+                      controller: clientController,
+                      keyboardType: TextInputType.name,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Client Name'),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: budgetController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9,]'),
-                              ),
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Budget (₹)',
-                              prefixIcon: Icon(Icons.currency_rupee_rounded),
-                            ),
-                          ),
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: budgetController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[0-9,]'),
                         ),
                       ],
+                      decoration: const InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Budget (₹)'),
+                        ),
+                        prefixIcon: Icon(Icons.currency_rupee_rounded),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
@@ -287,7 +286,11 @@ class CreateProjectSheet {
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                       ],
                       decoration: const InputDecoration(
-                        labelText: 'Super Built-Up Area (sq ft)',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Super Built-Up Area (sq ft)'),
+                        ),
                         prefixIcon: Icon(Icons.square_foot_rounded),
                       ),
                     ),
@@ -452,8 +455,8 @@ class CreateProjectSheet {
                               });
                               final updatedLead = {
                                 ...lead,
-                                'stage': 'Closed Won',
-                                'status': 'Closed Won',
+                                'stage': 'Approved',
+                                'status': 'Approved',
                                 'isConverted': true,
                                 'convertedToProject': projName,
                                 'convertedAt':

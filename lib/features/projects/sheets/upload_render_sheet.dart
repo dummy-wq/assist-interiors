@@ -2,19 +2,41 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/theme/app_sizes.dart';
-import '../../../core/widgets/quick_fade_dropdown.dart';
 import '../../../core/services/cloud_storage_service.dart';
 import '../../../core/services/permission_service.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_sizes.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/app_notification.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
+import '../../../core/widgets/custom_entry_dropdown.dart';
+import '../../../core/widgets/quick_fade_dropdown.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
-import '../../../core/utils/app_notification.dart';
+class _QueuedDeliverableFile {
+  final String name;
+  final String? path;
+  final Uint8List bytes;
+  final int size;
+  final String extension;
+  String deliverableType;
+  String format;
+
+  _QueuedDeliverableFile({
+    required this.name,
+    required this.path,
+    required this.bytes,
+    required this.size,
+    required this.extension,
+    required this.deliverableType,
+    required this.format,
+  });
+}
+
 class UploadRenderSheet extends StatefulWidget {
   final String? preselectedProject;
   final String? initialType;
@@ -57,19 +79,11 @@ class UploadRenderSheet extends StatefulWidget {
 }
 
 class _UploadRenderSheetState extends State<UploadRenderSheet> {
-  final _titleController =
-      TextEditingController(text: '3D Photorealistic Render & BOQ');
-  final _versionController = TextEditingController(text: 'v1.0');
-  final _notesController = TextEditingController();
-
-  PlatformFile? _pickedFile;
-  Uint8List? _pickedFileBytes;
-  int _pickedFileSize = 0;
+  final List<_QueuedDeliverableFile> _pickedFiles = [];
   bool _isPickingFile = false;
 
   String _selectedType = 'CAD Drawing';
   String _selectedFormat = '.DWG';
-  String _selectedStatus = 'Under Client Review';
   String? _selectedProject;
 
   final List<String> _types = [
@@ -89,13 +103,6 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
     '.PNG',
   ];
 
-  final List<String> _statuses = [
-    'Under Client Review',
-    'Approved by Client',
-    'Internal Review',
-    'Revision Requested',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -110,17 +117,8 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
       _selectedType = widget.initialType!;
       if (_selectedType == 'Material BOQ') {
         _selectedFormat = '.XLSX';
-        _titleController.text = 'Architectural Material Specification & BOQ';
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _versionController.dispose();
-    _notesController.dispose();
-    super.dispose();
   }
 
   void _onTypeChanged(String newType) {
@@ -130,40 +128,65 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
         case 'CAD Drawing':
         case 'MEP Layout':
           _selectedFormat = '.DWG';
-          if (_titleController.text.isEmpty) {
-            _titleController.text = 'Architectural Floor Plan & CAD Survey';
-          }
           break;
         case '3D Render':
           _selectedFormat = '.MAX';
-          if (_titleController.text.isEmpty) {
-            _titleController.text = 'Photorealistic 3ds Max Interior Render';
-          }
           break;
         case 'Material BOQ':
           _selectedFormat = '.XLSX';
-          if (_titleController.text.isEmpty) {
-            _titleController.text = 'Architectural Material Specification & BOQ';
-          }
           break;
         case 'Mood Board':
           _selectedFormat = '.PDF';
-          if (_titleController.text.isEmpty) {
-            _titleController.text = 'Material Finishes & Textures Mood Board';
-          }
           break;
       }
     });
   }
 
-  Future<void> _pickDeliverableFile() async {
+  ({String format, String type}) _detectFormatAndType(String ext) {
+    final lower = ext.toLowerCase();
+    if (lower == 'dwg' || lower == 'dxf' || lower == 'dwf' || lower == 'rvt') {
+      return (format: '.DWG', type: 'CAD Drawing');
+    } else if (lower == 'max' ||
+        lower == '3ds' ||
+        lower == 'obj' ||
+        lower == 'blend' ||
+        lower == 'skp') {
+      return (format: '.MAX', type: '3D Render');
+    } else if (lower == 'xlsx' || lower == 'xls' || lower == 'csv') {
+      return (format: '.XLSX', type: 'Material BOQ');
+    } else if (lower == 'pdf') {
+      return (
+        format: '.PDF',
+        type: _types.contains(_selectedType) ? _selectedType : 'CAD Drawing',
+      );
+    } else if (lower == 'png') {
+      return (format: '.PNG', type: '3D Render');
+    } else if (lower == 'jpg' || lower == 'jpeg') {
+      return (format: '.JPG', type: '3D Render');
+    }
+    return (format: _selectedFormat, type: _selectedType);
+  }
+
+  String _cleanTitleFromFileName(String fileName) {
+    final dotIdx = fileName.lastIndexOf('.');
+    final baseName = dotIdx != -1 ? fileName.substring(0, dotIdx) : fileName;
+    final clean = baseName.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
+    return clean.isNotEmpty ? clean : fileName;
+  }
+
+  void _applyDetectedDefaultsFromFirstFile(_QueuedDeliverableFile firstFile) {
+    _selectedFormat = firstFile.format;
+    _selectedType = firstFile.deliverableType;
+  }
+
+  Future<void> _pickDeliverableFiles() async {
     try {
       final allowed = await PermissionService.requestMediaOrStorage(context);
       if (!allowed) return;
       setState(() => _isPickingFile = true);
-      PlatformFile? file;
+      List<PlatformFile> files = [];
       try {
-        file = await FilePicker.pickFile(
+        files = await FilePicker.pickFiles(
           type: FileType.custom,
           allowedExtensions: [
             'dwg',
@@ -186,67 +209,102 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
             'docx',
           ],
         );
-      } catch (e) {
-        // Fallback for file managers/platforms where custom MIME filters are not supported
-        file = await FilePicker.pickFile(
-          type: FileType.any,
-        );
+      } catch (_) {
+        files = await FilePicker.pickFiles(type: FileType.any);
       }
 
-      final selectedFile = file;
-      if (selectedFile != null) {
-        final bytes = await selectedFile.readAsBytes();
-        final length = selectedFile.lengthSync() ?? bytes.length;
+      if (files.isNotEmpty) {
+        final loaded = <_QueuedDeliverableFile>[];
+        for (final f in files) {
+          final bytes = await f.readAsBytes();
+          final length = f.lengthSync() ?? bytes.length;
+          final ext = (f.extension ?? '').toLowerCase();
+          final detected = _detectFormatAndType(ext);
+          loaded.add(
+            _QueuedDeliverableFile(
+              name: f.name,
+              path: f.path,
+              bytes: bytes,
+              size: length,
+              extension: ext,
+              deliverableType: detected.type,
+              format: detected.format,
+            ),
+          );
+        }
         setState(() {
-          _pickedFile = selectedFile;
-          _pickedFileBytes = bytes;
-          _pickedFileSize = length;
-
-          final ext = (selectedFile.extension ?? '').toLowerCase();
-          if (ext == 'dwg' || ext == 'dxf' || ext == 'dwf' || ext == 'rvt') {
-            _selectedFormat = '.DWG';
-            _selectedType = 'CAD Drawing';
-          } else if (ext == 'max' ||
-              ext == '3ds' ||
-              ext == 'obj' ||
-              ext == 'blend' ||
-              ext == 'skp') {
-            _selectedFormat = '.MAX';
-            _selectedType = '3D Render';
-          } else if (ext == 'xlsx' || ext == 'xls' || ext == 'csv') {
-            _selectedFormat = '.XLSX';
-            _selectedType = 'Material BOQ';
-          } else if (ext == 'pdf') {
-            _selectedFormat = '.PDF';
-            if (!_types.contains(_selectedType)) {
-              _selectedType = 'CAD Drawing';
-            }
-          } else if (ext == 'png') {
-            _selectedFormat = '.PNG';
-            _selectedType = 'Mood Board';
-          } else if (ext == 'jpg' || ext == 'jpeg') {
-            _selectedFormat = '.JPG';
-            _selectedType = 'Mood Board';
-          }
-
-          // Auto-populate title from file name if default/empty
-          final dotIdx = selectedFile.name.lastIndexOf('.');
-          final baseName =
-              dotIdx != -1 ? selectedFile.name.substring(0, dotIdx) : selectedFile.name;
-          final cleanTitle =
-              baseName.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
-          if (cleanTitle.isNotEmpty &&
-              (_titleController.text.isEmpty ||
-                  _titleController.text == '3D Photorealistic Render & BOQ' ||
-                  _titleController.text.startsWith('Architectural Floor Plan') ||
-                  _titleController.text.startsWith('Photorealistic 3ds Max'))) {
-            _titleController.text = cleanTitle;
+          final wasEmpty = _pickedFiles.isEmpty;
+          _pickedFiles.addAll(loaded);
+          if (wasEmpty && _pickedFiles.isNotEmpty) {
+            _applyDetectedDefaultsFromFirstFile(_pickedFiles.first);
           }
         });
       }
     } catch (e) {
       if (mounted) {
-        AppNotification.show(context, message: 'File permission error: ${e.toString()}', backgroundColor: AppColors.error);
+        AppNotification.show(
+          context,
+          message: 'File permission error: ${e.toString()}',
+          backgroundColor: AppColors.error,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingFile = false);
+      }
+    }
+  }
+
+  Future<void> _pickGalleryPhotos() async {
+    try {
+      final allowed = await PermissionService.requestMediaOrStorage(context);
+      if (!allowed) return;
+      setState(() => _isPickingFile = true);
+      final picker = ImagePicker();
+      final List<XFile> photos = await picker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      if (photos.isNotEmpty) {
+        final loaded = <_QueuedDeliverableFile>[];
+        for (final p in photos) {
+          final bytes = await p.readAsBytes();
+          final name = p.name.isNotEmpty
+              ? p.name
+              : p.path.split(RegExp(r'[/\\]')).last;
+          final dotIdx = name.lastIndexOf('.');
+          final ext = dotIdx != -1
+              ? name.substring(dotIdx + 1).toLowerCase()
+              : 'jpg';
+          final detected = _detectFormatAndType(ext);
+          loaded.add(
+            _QueuedDeliverableFile(
+              name: name,
+              path: p.path,
+              bytes: bytes,
+              size: bytes.length,
+              extension: ext,
+              deliverableType: detected.type,
+              format: detected.format,
+            ),
+          );
+        }
+        setState(() {
+          final wasEmpty = _pickedFiles.isEmpty;
+          _pickedFiles.addAll(loaded);
+          if (wasEmpty && _pickedFiles.isNotEmpty) {
+            _applyDetectedDefaultsFromFirstFile(_pickedFiles.first);
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        AppNotification.show(
+          context,
+          message: 'Gallery error: ${e.toString()}',
+          backgroundColor: AppColors.error,
+        );
       }
     } finally {
       if (mounted) {
@@ -263,119 +321,178 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  void _uploadAssetToCloud({
+    required Map<String, dynamic> asset,
+    required _QueuedDeliverableFile file,
+    required String projId,
+    required String projName,
+  }) {
+    if (!CloudStorageService.isAvailable) return;
+    final assetId = asset['id'];
+    CloudStorageService.uploadDesignAsset(
+      projectId: projId,
+      projectName: projName,
+      filePath: file.path,
+      bytes: file.bytes,
+      originalFileName: file.name,
+      title: (asset['title'] ?? file.name).toString(),
+      assetType: (asset['type'] ?? _selectedType).toString(),
+      retentionMonths: StorageService.getCadRetentionMonths(),
+    ).then((uploadRes) {
+      if (uploadRes == null) return;
+      final items = StorageService.getDesignItems();
+      final iIdx = items.indexWhere((i) => i['id'] == assetId);
+      if (iIdx != -1) {
+        items[iIdx]['storagePath'] = uploadRes.storagePath;
+        items[iIdx]['downloadUrl'] = uploadRes.downloadUrl;
+        items[iIdx]['fileUrl'] = uploadRes.downloadUrl;
+        StorageService.saveDesignItems(items);
+      }
+
+      final projects = StorageService.getProjects();
+      final pIdx = projects.indexWhere((p) => p['name'] == projName);
+      if (pIdx != -1 && projects[pIdx]['designAssets'] is List) {
+        final assets = List<Map<String, dynamic>>.from(
+          (projects[pIdx]['designAssets'] as List).map(
+            (e) => Map<String, dynamic>.from(e as Map),
+          ),
+        );
+        final aIdx = assets.indexWhere((a) => a['id'] == assetId);
+        if (aIdx != -1) {
+          assets[aIdx]['storagePath'] = uploadRes.storagePath;
+          assets[aIdx]['downloadUrl'] = uploadRes.downloadUrl;
+          assets[aIdx]['fileUrl'] = uploadRes.downloadUrl;
+          projects[pIdx]['designAssets'] = assets;
+          StorageService.saveProjects(projects);
+        }
+      }
+      StorageService.cloudSyncNotifier.value =
+          StorageService.cloudSyncNotifier.value + 1;
+    });
+  }
+
   void _submit() {
-    final title = _titleController.text.trim().isEmpty
-        ? '$_selectedType Deliverable'
-        : _titleController.text.trim();
-    final version = _versionController.text.trim().isEmpty
-        ? 'v1.0'
-        : _versionController.text.trim();
+    const version = 'v1.0';
+    const defaultStatus = 'Under Client Review';
     final proj = _selectedProject ?? 'Active Site';
-    final fileSize = _pickedFile != null
-        ? _formatFileSize(_pickedFileSize)
-        : '15.0 MB';
+    final now = DateTime.now();
+    final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(now);
+    const statusColor = AppColors.brandPeach;
 
-    final newAsset = {
-      'id': 'asset_${DateTime.now().millisecondsSinceEpoch}',
-      'title': title,
-      'type': _selectedType,
-      'project': proj,
-      'format': _selectedFormat,
-      'version': version,
-      'fileSize': fileSize,
-      'status': _selectedStatus,
-      'date': DateFormat('dd MMM yyyy').format(DateTime.now()),
-      'designer': 'Priya Sharma',
-      'fileName': _pickedFile?.name,
-      'filePath': _pickedFile?.path,
-      'isUploaded': _pickedFile != null,
-      'notes': _notesController.text.trim().isNotEmpty
-          ? _notesController.text.trim()
-          : (_pickedFile != null
-              ? 'Local architectural file (${_pickedFile!.name}) uploaded from device storage.'
-              : 'Architectural deliverable uploaded for client review and coordination.'),
-      'color': AppColors.brandPeach,
-      'statusColor': _selectedStatus.contains('Approv')
-          ? AppColors.success
-          : (_selectedStatus.contains('Revis')
-              ? AppColors.error
-              : AppColors.brandPeach),
-    };
-
-    // 1. Save to global design items
     final allItems = StorageService.getDesignItems();
-    allItems.insert(0, newAsset);
-    StorageService.saveDesignItems(allItems);
-
-    // 2. Attach to project if matching
     final allProjects = StorageService.getProjects();
-    final projIdx = allProjects.indexWhere((p) => p['name'] == proj);
+    final normProj = proj.trim().toLowerCase();
+    final projIdx = allProjects.indexWhere(
+      (p) => (p['name'] ?? '').toString().trim().toLowerCase() == normProj,
+    );
     String projId = '';
+    List<Map<String, dynamic>> projectAssets = [];
     if (projIdx != -1) {
       projId = (allProjects[projIdx]['id'] ?? '').toString();
-      final assets = List<Map<String, dynamic>>.from(
+      projectAssets = List<Map<String, dynamic>>.from(
         (allProjects[projIdx]['designAssets'] as List?) ?? [],
       );
-      assets.insert(0, newAsset);
-      allProjects[projIdx]['designAssets'] = assets;
+    }
+
+    final createdAssets = <Map<String, dynamic>>[];
+
+    if (_pickedFiles.isEmpty) {
+      final newAsset = <String, dynamic>{
+        'id': 'asset_${now.millisecondsSinceEpoch}',
+        'title': '$_selectedType Deliverable',
+        'type': _selectedType,
+        'project': proj,
+        if (projId.isNotEmpty) 'projectId': projId,
+        'format': _selectedFormat,
+        'version': version,
+        'fileSize': '15.0 MB',
+        'status': defaultStatus,
+        'date': formattedDate,
+        'designer': 'Priya Sharma',
+        'fileName': null,
+        'filePath': null,
+        'isUploaded': false,
+        'notes': '',
+        'color': AppColors.brandPeach,
+        'statusColor': statusColor,
+      };
+      createdAssets.add(newAsset);
+    } else {
+      for (var i = 0; i < _pickedFiles.length; i++) {
+        final file = _pickedFiles[i];
+        final itemTitle = _cleanTitleFromFileName(file.name);
+
+        final newAsset = <String, dynamic>{
+          'id': 'asset_${now.millisecondsSinceEpoch}_$i',
+          'title': itemTitle,
+          'type': file.deliverableType,
+          'project': proj,
+          if (projId.isNotEmpty) 'projectId': projId,
+          'format': file.format,
+          'version': version,
+          'fileSize': _formatFileSize(file.size),
+          'status': defaultStatus,
+          'date': formattedDate,
+          'designer': 'Priya Sharma',
+          'fileName': file.name,
+          'filePath': file.path,
+          'isUploaded': true,
+          'notes': '',
+          'color': AppColors.brandPeach,
+          'statusColor': statusColor,
+        };
+        createdAssets.add(newAsset);
+      }
+    }
+
+    for (final asset in createdAssets.reversed) {
+      allItems.insert(0, asset);
+      if (projIdx != -1) {
+        projectAssets.insert(0, asset);
+      }
+    }
+    StorageService.saveDesignItems(allItems);
+    if (projIdx != -1) {
+      allProjects[projIdx]['designAssets'] = projectAssets;
       StorageService.saveProjects(allProjects);
     }
 
-    if (_pickedFile != null && CloudStorageService.isAvailable) {
-      final assetId = newAsset['id'];
-      CloudStorageService.uploadDesignAsset(
-        projectId: projId,
-        projectName: proj,
-        filePath: _pickedFile?.path,
-        bytes: _pickedFileBytes,
-        originalFileName: _pickedFile?.name,
-        title: title,
-        assetType: _selectedType,
-        retentionMonths: StorageService.getCadRetentionMonths(),
-      ).then((uploadRes) {
-        if (uploadRes == null) return;
-        final items = StorageService.getDesignItems();
-        final iIdx = items.indexWhere((i) => i['id'] == assetId);
-        if (iIdx != -1) {
-          items[iIdx]['storagePath'] = uploadRes.storagePath;
-          items[iIdx]['downloadUrl'] = uploadRes.downloadUrl;
-          items[iIdx]['fileUrl'] = uploadRes.downloadUrl;
-          StorageService.saveDesignItems(items);
-        }
-
-        final projects = StorageService.getProjects();
-        final pIdx = projects.indexWhere((p) => p['name'] == proj);
-        if (pIdx != -1 && projects[pIdx]['designAssets'] is List) {
-          final assets = List<Map<String, dynamic>>.from(
-            (projects[pIdx]['designAssets'] as List).map(
-              (e) => Map<String, dynamic>.from(e as Map),
-            ),
-          );
-          final aIdx = assets.indexWhere((a) => a['id'] == assetId);
-          if (aIdx != -1) {
-            assets[aIdx]['storagePath'] = uploadRes.storagePath;
-            assets[aIdx]['downloadUrl'] = uploadRes.downloadUrl;
-            assets[aIdx]['fileUrl'] = uploadRes.downloadUrl;
-            projects[pIdx]['designAssets'] = assets;
-            StorageService.saveProjects(projects);
-          }
-        }
-        StorageService.cloudSyncNotifier.value =
-            StorageService.cloudSyncNotifier.value + 1;
-      });
+    for (var i = 0; i < _pickedFiles.length; i++) {
+      _uploadAssetToCloud(
+        asset: createdAssets[i],
+        file: _pickedFiles[i],
+        projId: projId,
+        projName: proj,
+      );
     }
 
-    MobileActionSheets.renderCreatedNotifier.value = newAsset;
-    widget.onUploaded?.call(newAsset);
+    for (final asset in createdAssets) {
+      MobileActionSheets.renderCreatedNotifier.value = asset;
+      widget.onUploaded?.call(asset);
+    }
 
     Navigator.pop(context);
-    AppNotification.show(context, message: '$title uploaded successfully!', backgroundColor: AppColors.success);
+    AppNotification.show(
+      context,
+      message: createdAssets.length > 1
+          ? '${createdAssets.length} deliverables uploaded successfully!'
+          : '${createdAssets.first['title']} uploaded successfully!',
+      backgroundColor: AppColors.success,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final projects = StorageService.getProjects();
+    final projectNames = <String>[
+      for (final p in projects) (p['name'] as String? ?? 'Project'),
+    ];
+    if (_selectedProject != null &&
+        _selectedProject!.isNotEmpty &&
+        !projectNames.contains(_selectedProject)) {
+      projectNames.insert(0, _selectedProject!);
+    }
 
     return AnimatedPadding(
       duration: const Duration(milliseconds: 180),
@@ -416,13 +533,13 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Upload Drawing or Material List',
+                              'Upload Drawing or Render',
                               style: AppTypography.titleLarge(isDark),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
-                              '2D Drawings, 3D Renders, Mood Boards & Material Lists',
+                              '2D Drawings, 3D Renders, Mood Boards & PDFs',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: isDark
@@ -447,7 +564,7 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
             ),
             const SizedBox(height: 16),
 
-            // CAD / Architectural Deliverable File Upload Box
+            // CAD / Architectural Deliverable Multi-File & Multi-Photo Upload Box
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -456,183 +573,257 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
                     : AppColors.lightBackground,
                 borderRadius: BorderRadius.circular(4.0),
                 border: Border.all(
-                  color: _pickedFile != null
+                  color: _pickedFiles.isNotEmpty
                       ? AppColors.success.withValues(alpha: 0.6)
                       : AppColors.brandPeach.withValues(alpha: 0.5),
-                  width: _pickedFile != null ? 1.0 : 0.8,
+                  width: _pickedFiles.isNotEmpty ? 1.0 : 0.8,
                 ),
               ),
-              child: _pickedFile == null
-                  ? Column(
-                      children: [
-                        Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.brandPeach.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4.0),
+                        ),
+                        child: const Icon(
+                          Icons.file_present_rounded,
+                          color: AppColors.brandPeach,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.brandPeach
-                                    .withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4.0),
-                              ),
-                              child: const Icon(
-                                Icons.file_present_rounded,
-                                color: AppColors.brandPeach,
-                                size: 20,
+                            Text(
+                              'SELECT CAD / 3D / BOQ FILE',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                                color: isDark
+                                    ? AppColors.textLightPrimary
+                                    : AppColors.textDarkPrimary,
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'SELECT CAD / 3D / BOQ FILE',
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.6,
-                                      color: isDark
-                                          ? AppColors.textLightPrimary
-                                          : AppColors.textDarkPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Upload .DWG, .DXF, .MAX, .PDF, .XLSX, or Renders',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark
-                                          ? AppColors.textLightMuted
-                                          : AppColors.textDarkMuted,
-                                    ),
-                                  ),
-                                ],
+                            const SizedBox(height: 2),
+                            Text(
+                              'Upload .DWG, .DXF, .MAX, .PDF, .XLSX, or Renders',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? AppColors.textLightMuted
+                                    : AppColors.textDarkMuted,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed:
-                                _isPickingFile ? null : _pickDeliverableFile,
-                            icon: _isPickingFile
-                                ? const SizedBox(
-                                    width: 13,
-                                    height: 13,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.file_upload_outlined,
-                                    size: 15,
-                                  ),
-                            label: Text(
-                              _isPickingFile
-                                  ? 'Opening File Browser...'
-                                  : 'Browse Device Storage',
-                              style: const TextStyle(
-                                fontSize: 11.5,
+                      ),
+                      if (_pickedFiles.isNotEmpty)
+                        InkWell(
+                          onTap: () => setState(() => _pickedFiles.clear()),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4.0),
+                            child: Text(
+                              'Clear All',
+                              style: TextStyle(
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
+                                color: AppColors.error,
                               ),
                             ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.brandPeach,
-                              side: const BorderSide(
-                                color: AppColors.brandPeach,
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (_pickedFiles.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 240),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: _pickedFiles.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        itemBuilder: (_, idx) {
+                          final item = _pickedFiles[idx];
+                          return Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppColors.darkCard
+                                  : AppColors.lightCard,
+                              borderRadius: BorderRadius.circular(4.0),
+                              border: Border.all(
+                                color: AppColors.success.withValues(alpha: 0.4),
                                 width: 0.8,
                               ),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 9,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4.0),
-                              ),
                             ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(7),
-                              decoration: BoxDecoration(
-                                color:
-                                    AppColors.success.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4.0),
-                              ),
-                              child: const Icon(
-                                Icons.check_circle_rounded,
-                                color: AppColors.success,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _pickedFile!.name,
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark
-                                          ? AppColors.textLightPrimary
-                                          : AppColors.textDarkPrimary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${_formatFileSize(_pickedFileSize)} • $_selectedFormat • Local File Selected',
-                                    style: const TextStyle(
-                                      fontSize: 10,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle_rounded,
                                       color: AppColors.success,
-                                      fontWeight: FontWeight.w600,
+                                      size: 16,
                                     ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item.name,
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark
+                                                  ? AppColors.textLightPrimary
+                                                  : AppColors.textDarkPrimary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            '${_formatFileSize(item.size)} • ${item.format}',
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: AppColors.success,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        size: 15,
+                                      ),
+                                      onPressed: () => setState(() {
+                                        _pickedFiles.removeAt(idx);
+                                      }),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                CustomEntryDropdown(
+                                  key: Key('queued_file_type_dropdown_$idx'),
+                                  value: item.deliverableType,
+                                  options: _types,
+                                  decoration: _inputDecoration(isDark),
+                                  borderRadius: BorderRadius.circular(4.0),
+                                  customFieldLabel: 'Custom Type',
+                                  customFieldHint: 'Enter file type...',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                ],
-                              ),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      item.deliverableType = val;
+                                    });
+                                  },
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.close_rounded,
-                                size: 16,
-                              ),
-                              onPressed: () =>
-                                  setState(() => _pickedFile = null),
-                              tooltip: 'Remove selected file',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _isPickingFile
+                              ? null
+                              : _pickDeliverableFiles,
+                          icon: _isPickingFile
+                              ? const SizedBox(
+                                  width: 13,
+                                  height: 13,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.file_upload_outlined,
+                                  size: 15,
+                                ),
+                          label: Text(
+                            _isPickingFile
+                                ? 'Opening...'
+                                : 'Browse Device Storage',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        InkWell(
-                          onTap: _pickDeliverableFile,
-                          child: const Text(
-                            'Choose a different file',
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.brandPeach,
+                            side: const BorderSide(
                               color: AppColors.brandPeach,
-                              decoration: TextDecoration.underline,
+                              width: 0.8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4.0),
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _isPickingFile ? null : _pickGalleryPhotos,
+                          icon: const Icon(
+                            Icons.photo_library_outlined,
+                            size: 15,
+                            color: AppColors.brandPeach,
+                          ),
+                          label: Text(
+                            'Select Photos',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? AppColors.textLightPrimary
+                                  : AppColors.textDarkPrimary,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder,
+                              width: 0.8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4.0),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 14),
 
@@ -651,10 +842,10 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
             const SizedBox(height: 6),
             QuickFadeDropdown<String>(
               value: _selectedProject,
+              isExpanded: true,
               decoration: _inputDecoration(isDark),
               borderRadius: BorderRadius.circular(4.0),
-              items: projects.map((p) {
-                final name = p['name'] as String? ?? 'Project';
+              items: projectNames.map((name) {
                 return DropdownMenuItem<String>(
                   value: name,
                   child: Text(name, overflow: TextOverflow.ellipsis),
@@ -666,174 +857,84 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
             ),
             const SizedBox(height: 12),
 
-            // Deliverable Type & Format Row
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'DELIVERABLE TYPE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          letterSpacing: 0.8,
-                          fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? AppColors.textLightMuted
-                              : AppColors.textDarkMuted,
+            if (_pickedFiles.isEmpty) ...[
+              // Deliverable Type & Format Row (used when no files are queued yet)
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'DELIVERABLE TYPE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            letterSpacing: 0.8,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? AppColors.textLightMuted
+                                : AppColors.textDarkMuted,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      QuickFadeDropdown<String>(
-                        value: _selectedType,
-                        decoration: _inputDecoration(isDark),
-                        borderRadius: BorderRadius.circular(4.0),
-                        items: _types.map((t) {
-                          return DropdownMenuItem<String>(
-                            value: t,
-                            child: Text(t, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) _onTypeChanged(val);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'FORMAT',
-                        style: TextStyle(
-                          fontSize: 10,
-                          letterSpacing: 0.8,
-                          fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? AppColors.textLightMuted
-                              : AppColors.textDarkMuted,
+                        const SizedBox(height: 6),
+                        CustomEntryDropdown(
+                          value: _selectedType,
+                          options: _types,
+                          decoration: _inputDecoration(isDark),
+                          borderRadius: BorderRadius.circular(4.0),
+                          customFieldLabel: 'Custom Deliverable Type',
+                          customFieldHint: 'Enter deliverable type...',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          onChanged: _onTypeChanged,
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      QuickFadeDropdown<String>(
-                        value: _selectedFormat,
-                        decoration: _inputDecoration(isDark),
-                        borderRadius: BorderRadius.circular(4.0),
-                        items: _formats.map((f) {
-                          return DropdownMenuItem<String>(
-                            value: f,
-                            child: Text(f, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedFormat = val);
-                        },
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Title Field
-            Text(
-              'DELIVERABLE TITLE',
-              style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 0.8,
-                fontWeight: FontWeight.w700,
-                color: isDark
-                    ? AppColors.textLightMuted
-                    : AppColors.textDarkMuted,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'FORMAT',
+                          style: TextStyle(
+                            fontSize: 10,
+                            letterSpacing: 0.8,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? AppColors.textLightMuted
+                                : AppColors.textDarkMuted,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        CustomEntryDropdown(
+                          value: _selectedFormat,
+                          options: _formats,
+                          decoration: _inputDecoration(isDark),
+                          borderRadius: BorderRadius.circular(4.0),
+                          customFieldLabel: 'Custom Format',
+                          customFieldHint: 'e.g. .SKP, .ZIP',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          onChanged: (val) {
+                            setState(() => _selectedFormat = val);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _titleController,
-              decoration: _inputDecoration(isDark).copyWith(
-                hintText: 'e.g. Master Suite Reflected Ceiling Plan & CAD',
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Version Field
-            Text(
-              'VERSION TAG',
-              style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 0.8,
-                fontWeight: FontWeight.w700,
-                color: isDark
-                    ? AppColors.textLightMuted
-                    : AppColors.textDarkMuted,
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _versionController,
-              decoration: _inputDecoration(isDark).copyWith(
-                hintText: 'v1.0, v2.1...',
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Approval Status Dropdown
-            Text(
-              'CLIENT APPROVAL STATUS',
-              style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 0.8,
-                fontWeight: FontWeight.w700,
-                color: isDark
-                    ? AppColors.textLightMuted
-                    : AppColors.textDarkMuted,
-              ),
-            ),
-            const SizedBox(height: 6),
-            QuickFadeDropdown<String>(
-              value: _selectedStatus,
-              decoration: _inputDecoration(isDark),
-              borderRadius: BorderRadius.circular(4.0),
-              items: _statuses.map((s) {
-                return DropdownMenuItem<String>(
-                  value: s,
-                  child: Text(s, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                );
-              }).toList(),
-              onChanged: (val) {
-                if (val != null) setState(() => _selectedStatus = val);
-              },
-            ),
-            const SizedBox(height: 12),
-
-            // Technical Notes Field
-            Text(
-              'TECHNICAL SPECIFICATION & REVISION NOTES',
-              style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 0.8,
-                fontWeight: FontWeight.w700,
-                color: isDark
-                    ? AppColors.textLightMuted
-                    : AppColors.textDarkMuted,
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _notesController,
-              maxLines: 2,
-              decoration: _inputDecoration(isDark).copyWith(
-                hintText: 'Add revision scope, drawing layers, or BOQ summary...',
-              ),
-            ),
-            const SizedBox(height: 18),
+              const SizedBox(height: 18),
+            ] else
+              const SizedBox(height: 18),
 
             // Submit Button
             ElevatedButton.icon(
@@ -846,9 +947,11 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
               ),
               onPressed: _submit,
               icon: const Icon(Icons.cloud_upload_rounded, size: 18),
-              label: const Text(
-                'Save Deliverable for Client Review',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              label: Text(
+                _pickedFiles.length > 1
+                    ? 'Save ${_pickedFiles.length} Deliverables'
+                    : 'Save Deliverable for Client Review',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
               ),
             ),
           ],

@@ -5,6 +5,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
+import '../../../core/widgets/custom_entry_dropdown.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
 import '../../../core/widgets/quick_fade_dropdown.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
@@ -229,57 +230,37 @@ class CreateTaskSheet {
                     const SizedBox(height: 12),
 
                     // 4. Department Dropdown
-                    QuickFadeDropdown<String>(
-                      isExpanded: true,
-                      initialValue: selectedDepartment,
-                      dropdownColor: isDark
-                          ? AppColors.darkCardElevated
-                          : AppColors.lightCard,
+                    CustomEntryDropdown(
+                      value: selectedDepartment,
+                      options: departments,
                       borderRadius: BorderRadius.circular(4.0),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.brandPeach,
-                      ),
+                      customFieldLabel: 'Custom Department',
+                      customFieldHint: 'Enter department name...',
                       decoration: const InputDecoration(
                         labelText: 'Department',
                         prefixIcon: Icon(Icons.business_outlined),
                       ),
-                      items: departments.map((dept) {
-                        return DropdownMenuItem<String>(
-                          value: dept,
-                          child: Text(
-                            dept,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: isDark
-                                  ? AppColors.textLightPrimary
-                                  : AppColors.textDarkPrimary,
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark
+                            ? AppColors.textLightPrimary
+                            : AppColors.textDarkPrimary,
+                      ),
                       onChanged: (val) {
-                        if (val != null) {
-                          setModalState(() {
-                            selectedDepartment = val;
-                          });
-                        }
+                        setModalState(() {
+                          selectedDepartment = val;
+                        });
                       },
                     ),
                     const SizedBox(height: 12),
 
                     // 5. Priority Dropdown (Low, Medium, High, Urgent)
-                    QuickFadeDropdown<String>(
-                      isExpanded: true,
-                      initialValue: selectedPriority,
-                      dropdownColor: isDark
-                          ? AppColors.darkCardElevated
-                          : AppColors.lightCard,
+                    CustomEntryDropdown(
+                      value: selectedPriority,
+                      options: priorities,
                       borderRadius: BorderRadius.circular(4.0),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.brandPeach,
-                      ),
+                      customFieldLabel: 'Custom Priority',
+                      customFieldHint: 'Enter priority level...',
                       decoration: InputDecoration(
                         labelText: 'Priority Level',
                         prefixIcon: Icon(
@@ -298,53 +279,48 @@ class CreateTaskSheet {
                               )
                             : null,
                       ),
-                      items: priorities.map((p) {
+                      itemLabelBuilder: (p) {
                         Color? itemColor;
                         if (p == 'Urgent') itemColor = AppColors.error;
                         if (p == 'High') itemColor = AppColors.warning;
                         if (p == 'Medium') itemColor = AppColors.info;
                         if (p == 'Low') itemColor = AppColors.success;
 
-                        return DropdownMenuItem<String>(
-                          value: p,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                margin: const EdgeInsets.only(right: 8),
-                                decoration: BoxDecoration(
-                                  color: itemColor,
-                                  shape: BoxShape.circle,
-                                ),
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: itemColor,
+                                shape: BoxShape.circle,
                               ),
-                              Expanded(
-                                child: Text(
-                                  p == 'Urgent'
-                                      ? 'Urgent (Critical / Blocker)'
-                                      : p,
-                                  style: TextStyle(
-                                    fontWeight: p == 'Urgent'
-                                        ? FontWeight.w700
-                                        : FontWeight.w600,
-                                    color: p == 'Urgent'
-                                        ? AppColors.error
-                                        : null,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                            ),
+                            Expanded(
+                              child: Text(
+                                p == 'Urgent'
+                                    ? 'Urgent (Critical / Blocker)'
+                                    : p,
+                                style: TextStyle(
+                                  fontWeight: p == 'Urgent'
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                                  color: p == 'Urgent'
+                                      ? AppColors.error
+                                      : null,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         );
-                      }).toList(),
+                      },
                       onChanged: (val) {
-                        if (val != null) {
-                          setModalState(() {
-                            selectedPriority = val;
-                          });
-                        }
+                        setModalState(() {
+                          selectedPriority = val;
+                        });
                       },
                     ),
 

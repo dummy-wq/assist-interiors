@@ -156,6 +156,15 @@ class AppPermissions {
           AppPermissionKey.addProjectPhotos,
           AppPermissionKey.updateTaskStatus,
         };
+      case UserRole.siteEngineer:
+        return const {
+          AppPermissionKey.editProjectDetails,
+          AppPermissionKey.modifyProjectStatus,
+          AppPermissionKey.toggleOrReorderStages,
+          AppPermissionKey.addProjectPhotos,
+          AppPermissionKey.createTask,
+          AppPermissionKey.updateTaskStatus,
+        };
     }
   }
 
@@ -295,6 +304,8 @@ class AppPermissions {
         return 'Creative & Stage Progress';
       case UserRole.supervisor:
         return 'Site Logs & Stage Progress';
+      case UserRole.siteEngineer:
+        return 'Site Engineering, Snags & Stage Progress';
       case UserRole.accounts:
         return 'Finance & Billing Lead (Projects Read-Only)';
       case UserRole.sales:

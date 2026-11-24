@@ -180,12 +180,6 @@ void main() {
         'Project Scope (e.g. 4BHK Villa / 5000 sq ft)',
       );
       await tester.enterText(scopeField, 'Grand Hyatt Penthouse');
-
-      final budgetField = find.widgetWithText(
-        TextField,
-        'Est. Budget (e.g. ₹60L)',
-      );
-      await tester.enterText(budgetField, '12000000');
       await tester.pumpAndSettle();
 
       // Submit lead

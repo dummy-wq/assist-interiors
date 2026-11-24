@@ -5,7 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/utils/currency_utils.dart';
-import '../../../core/widgets/quick_fade_dropdown.dart';
+import '../../../core/widgets/custom_entry_dropdown.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
@@ -96,7 +96,11 @@ class AddVendorSheet {
                       keyboardType: TextInputType.text,
                       textCapitalization: TextCapitalization.words,
                       decoration: const InputDecoration(
-                        labelText: 'Vendor Name',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Vendor Name'),
+                        ),
                         hintText: 'Company / Firm Name',
                         prefixIcon: Icon(Icons.store_outlined),
                       ),
@@ -109,129 +113,124 @@ class AddVendorSheet {
                       keyboardType: TextInputType.text,
                       textCapitalization: TextCapitalization.words,
                       decoration: const InputDecoration(
-                        labelText: 'Trade Category (e.g. Italian Marble, Hardware, Glass)',
-                        hintText: 'Trade Category (e.g. Italian Marble, Hardware, Glass)',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Trade Category (e.g. Italian Marble, Hardware, Glass)',
+                          ),
+                        ),
+                        hintText:
+                            'Trade Category (e.g. Italian Marble, Hardware, Glass)',
                         prefixIcon: Icon(Icons.category_outlined),
                       ),
                     ),
                     const SizedBox(height: 12),
 
-                    // 3. Contact Person & 4. Phone
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: contactController,
-                            keyboardType: TextInputType.name,
-                            textCapitalization: TextCapitalization.words,
-                            decoration: const InputDecoration(
-                              labelText: 'Contact Person',
-                              prefixIcon: Icon(Icons.person_outline),
-                            ),
-                          ),
+                    // 3. Contact Person
+                    TextField(
+                      controller: contactController,
+                      keyboardType: TextInputType.name,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Contact Person'),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: phoneController,
-                            keyboardType: TextInputType.phone,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9+\- ]'),
-                              ),
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Phone Number',
-                              prefixIcon: Icon(Icons.phone_outlined),
-                            ),
-                          ),
-                        ),
-                      ],
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
-                    // 5. Email & 6. City
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            autocorrect: false,
-                            decoration: const InputDecoration(
-                              labelText: 'Email Address',
-                              prefixIcon: Icon(Icons.email_outlined),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: cityController,
-                            keyboardType: TextInputType.streetAddress,
-                            textCapitalization: TextCapitalization.words,
-                            decoration: const InputDecoration(
-                              labelText: 'City / Base Location',
-                              prefixIcon: Icon(Icons.location_city_outlined),
-                            ),
-                          ),
+                    // 4. Phone Number
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[0-9+\- ]'),
                         ),
                       ],
+                      decoration: const InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Phone Number'),
+                        ),
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
-                    // 7. Payment Status & 8. Amount Due
-                    Row(
-                      children: [
-                        Expanded(
-                          child: QuickFadeDropdown<String>(
-                            isExpanded: true,
-                            initialValue: selectedPaymentStatus,
-                            decoration: const InputDecoration(
-                              labelText: 'Payment Status',
-                              prefixIcon: Icon(Icons.payment_rounded),
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'Pending',
-                                child: Text('Pending'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Partial',
-                                child: Text('Partial'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Complete',
-                                child: Text('Complete'),
-                              ),
-                            ],
-                            onChanged: (val) {
-                              if (val != null) {
-                                setModalState(
-                                  () => selectedPaymentStatus = val,
-                                );
-                              }
-                            },
-                          ),
+                    // 5. Email
+                    TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      autocorrect: false,
+                      decoration: const InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Email Address'),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: amountDueController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9,]'),
-                              ),
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Amount Due (₹)',
-                              hintText: 'e.g. 45,000',
-                              prefixIcon: Icon(Icons.currency_rupee_rounded),
-                            ),
-                          ),
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 6. City
+                    TextField(
+                      controller: cityController,
+                      keyboardType: TextInputType.streetAddress,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('City / Base Location'),
+                        ),
+                        prefixIcon: Icon(Icons.location_city_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 7. Payment Status
+                    CustomEntryDropdown(
+                      value: selectedPaymentStatus,
+                      options: const ['Pending', 'Partial', 'Complete'],
+                      customFieldLabel: 'Custom Payment Status',
+                      customFieldHint: 'Enter payment status...',
+                      decoration: const InputDecoration(
+                        labelText: 'Payment Status',
+                        prefixIcon: Icon(Icons.payment_rounded),
+                      ),
+                      onChanged: (val) {
+                        setModalState(
+                          () => selectedPaymentStatus = val,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 8. Amount Due
+                    TextField(
+                      controller: amountDueController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[0-9,]'),
                         ),
                       ],
+                      decoration: const InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Amount Due (₹)'),
+                        ),
+                        hintText: 'e.g. 45,000',
+                        prefixIcon: Icon(Icons.currency_rupee_rounded),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
@@ -242,7 +241,11 @@ class AddVendorSheet {
                       textCapitalization: TextCapitalization.sentences,
                       maxLines: 2,
                       decoration: const InputDecoration(
-                        labelText: 'Notes / Scope / Terms',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Notes / Scope / Terms'),
+                        ),
                         hintText:
                             'e.g. Delivery terms, GST info, quality specs',
                         prefixIcon: Icon(Icons.edit_note_rounded),

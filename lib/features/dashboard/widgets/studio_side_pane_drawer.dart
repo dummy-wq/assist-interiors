@@ -165,11 +165,11 @@ class _StudioSidePaneDrawerState extends State<StudioSidePaneDrawer> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 5),
-                        const SyncStatusBadge(),
                       ],
                     ),
                   ),
+                  const SyncStatusBadge(size: 18),
+                  const SizedBox(width: 2),
                   IconButton(
                     icon: const Icon(Icons.close_rounded, size: 20),
                     tooltip: 'Close Side Pane',

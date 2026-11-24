@@ -35,9 +35,15 @@ class RoleOnboardingGuide {
         mainButtonDesc =
             'Tap the large "Take Site Photo" button right on your Home screen or inside any project\'s Photos tab.';
         break;
+      case UserRole.siteEngineer:
+        roleFocus =
+            'Verify technical drawings, log site inspections & snags, update stage progress, and record roll calls.';
+        mainButtonDesc =
+            'Tap "Take Site Photo" on your Home screen or open any project to review drawings, progress, and snags.';
+        break;
       case UserRole.designer:
         roleFocus =
-            'Share 2D layouts, 3D renders, mood boards, and material lists with site and management.';
+            'Share 2D layouts, 3D renders, mood boards, and PDFs with site and management.';
         mainButtonDesc =
             'Tap "Upload Drawing" on your Home screen or open a project\'s Files tab to publish files.';
         break;

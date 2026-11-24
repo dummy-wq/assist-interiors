@@ -179,7 +179,9 @@ class _ProprietorDashboardState extends State<ProprietorDashboard> {
     final auth = context.watch<AuthProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isWide = MediaQuery.of(context).size.width > 900;
-    final isFieldStaff = auth.currentRole == UserRole.supervisor;
+    final isFieldStaff =
+        auth.currentRole == UserRole.supervisor ||
+        auth.currentRole == UserRole.siteEngineer;
 
     int totalInvoiced = 0;
     int totalReceivables = 0;
@@ -542,6 +544,7 @@ class _ProprietorDashboardState extends State<ProprietorDashboard> {
 
     switch (role) {
       case UserRole.supervisor:
+      case UserRole.siteEngineer:
         icon = Icons.add_a_photo_rounded;
         title = AppStrings.tr('Take Site Photo');
         subtitle = 'Capture & upload today\'s site progress photo';
@@ -550,7 +553,7 @@ class _ProprietorDashboardState extends State<ProprietorDashboard> {
       case UserRole.designer:
         icon = Icons.cloud_upload_rounded;
         title = AppStrings.tr('Upload Drawing');
-        subtitle = 'Share 2D plans, 3D renders or material lists';
+        subtitle = 'Share 2D plans, 3D renders & PDFs';
         onPressed = () => MobileActionSheets.showUploadRenderSheet(context);
         break;
       case UserRole.accounts:

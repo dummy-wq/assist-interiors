@@ -9,6 +9,7 @@ enum UserRole {
   designer,
   accounts,
   supervisor,
+  siteEngineer,
 }
 
 extension UserRoleExtension on UserRole {
@@ -26,6 +27,8 @@ extension UserRoleExtension on UserRole {
         return 'Accounts';
       case UserRole.supervisor:
         return 'Site Supervisor';
+      case UserRole.siteEngineer:
+        return 'Site Engineer';
     }
   }
 
@@ -43,6 +46,8 @@ extension UserRoleExtension on UserRole {
         return 'ACC';
       case UserRole.supervisor:
         return 'SUP';
+      case UserRole.siteEngineer:
+        return 'SE';
     }
   }
 
@@ -60,6 +65,8 @@ extension UserRoleExtension on UserRole {
         return 'Invoicing, vendor payments, expense vouchers & ledger';
       case UserRole.supervisor:
         return 'Daily site logs, labour attendance, photos & material requests';
+      case UserRole.siteEngineer:
+        return 'Technical site inspections, drawings verification, snag checks & daily logs';
     }
   }
 
@@ -77,6 +84,8 @@ extension UserRoleExtension on UserRole {
         return Icons.account_balance_wallet_rounded;
       case UserRole.supervisor:
         return Icons.engineering_rounded;
+      case UserRole.siteEngineer:
+        return Icons.architecture_rounded;
     }
   }
 
@@ -94,6 +103,8 @@ extension UserRoleExtension on UserRole {
         return AppColors.roleAccounts;
       case UserRole.supervisor:
         return AppColors.roleSupervisor;
+      case UserRole.siteEngineer:
+        return AppColors.roleSiteEngineer;
     }
   }
 }

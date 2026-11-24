@@ -7,7 +7,6 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/models/project_model.dart';
 import '../../../core/permissions/app_permissions.dart';
 import '../../../core/services/backend_manager.dart';
-import '../../../core/services/phone_call_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_sizes.dart';
@@ -15,7 +14,6 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/utils/currency_utils.dart';
 import '../../../core/widgets/expanded_detail_dialog.dart';
-import '../../../core/widgets/instant_press_feedback.dart';
 import '../../../core/widgets/pill_box.dart';
 import '../../../core/widgets/screen_layout.dart';
 import '../../../core/widgets/stat_card.dart';
@@ -24,7 +22,6 @@ import '../../auth/state/auth_provider.dart';
 import '../../dashboard/views/main_dashboard_screen.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 import '../../projects/dialogs/project_timeline_sheet_dialog.dart';
-import '../../accounts/dialogs/invoice_qr_payment_dialog.dart';
 import '../services/sales_pipeline_service.dart';
 
 class SalesView extends StatefulWidget {
@@ -120,38 +117,6 @@ class _SalesViewState extends State<SalesView> {
     }
   }
 
-  bool _isDueToday(Map<String, dynamic> lead) {
-    final nextCallDate = lead['nextCallDate'] as String? ?? '';
-    if (nextCallDate.isEmpty) return false;
-    final now = DateTime.now();
-    final todayStr1 = DateFormat('dd MMM yyyy').format(now);
-    final todayStr2 = DateFormat('yyyy-MM-dd').format(now);
-    final todayStr3 = DateFormat('d MMM yyyy').format(now);
-    return nextCallDate == todayStr1 ||
-        nextCallDate == todayStr2 ||
-        nextCallDate == todayStr3;
-  }
-
-  bool _isOverdue(Map<String, dynamic> lead) {
-    final nextCallDate = lead['nextCallDate'] as String? ?? '';
-    if (nextCallDate.isEmpty) return false;
-    if (_isDueToday(lead)) return false;
-    try {
-      DateTime? parsed;
-      if (nextCallDate.contains('-')) {
-        parsed = DateTime.tryParse(nextCallDate);
-      } else {
-        parsed = DateFormat('dd MMM yyyy').parse(nextCallDate);
-      }
-      if (parsed != null) {
-        final now = DateTime.now();
-        final todayStart = DateTime(now.year, now.month, now.day);
-        return parsed.isBefore(todayStart);
-      }
-    } catch (_) {}
-    return false;
-  }
-
   Color _getStageColor(String stage) {
     final lower = stage.toLowerCase().trim();
     if (lower == 'approved' ||
@@ -239,21 +204,17 @@ class _SalesViewState extends State<SalesView> {
 
     // 1. Pipeline Metrics
     int totalPipeline = 0;
-    int dueRemindersCount = 0;
     int wonCount = 0;
 
     for (final l in _leads) {
       final val = _parseBudget(l['estValue']);
       totalPipeline += val;
 
-      if (_isDueToday(l) || _isOverdue(l)) {
-        dueRemindersCount++;
-      }
-
       final stg = (l['stage'] ?? l['status'] ?? '') as String;
-      if (stg.contains('Won') ||
-          stg.contains('Advance') ||
-          stg.contains('Converted')) {
+      final lowerStg = stg.toLowerCase();
+      if (SalesPipelineService.isApproved(stg) ||
+          lowerStg.contains('advance') ||
+          lowerStg.contains('converted')) {
         wonCount++;
       }
     }
@@ -301,7 +262,6 @@ class _SalesViewState extends State<SalesView> {
             isDark: isDark,
             canManageSales: canManageSales,
             pipelineStr: pipelineStr,
-            dueRemindersCount: dueRemindersCount,
             conversionRateStr: conversionRateStr,
           )
         else
@@ -402,18 +362,21 @@ class _SalesViewState extends State<SalesView> {
             ),
             const SizedBox(width: 6),
             Flexible(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                  color: isSelected
-                      ? (isDark ? Colors.white : Colors.black87)
-                      : (isDark
-                          ? AppColors.textLightSecondary
-                          : AppColors.textDarkSecondary),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    color: isSelected
+                        ? (isDark ? Colors.white : Colors.black87)
+                        : (isDark
+                            ? AppColors.textLightSecondary
+                            : AppColors.textDarkSecondary),
+                  ),
+                  maxLines: 1,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 6),
@@ -451,7 +414,6 @@ class _SalesViewState extends State<SalesView> {
     required bool isDark,
     required bool canManageSales,
     required String pipelineStr,
-    required int dueRemindersCount,
     required String conversionRateStr,
   }) {
     // Stage counts for canonical 5-stage pipeline
@@ -512,9 +474,7 @@ class _SalesViewState extends State<SalesView> {
       if (!matchesSearch) return false;
 
       // Stage Filter
-      if (_selectedStageFilter == 'Due Reminders') {
-        if (!_isDueToday(lead) && !_isOverdue(lead)) return false;
-      } else if (_selectedStageFilter == 'Lead' ||
+      if (_selectedStageFilter == 'Lead' ||
           _selectedStageFilter == 'New Inquiry') {
         if (stage.toLowerCase().contains('lost') ||
             stage.toLowerCase().contains('dropped') ||
@@ -574,12 +534,11 @@ class _SalesViewState extends State<SalesView> {
     }).toList();
 
     return [
-      // Sleek Single-Row KPI Ticker (Pipeline Value, Inquiries, Due Calls, Conv.)
+      // Sleek Single-Row KPI Ticker (Pipeline Value, Inquiries, Conv.)
       _buildCompactPipelineKpiStrip(
         isDark: isDark,
         pipelineStr: pipelineStr,
         leadsCount: _leads.length,
-        dueRemindersCount: dueRemindersCount,
         conversionRateStr: conversionRateStr,
       ),
       const SizedBox(height: ScreenLayout.controlGap),
@@ -681,15 +640,6 @@ class _SalesViewState extends State<SalesView> {
                     activeColor: AppColors.brandPeach,
                     onSelected: () =>
                         setState(() => _selectedStageFilter = 'All'),
-                  ),
-                  const SizedBox(width: 6),
-                  PillBox(
-                    label: 'Due Calls ($dueRemindersCount)',
-                    icon: Icons.notifications_active_outlined,
-                    isSelected: _selectedStageFilter == 'Due Reminders',
-                    activeColor: const Color(0xFFD97706),
-                    onSelected: () =>
-                        setState(() => _selectedStageFilter = 'Due Reminders'),
                   ),
                   const SizedBox(width: 6),
                   PillBox(
@@ -829,12 +779,8 @@ class _SalesViewState extends State<SalesView> {
     required bool isDark,
     required String pipelineStr,
     required int leadsCount,
-    required int dueRemindersCount,
     required String conversionRateStr,
   }) {
-    final dueActive = _selectedStageFilter == 'Due Reminders';
-    final hasDue = dueRemindersCount > 0;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
@@ -862,36 +808,6 @@ class _SalesViewState extends State<SalesView> {
               value: '$leadsCount Leads',
               color: isDark ? Colors.white : Colors.black87,
               isDark: isDark,
-            ),
-          ),
-          _buildKpiDivider(isDark),
-          Expanded(
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() {
-                  _selectedStageFilter =
-                      dueActive ? 'All' : 'Due Reminders';
-                });
-              },
-              borderRadius: BorderRadius.circular(4.0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                decoration: dueActive || hasDue
-                    ? BoxDecoration(
-                        color: AppColors.brandOrange.withValues(
-                          alpha: dueActive ? 0.22 : 0.1,
-                        ),
-                        borderRadius: BorderRadius.circular(4.0),
-                      )
-                    : null,
-                child: _buildKpiTickerCell(
-                  label: hasDue ? 'Due Urgent' : 'Due Calls',
-                  value: '$dueRemindersCount Calls',
-                  color: hasDue ? AppColors.brandOrange : AppColors.success,
-                  isDark: isDark,
-                ),
-              ),
             ),
           ),
           _buildKpiDivider(isDark),
@@ -1045,7 +961,6 @@ class _SalesViewState extends State<SalesView> {
     bool isDark,
   ) {
     final clientName = (lead['client'] ?? lead['name'] ?? 'Client') as String;
-    final phone = (lead['phone'] ?? '+91 98000 00000') as String;
     final scope = (lead['scope'] ?? 'Turnkey Scope') as String;
     final location =
         (lead['location'] ?? 'Site Consultation Pending') as String;
@@ -1054,12 +969,8 @@ class _SalesViewState extends State<SalesView> {
         (lead['referralSource'] ?? 'Client Referral') as String;
     final referralBy = (lead['referralBy'] ?? '') as String;
     final stage = (lead['stage'] ?? lead['status'] ?? 'New Inquiry') as String;
-    final nextCallDate = (lead['nextCallDate'] ?? '') as String;
-    final nextCallTime = (lead['nextCallTime'] ?? '11:00 AM') as String;
     final reminderNote = (lead['reminderNote'] ?? '') as String;
 
-    final isDue = _isDueToday(lead);
-    final isOver = _isOverdue(lead);
     final stageColor = _getStageColor(stage);
 
     final auth = Provider.of<AuthProvider>(context);
@@ -1082,10 +993,8 @@ class _SalesViewState extends State<SalesView> {
             color: isDark ? AppColors.darkCard : AppColors.lightCard,
             borderRadius: BorderRadius.circular(6.0),
             border: Border.all(
-              color: isDue || isOver
-                  ? AppColors.brandOrange.withValues(alpha: 0.8)
-                  : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-              width: isDue || isOver ? 1.2 : 0.8,
+              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              width: 0.8,
             ),
           ),
           child: Column(
@@ -1191,12 +1100,10 @@ class _SalesViewState extends State<SalesView> {
           ),
           const SizedBox(height: 10),
 
-          // Full-Width Metadata Row: Stage Pill + Call Reminder Pill filling 100% width
+          // Full-Width Metadata Row: Stage Pill
           Row(
             children: [
-              // Interactive Stage Status Selector Pill
               Expanded(
-                flex: 4,
                 child: InkWell(
                   onTap: () => MobileActionSheets.showUpdateLeadStatusSheet(
                     context,
@@ -1245,77 +1152,6 @@ class _SalesViewState extends State<SalesView> {
                           Icons.arrow_drop_down_rounded,
                           size: 14,
                           color: stageColor,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Interactive Call Reminder Pill
-              Expanded(
-                flex: 5,
-                child: InkWell(
-                  onTap: () => MobileActionSheets.showScheduleCallSheet(
-                    context,
-                    lead,
-                    onUpdated: _loadLeads,
-                  ),
-                  borderRadius: BorderRadius.circular(4.0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: (isDue || isOver
-                              ? AppColors.brandOrange
-                              : AppColors.brandPeach)
-                          .withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(4.0),
-                      border: Border.all(
-                        color: (isDue || isOver
-                                ? AppColors.brandOrange
-                                : AppColors.brandPeach)
-                            .withValues(alpha: 0.65),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          isOver
-                              ? Icons.warning_amber_rounded
-                              : Icons.alarm_on_rounded,
-                          size: 12,
-                          color: isDue || isOver
-                              ? AppColors.brandOrange
-                              : AppColors.brandPeach,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              nextCallDate.isNotEmpty
-                                  ? (isOver
-                                        ? 'Overdue: $nextCallDate, $nextCallTime'
-                                        : (isDue
-                                              ? 'Due Today: $nextCallTime'
-                                              : 'Next Call: $nextCallDate, $nextCallTime'))
-                                  : '+ Set Call Reminder',
-                              maxLines: 1,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: isDue || isOver
-                                    ? AppColors.brandOrange
-                                    : AppColors.brandPeach,
-                              ),
-                            ),
-                          ),
                         ),
                       ],
                     ),
@@ -1463,42 +1299,6 @@ class _SalesViewState extends State<SalesView> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      InstantPressFeedback(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.brandPeach,
-                            foregroundColor: Colors.black,
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4.0),
-                            ),
-                          ),
-                          icon: const Icon(Icons.qr_code_2_rounded, size: 14),
-                          label: const Text(
-                            'Pay via QR',
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          onPressed: () {
-                            InvoiceQrPaymentDialog.show(
-                              context,
-                              invoice: latestInv,
-                              onStatusChanged: () {
-                                if (mounted) {
-                                  setState(() {});
-                                }
-                              },
-                            );
-                          },
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -1506,77 +1306,9 @@ class _SalesViewState extends State<SalesView> {
             },
           ),
 
-          // Row 3: Full-Width Action Buttons (uniform 38px height across card)
+          // Row 3: Full-Width Project Launch / View Action
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: AppSizes.compactOutlinedStyle(
-                    foregroundColor: isDark
-                        ? AppColors.brandPeach
-                        : AppColors.brandPeachDark,
-                    borderColor: isDark
-                        ? AppColors.brandPeach
-                        : AppColors.brandPeachDark,
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                  ),
-                  icon: const Icon(Icons.phone_rounded, size: 14),
-                  label: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      phone,
-                      maxLines: 1,
-                      style: AppTypography.labelSmall(isDark).copyWith(
-                        fontSize: AppSizes.compactButtonFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? AppColors.brandPeach
-                            : AppColors.brandPeachDark,
-                      ),
-                    ),
-                  ),
-                  onPressed: () => PhoneCallService.dialNumber(
-                    context,
-                    phoneNumber: phone,
-                    contactName: clientName,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: AppSizes.compactOutlinedStyle(
-                    foregroundColor: isDark
-                        ? AppColors.brandPeach
-                        : AppColors.brandPeachDark,
-                    borderColor: isDark
-                        ? AppColors.brandPeach
-                        : AppColors.brandPeachDark,
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                  ),
-                  icon: const Icon(Icons.edit_calendar_rounded, size: 14),
-                  label: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      'Schedule Call',
-                      maxLines: 1,
-                      style: AppTypography.labelSmall(isDark).copyWith(
-                        fontSize: AppSizes.compactButtonFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? AppColors.brandPeach
-                            : AppColors.brandPeachDark,
-                      ),
-                    ),
-                  ),
-                  onPressed: () => MobileActionSheets.showScheduleCallSheet(
-                    context,
-                    lead,
-                    onUpdated: _loadLeads,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
               Expanded(
                 child: SizedBox(
                   width: double.infinity,
@@ -1704,7 +1436,6 @@ class _SalesViewState extends State<SalesView> {
     bool isDark,
   ) {
     final clientName = (lead['client'] ?? lead['name'] ?? 'Client') as String;
-    final phone = (lead['phone'] ?? '+91 98000 00000') as String;
     final scope = (lead['scope'] ?? 'Turnkey Scope') as String;
     final location =
         (lead['location'] ?? 'Site Consultation Pending') as String;
@@ -1716,8 +1447,6 @@ class _SalesViewState extends State<SalesView> {
     final nextCallDate = (lead['nextCallDate'] ?? '') as String;
     final nextCallTime = (lead['nextCallTime'] ?? '11:00 AM') as String;
     final reminderNote = (lead['reminderNote'] ?? '') as String;
-    final isDue = _isDueToday(lead);
-    final isOver = _isOverdue(lead);
     final stageColor = _getStageColor(stage);
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -1767,9 +1496,7 @@ class _SalesViewState extends State<SalesView> {
                 value: nextCallDate.isNotEmpty
                     ? '$nextCallDate, $nextCallTime'
                     : 'Not Scheduled',
-                color: isOver || isDue
-                    ? AppColors.brandOrange
-                    : AppColors.brandPeach,
+                color: AppColors.brandPeach,
                 icon: Icons.alarm_on_rounded,
               ),
               DetailMetric(
@@ -1799,7 +1526,7 @@ class _SalesViewState extends State<SalesView> {
           DetailInfoRow(
             icon: Icons.phone_rounded,
             label: 'Phone',
-            value: phone,
+            value: (lead['phone'] ?? '+91 98000 00000').toString(),
             isDark: isDark,
           ),
           DetailInfoRow(
@@ -1886,34 +1613,6 @@ class _SalesViewState extends State<SalesView> {
                           ],
                         ),
                       ),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.brandPeach,
-                          foregroundColor: Colors.black,
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                        ),
-                        icon: const Icon(Icons.qr_code_2_rounded, size: 14),
-                        label: const Text(
-                          'Pay via QR',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        onPressed: () {
-                          InvoiceQrPaymentDialog.show(
-                            dialogCtx,
-                            invoice: inv,
-                            onStatusChanged: () {
-                              if (mounted) setState(() {});
-                            },
-                          );
-                        },
-                      ),
                     ],
                   ),
                 ),
@@ -1923,33 +1622,6 @@ class _SalesViewState extends State<SalesView> {
         ],
       ),
       actionsBuilder: (dialogCtx) => [
-        OutlinedButton.icon(
-          icon: const Icon(Icons.phone_rounded, size: 14),
-          label: const FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text('Call Client', maxLines: 1),
-          ),
-          onPressed: () => PhoneCallService.dialNumber(
-            dialogCtx,
-            phoneNumber: phone,
-            contactName: clientName,
-          ),
-        ),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.edit_calendar_rounded, size: 14),
-          label: const FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text('Schedule', maxLines: 1),
-          ),
-          onPressed: () {
-            Navigator.of(dialogCtx).pop();
-            MobileActionSheets.showScheduleCallSheet(
-              context,
-              lead,
-              onUpdated: _loadLeads,
-            );
-          },
-        ),
         if (isConverted)
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
@@ -2656,13 +2328,15 @@ class _SalesViewState extends State<SalesView> {
                   isDark: isDark,
                 ),
                 _buildProjectMetricCell(
+                  key: Key('sales_handover_calendar_${project['id'] ?? projName}'),
                   label: 'Handover Target',
                   value: handover,
-                  icon: Icons.calendar_today_outlined,
+                  icon: Icons.calendar_month_rounded,
                   color: status == 'Delayed'
                       ? AppColors.error
-                      : AppColors.info,
+                      : AppColors.brandPeach,
                   isDark: isDark,
+                  onTap: () => _pickHandoverDate(context, project),
                 ),
                 _buildProjectMetricCell(
                   label: 'Project Manager',
@@ -2744,64 +2418,8 @@ class _SalesViewState extends State<SalesView> {
           // Action Buttons: Open Excel Timeline & View in Projects
           Builder(
             builder: (context) {
-              final projectInvoices = StorageService.getInvoices().where((inv) {
-                if (inv['projectId'] != null && inv['projectId'] == project['id']) {
-                  return true;
-                }
-                if (inv['project'] != null && inv['project'] == projName) {
-                  return true;
-                }
-                return false;
-              }).toList();
-
               return Row(
                 children: [
-                  if (projectInvoices.isNotEmpty) ...[
-                    Expanded(
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4.0),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 8,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          icon: const Icon(
-                            Icons.qr_code_2_rounded,
-                            size: 14,
-                            color: AppColors.brandPeach,
-                          ),
-                          label: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              'Pay via QR (${projectInvoices.length})',
-                              maxLines: 1,
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.brandPeach,
-                              ),
-                            ),
-                          ),
-                          onPressed: () {
-                            InvoiceQrPaymentDialog.show(
-                              context,
-                              invoice: projectInvoices.first,
-                              onStatusChanged: () {
-                                if (mounted) setState(() {});
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
                   Expanded(
                     child: SizedBox(
                       width: double.infinity,
@@ -2947,16 +2565,6 @@ class _SalesViewState extends State<SalesView> {
         ? (doneStages / stages.length)
         : (project['progress'] as double? ?? 0.0);
 
-    final projectInvoices = StorageService.getInvoices().where((inv) {
-      if (inv['projectId'] != null && inv['projectId'] == project['id']) {
-        return true;
-      }
-      if (inv['project'] != null && inv['project'] == projName) {
-        return true;
-      }
-      return false;
-    }).toList();
-
     showExpandedDetailBox(
       context: context,
       title: projName,
@@ -3029,23 +2637,6 @@ class _SalesViewState extends State<SalesView> {
         ],
       ),
       actionsBuilder: (dialogCtx) => [
-        if (projectInvoices.isNotEmpty)
-          OutlinedButton.icon(
-            icon: const Icon(Icons.qr_code_2_rounded, size: 14),
-            label: const FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text('Pay via QR', maxLines: 1),
-            ),
-            onPressed: () {
-              InvoiceQrPaymentDialog.show(
-                dialogCtx,
-                invoice: projectInvoices.first,
-                onStatusChanged: () {
-                  if (mounted) setState(() {});
-                },
-              );
-            },
-          ),
         OutlinedButton.icon(
           icon: const Icon(Icons.table_chart_rounded, size: 14),
           label: const FittedBox(
@@ -3081,6 +2672,26 @@ class _SalesViewState extends State<SalesView> {
             );
           },
         ),
+        OutlinedButton.icon(
+          key: Key('sales_dialog_handover_calendar_${project['id'] ?? projName}'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.brandPeach,
+            side: BorderSide(
+              color: AppColors.brandPeach.withValues(alpha: 0.7),
+            ),
+          ),
+          icon: const Icon(Icons.calendar_month_rounded, size: 14),
+          label: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('Handover Date', maxLines: 1),
+          ),
+          onPressed: () async {
+            final updated = await _pickHandoverDate(dialogCtx, project);
+            if (updated != null && dialogCtx.mounted) {
+              Navigator.of(dialogCtx).pop();
+            }
+          },
+        ),
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.brandPeach,
@@ -3101,14 +2712,70 @@ class _SalesViewState extends State<SalesView> {
     );
   }
 
+  Future<String?> _pickHandoverDate(
+    BuildContext pickerContext,
+    Map<String, dynamic> project,
+  ) async {
+    final raw = (project['handover'] ?? project['endDate'] ?? '').toString().trim();
+    DateTime initialDate = DateTime.now().add(const Duration(days: 60));
+    if (raw.isNotEmpty && raw.toUpperCase() != 'TBD') {
+      try {
+        initialDate = DateFormat('dd MMM yyyy').parseStrict(raw);
+      } catch (_) {}
+    }
+    final firstDate = DateTime(2020);
+    final lastDate = DateTime(2035);
+    if (initialDate.isBefore(firstDate)) initialDate = firstDate;
+    if (initialDate.isAfter(lastDate)) initialDate = lastDate;
+
+    final picked = await showDatePicker(
+      context: pickerContext,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      helpText: 'Select Target Handover Date',
+    );
+    if (picked == null) return null;
+
+    final formatted = DateFormat('dd MMM yyyy').format(picked);
+    final allProjects = StorageService.getProjects();
+    final idx = allProjects.indexWhere(
+      (p) =>
+          (project['id'] != null && p['id'] == project['id']) ||
+          p['name'] == project['name'],
+    );
+    if (idx != -1) {
+      allProjects[idx]['handover'] = formatted;
+      await StorageService.saveProjects(allProjects);
+      final updated = Map<String, dynamic>.from(allProjects[idx]);
+      MobileActionSheets.projectUpdatedNotifier.value = updated;
+      BackendManager.instance.updateProject(ProjectModel.fromMap(updated));
+    }
+
+    if (mounted) {
+      setState(() {
+        project['handover'] = formatted;
+        _loadProjects();
+      });
+      AppNotification.show(
+        context,
+        message: 'Handover target updated to $formatted',
+        backgroundColor: AppColors.success,
+      );
+    }
+    return formatted;
+  }
+
   Widget _buildProjectMetricCell({
+    Key? key,
     required String label,
     required String value,
     required IconData icon,
     required Color color,
     required bool isDark,
+    VoidCallback? onTap,
   }) {
-    return Row(
+    final content = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 13, color: color),
@@ -3127,19 +2794,46 @@ class _SalesViewState extends State<SalesView> {
                     : AppColors.textDarkSecondary,
               ),
             ),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.bold,
-                color: isDark
-                    ? AppColors.textLightPrimary
-                    : AppColors.textDarkPrimary,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                    color: onTap != null
+                        ? AppColors.brandPeach
+                        : (isDark
+                            ? AppColors.textLightPrimary
+                            : AppColors.textDarkPrimary),
+                  ),
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(width: 3),
+                  Icon(
+                    Icons.edit_calendar_rounded,
+                    size: 11,
+                    color: AppColors.brandPeach.withValues(alpha: 0.85),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
       ],
+    );
+
+    if (onTap == null) return content;
+
+    return InkWell(
+      key: key,
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4.0),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: content,
+      ),
     );
   }
 }

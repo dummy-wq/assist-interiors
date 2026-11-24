@@ -213,31 +213,12 @@ class UploadInvoiceQrSheet {
                               ],
                             ),
                           ] else ...[
-                            const Icon(
-                              Icons.add_photo_alternate_outlined,
-                              size: 40,
-                              color: AppColors.brandPeach,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'No QR Code Photo Selected',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: isDark
-                                    ? AppColors.textLightPrimary
-                                    : AppColors.textDarkPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Take a photo of your printed QR code, choose from gallery, or use sample studio UPI QR.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: isDark
-                                    ? AppColors.textLightMuted
-                                    : AppColors.textDarkMuted,
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Icon(
+                                Icons.add_photo_alternate_outlined,
+                                size: 40,
+                                color: AppColors.brandPeach,
                               ),
                             ),
                           ],

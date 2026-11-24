@@ -17,6 +17,7 @@ import '../../../core/widgets/screen_layout.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/stat_strip.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
+import '../../../core/widgets/custom_entry_dropdown.dart';
 import '../../../core/widgets/quick_fade_dropdown.dart';
 import '../../dashboard/widgets/mobile_action_sheets.dart';
 
@@ -1189,7 +1190,11 @@ class _AmendmentsViewState extends State<AmendmentsView> {
                 TextField(
                   controller: titleCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'Amendment Title *',
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text('Amendment Title *'),
+                    ),
                     hintText: 'e.g. Master Bedroom Motorized Curtain Tracks',
                   ),
                 ),
@@ -1208,84 +1213,76 @@ class _AmendmentsViewState extends State<AmendmentsView> {
                   },
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: QuickFadeDropdown<String>(
-                        initialValue: selectedReason,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Variation Trigger *',
-                        ),
-                        items: [
-                          'Client Request',
-                          'Site Engineering Condition',
-                          'Design Refinement',
-                          'Material Upgrade',
-                        ]
-                            .map((r) =>
-                                DropdownMenuItem(value: r, child: Text(r)))
-                            .toList(),
-                        onChanged: (val) {
-                          if (val != null) setModalState(() => selectedReason = val);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: QuickFadeDropdown<String>(
-                        initialValue: selectedPriority,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Priority *',
-                        ),
-                        items: [
-                          'Urgent',
-                          'High',
-                          'Medium',
-                          'Low',
-                        ]
-                            .map((p) =>
-                                DropdownMenuItem(value: p, child: Text(p)))
-                            .toList(),
-                        onChanged: (val) {
-                          if (val != null) setModalState(() => selectedPriority = val);
-                        },
-                      ),
-                    ),
+                CustomEntryDropdown(
+                  value: selectedReason,
+                  decoration: const InputDecoration(
+                    labelText: 'Variation Trigger *',
+                  ),
+                  customFieldLabel: 'Custom Variation Trigger',
+                  customFieldHint: 'Enter custom trigger...',
+                  options: const [
+                    'Client Request',
+                    'Site Engineering Condition',
+                    'Design Refinement',
+                    'Material Upgrade',
                   ],
+                  onChanged: (val) {
+                    setModalState(() => selectedReason = val);
+                  },
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: costCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Cost Impact (INR ₹)',
-                          hintText: 'e.g. 185000',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: daysCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Schedule Impact (+Days)',
-                          hintText: 'e.g. 5',
-                        ),
-                      ),
-                    ),
+                CustomEntryDropdown(
+                  value: selectedPriority,
+                  decoration: const InputDecoration(
+                    labelText: 'Priority *',
+                  ),
+                  customFieldLabel: 'Custom Priority',
+                  customFieldHint: 'Enter custom priority...',
+                  options: const [
+                    'Urgent',
+                    'High',
+                    'Medium',
+                    'Low',
                   ],
+                  onChanged: (val) {
+                    setModalState(() => selectedPriority = val);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: costCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text('Cost Impact (INR ₹)'),
+                    ),
+                    hintText: 'e.g. 185000',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: daysCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text('Schedule Impact (+Days)'),
+                    ),
+                    hintText: 'e.g. 5',
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: reqByCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'Requested By / Approver',
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text('Requested By / Approver'),
+                    ),
                     hintText: 'e.g. Mrs. Ananya Goenka',
                   ),
                 ),
@@ -1294,7 +1291,13 @@ class _AmendmentsViewState extends State<AmendmentsView> {
                   controller: descCtrl,
                   maxLines: 3,
                   decoration: const InputDecoration(
-                    labelText: 'Scope Details & Architectural Justification',
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Scope Details & Architectural Justification',
+                      ),
+                    ),
                     hintText:
                         'Explain exact changes to drawings, joinery, materials, and automation...',
                   ),

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -225,6 +226,39 @@ class InvoiceQrPaymentDialog {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4.0),
+                            border: Border.all(
+                              color: AppColors.success.withValues(alpha: 0.35),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.south_west_rounded,
+                                size: 12,
+                                color: AppColors.success,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Incoming Payment',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.success,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
                             color: statusColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4.0),
                           ),
@@ -374,15 +408,7 @@ class InvoiceQrPaymentDialog {
                                       size: 54,
                                       color: Colors.grey,
                                     ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'No QR Code Attached',
-                                      style: TextStyle(
-                                        color: Colors.black54,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 10),
                                     ElevatedButton(
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppColors.brandPeach,
@@ -501,7 +527,7 @@ class InvoiceQrPaymentDialog {
                               ),
                               onPressed: () {
                                 Clipboard.setData(ClipboardData(text: upiId));
-                                AppNotification.show(modalContext, message: 'Copied "$upiId" to clipboard!', duration: const Duration(seconds: 2));
+                                AppNotification.show(modalContext, message: 'Copied "$upiId" to clipboard!');
                               },
                             ),
                           ),
@@ -582,6 +608,20 @@ class InvoiceQrPaymentDialog {
                                       'Payment Pending',
                                       statusColor: AppColors.warning,
                                     );
+                                    final receipts = StorageService.getReceipts();
+                                    final removedCount = receipts.length;
+                                    receipts.removeWhere(
+                                      (r) => r['invoiceId'] == invId,
+                                    );
+                                    if (receipts.length != removedCount) {
+                                      await StorageService.saveReceipts(
+                                        receipts,
+                                      );
+                                      StorageService.cloudSyncNotifier.value =
+                                          StorageService
+                                              .cloudSyncNotifier.value +
+                                          1;
+                                    }
                                     setModalState(() {
                                       currentInvoice['status'] =
                                           'Payment Pending';
@@ -629,6 +669,46 @@ class InvoiceQrPaymentDialog {
                                       'Settled',
                                       statusColor: AppColors.success,
                                     );
+                                    final receipts = StorageService.getReceipts();
+                                    if (!receipts.any(
+                                      (r) => r['invoiceId'] == invId,
+                                    )) {
+                                      final now = DateTime.now();
+                                      final receiptRecord = <String, dynamic>{
+                                        'id': 'RCP-$invId',
+                                        'receiptNumber': 'RCP-$invId',
+                                        'invoiceId': invId,
+                                        'title': 'Payment Receipt: $title',
+                                        'type': 'Payment Received',
+                                        'party': clientOrLead.isNotEmpty
+                                            ? clientOrLead
+                                            : 'Client',
+                                        'project': projectName.isNotEmpty
+                                            ? projectName
+                                            : 'General Studio',
+                                        'amount': amount,
+                                        'direction': 'incoming',
+                                        'paymentMode': 'UPI / QR',
+                                        'date': DateFormat(
+                                          'dd MMM yyyy',
+                                        ).format(now),
+                                        'timestamp': DateFormat(
+                                          'dd MMM yyyy, hh:mm a',
+                                        ).format(now),
+                                        'status': 'Verified',
+                                        'color': AppColors.success,
+                                        'statusColor': AppColors.success,
+                                        'createdAt': now.toIso8601String(),
+                                      };
+                                      receipts.insert(0, receiptRecord);
+                                      await StorageService.saveReceipts(
+                                        receipts,
+                                      );
+                                      MobileActionSheets
+                                              .receiptCreatedNotifier
+                                              .value =
+                                          receiptRecord;
+                                    }
                                     setModalState(() {
                                       currentInvoice['status'] = 'Settled';
                                       currentInvoice['statusColor'] =

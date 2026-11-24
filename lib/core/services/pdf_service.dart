@@ -8,6 +8,7 @@ import 'pdf/invoice_pdf_builder.dart';
 import 'pdf/pdf_file_utils.dart';
 import 'pdf/pdf_preview_dialog.dart';
 import 'pdf/pnl_pdf_builder.dart';
+import 'pdf/receipt_pdf_builder.dart';
 import 'storage_service.dart';
 
 export 'pdf/invoice_pdf_builder.dart';
@@ -15,6 +16,7 @@ export 'pdf/pdf_file_utils.dart';
 export 'pdf/pdf_preview_dialog.dart';
 export 'pdf/pdf_widgets.dart';
 export 'pdf/pnl_pdf_builder.dart';
+export 'pdf/receipt_pdf_builder.dart';
 
 /// Central Facade for all PDF operations, invoicing, financial statements, and document previewing.
 class PdfService {
@@ -29,6 +31,10 @@ class PdfService {
   /// Generates a GST-compliant tax invoice PDF.
   static Future<Uint8List> generateInvoicePdf(Map<String, dynamic> invoice) =>
       InvoicePdfBuilder.build(invoice);
+
+  /// Generates a Payment Receipt PDF.
+  static Future<Uint8List> generateReceiptPdf(Map<String, dynamic> receipt) =>
+      ReceiptPdfBuilder.build(receipt);
 
   /// Generates an executive Profit & Loss statement PDF.
   static Future<Uint8List> generateProfitLossPdf({

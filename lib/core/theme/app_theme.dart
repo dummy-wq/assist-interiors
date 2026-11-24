@@ -143,8 +143,16 @@ class AppTheme {
         filled: true,
         fillColor: AppColors.darkCardElevated,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
+          horizontal: 12,
           vertical: 18,
+        ),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 38,
+          minHeight: 40,
+        ),
+        suffixIconConstraints: const BoxConstraints(
+          minWidth: 36,
+          minHeight: 40,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),
@@ -170,12 +178,12 @@ class AppTheme {
         ),
         hintStyle: AppTypography.bodyMedium(true).copyWith(
           color: AppColors.textLightMuted,
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
         labelStyle: AppTypography.bodyMedium(true).copyWith(
           color: AppColors.textLightSecondary,
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -329,8 +337,16 @@ class AppTheme {
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
+          horizontal: 12,
           vertical: 18,
+        ),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 38,
+          minHeight: 40,
+        ),
+        suffixIconConstraints: const BoxConstraints(
+          minWidth: 36,
+          minHeight: 40,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6.0),

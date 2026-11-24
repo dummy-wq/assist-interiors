@@ -141,14 +141,14 @@ class CreateInvoiceSheet {
                     QuickFadeDropdown<String?>(
                       initialValue: selectedProjectId,
                       decoration: const InputDecoration(
-                        labelText: 'Map to Turnkey Project (Optional)',
+                        labelText: 'Project (Optional)',
                         prefixIcon: Icon(Icons.business_rounded),
                       ),
                       isExpanded: true,
                       items: [
                         const DropdownMenuItem<String?>(
                           value: null,
-                          child: Text('General Invoice / No Project Link'),
+                          child: Text('None'),
                         ),
                         ...projects.map((proj) {
                           final id = proj['id']?.toString() ?? '';
@@ -191,14 +191,14 @@ class CreateInvoiceSheet {
                     QuickFadeDropdown<String?>(
                       initialValue: selectedLeadId,
                       decoration: const InputDecoration(
-                        labelText: 'Map to Sales Lead / Client (Optional)',
+                        labelText: 'Sales Lead / Client (Optional)',
                         prefixIcon: Icon(Icons.person_pin_circle_rounded),
                       ),
                       isExpanded: true,
                       items: [
                         const DropdownMenuItem<String?>(
                           value: null,
-                          child: Text('Direct Turnkey Client'),
+                          child: Text('None'),
                         ),
                         ...leads.map((l) {
                           final id = l['id']?.toString() ?? '';
@@ -235,8 +235,13 @@ class CreateInvoiceSheet {
                       keyboardType: TextInputType.text,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(
-                        labelText:
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
                             'Billing Stage (e.g. Milestone 2: False Ceiling)',
+                          ),
+                        ),
                         prefixIcon: Icon(Icons.tag_rounded),
                       ),
                     ),
@@ -252,7 +257,11 @@ class CreateInvoiceSheet {
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                       ],
                       decoration: const InputDecoration(
-                        labelText: 'Invoice Amount (INR ₹)',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Invoice Amount (INR ₹)'),
+                        ),
                         prefixIcon: Icon(Icons.currency_rupee_rounded),
                       ),
                     ),
@@ -434,6 +443,7 @@ class CreateInvoiceSheet {
                             DateTime.now().add(const Duration(days: 15)),
                           ),
                           'amount': amount,
+                          'direction': 'incoming',
                           'status': 'Payment Pending',
                           'statusColor': AppColors.warning,
                           'qrCodePath': ?capturedQrPath,

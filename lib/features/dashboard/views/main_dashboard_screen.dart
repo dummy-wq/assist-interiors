@@ -32,7 +32,7 @@ import '../../sales/views/sales_view.dart';
 
 
 // ---------------------------------------------------------------------------
-// Animated IndexedStack — all children stay alive, active child fades+slides in
+// Animated IndexedStack — all children stay alive, active child fades cleanly
 // ---------------------------------------------------------------------------
 class _AnimatedIndexedStack extends StatefulWidget {
   final int index;
@@ -48,7 +48,6 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _opacity;
-  late Animation<Offset> _slide;
   int _currentIndex = 0;
 
   @override
@@ -57,13 +56,9 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
     _currentIndex = widget.index;
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 180),
+      duration: const Duration(milliseconds: 150),
     );
     _opacity = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.012),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     _ctrl.forward();
   }
 
@@ -93,10 +88,7 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
           child: isActive
               ? FadeTransition(
                   opacity: _opacity,
-                  child: SlideTransition(
-                    position: _slide,
-                    child: entry.value,
-                  ),
+                  child: entry.value,
                 )
               : entry.value,
         );
@@ -197,44 +189,40 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     required String applicantName,
     String? roleRequested,
   }) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 6),
-        backgroundColor: AppColors.darkCardElevated,
-        content: Row(
-          children: [
-            const Icon(
-              Icons.notifications_active_rounded,
-              color: AppColors.brandPeach,
-              size: 20,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                roleRequested != null
-                    ? '$applicantName requested access ($roleRequested). $pendingCount awaiting approval.'
-                    : '$pendingCount new team account request(s) awaiting your approval (latest: $applicantName).',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                ),
+    final msg = roleRequested != null
+        ? '$applicantName requested access ($roleRequested). $pendingCount awaiting approval.'
+        : '$pendingCount new team account request(s) awaiting your approval (latest: $applicantName).';
+    AppNotification.show(
+      context,
+      message: msg,
+      backgroundColor: AppColors.darkCardElevated,
+      content: Row(
+        children: [
+          const Icon(
+            Icons.notifications_active_rounded,
+            color: AppColors.brandPeach,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              msg,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ),
-        action: SnackBarAction(
-          label: 'REVIEW',
-          textColor: AppColors.brandPeach,
-          onPressed: () {
-            if (!mounted) return;
-            showStaffManagementSheet(context, initialTabIndex: 0);
-          },
-        ),
+          ),
+        ],
+      ),
+      action: SnackBarAction(
+        label: 'REVIEW',
+        textColor: AppColors.brandPeach,
+        onPressed: () {
+          if (!mounted) return;
+          showStaffManagementSheet(context, initialTabIndex: 0);
+        },
       ),
     );
   }
@@ -819,34 +807,16 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               label: 'Add Lead',
               onPressed: () => MobileActionSheets.showAddLeadSheet(context),
             ),
-          _buildSecondaryActionButton(
-            key: const Key('action_bar_schedule_call'),
-            icon: Icons.phone_callback_rounded,
-            label: 'Schedule Call',
-            isDark: isDark,
-            onPressed: () {
-              final leads = StorageService.getLeads();
-              if (leads.isNotEmpty) {
-                MobileActionSheets.showScheduleCallSheet(context, leads.first);
-              } else {
-                AppNotification.show(
-                  context,
-                  message: 'No active leads found to schedule calls.',
-                );
-              }
-            },
-          ),
         ];
 
       case 2:
         // PROJECTS PORTFOLIO
         final canCreateProject = AppPermissions.canCreateProject(role, user: user);
-        final canManageDesignOnProject =
-            AppPermissions.canManageDesignAssets(role, user: user);
         final canTakePhotos =
             AppPermissions.canAddProjectPhotos(role, user: user);
         return [
-          if (role == UserRole.supervisor && canTakePhotos)
+          if ((role == UserRole.supervisor || role == UserRole.siteEngineer) &&
+              canTakePhotos)
             _buildPrimaryActionButton(
               key: const Key('action_bar_take_site_photo'),
               icon: Icons.add_a_photo_rounded,
@@ -861,25 +831,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               onPressed: () =>
                   MobileActionSheets.showCreateProjectSheet(context),
             ),
-          if (canManageDesignOnProject)
-            _buildSecondaryActionButton(
-              key: const Key('action_bar_projects_upload_boq'),
-              icon: Icons.table_view_rounded,
-              label: 'Upload Material List',
-              isDark: isDark,
-              onPressed: () => MobileActionSheets.showUploadRenderSheet(
-                context,
-                initialType: 'Material BOQ',
-              ),
-            ),
-          _buildSecondaryActionButton(
-            key: const Key('action_bar_filter_projects'),
-            icon: Icons.filter_list_rounded,
-            label: 'Filter Projects',
-            isDark: isDark,
-            onPressed: () =>
-                MobileActionSheets.showProjectFilterSheet(context),
-          ),
         ];
 
       case 3:
@@ -887,7 +838,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         final canManageDesign =
             AppPermissions.canManageDesignAssets(role, user: user);
         return [
-          if (canManageDesign) ...[
+          if (canManageDesign)
             _buildPrimaryActionButton(
               key: const Key('action_bar_upload_design'),
               icon: Icons.cloud_upload_rounded,
@@ -895,17 +846,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               onPressed: () =>
                   MobileActionSheets.showUploadRenderSheet(context),
             ),
-            _buildSecondaryActionButton(
-              key: const Key('action_bar_upload_boq'),
-              icon: Icons.table_view_rounded,
-              label: 'Upload Material List',
-              isDark: isDark,
-              onPressed: () => MobileActionSheets.showUploadRenderSheet(
-                context,
-                initialType: 'Material BOQ',
-              ),
-            ),
-          ],
           _buildSecondaryActionButton(
             key: const Key('action_bar_filter_designs'),
             icon: Icons.filter_list_rounded,
@@ -930,19 +870,6 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
             label: 'New Request',
             onPressed: () {
               MaterialRequestsView.openCreateModalTrigger.value++;
-            },
-          ),
-          _buildSecondaryActionButton(
-            key: const Key('action_bar_track_pos'),
-            icon: Icons.local_shipping_outlined,
-            label: 'Track Dispatches',
-            isDark: isDark,
-            onPressed: () {
-              AppNotification.show(
-                context,
-                message:
-                    'Tracking active material dispatches across sites and suppliers.',
-              );
             },
           ),
         ];
@@ -1015,7 +942,7 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
         }
 
         return [
-          if (canManageAccounts)
+          if (canManageAccounts) ...[
             _buildPrimaryActionButton(
               key: const Key('action_bar_add_invoice'),
               icon: Icons.receipt_long_rounded,
@@ -1023,14 +950,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
               onPressed: () =>
                   MobileActionSheets.showCreateInvoiceSheet(context),
             ),
-          if (canManageAccounts || canExportFinancials)
-            _buildSecondaryActionButton(
-              key: const Key('action_bar_print_invoice'),
-              icon: Icons.print_rounded,
-              label: 'Print Invoice',
-              isDark: isDark,
-              onPressed: () => _onPrintInvoicePressed(context),
+            _buildPrimaryActionButton(
+              key: const Key('action_bar_add_receipt'),
+              icon: Icons.receipt_rounded,
+              label: 'New Receipt',
+              onPressed: () =>
+                  MobileActionSheets.showAddReceiptSheet(context),
             ),
+          ],
           if (canExportFinancials)
             _buildSecondaryActionButton(
               key: const Key('action_bar_pnl_report'),
@@ -1042,12 +969,28 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           if (canManageAccounts)
             _buildSecondaryActionButton(
               key: const Key('action_bar_record_expense'),
-              icon: Icons.receipt_outlined,
+              icon: Icons.payments_outlined,
               label: 'Record Expense',
               isDark: isDark,
               onPressed: () =>
                   MobileActionSheets.showAddExpenseSheet(context),
             ),
+          if (canManageAccounts || canExportFinancials) ...[
+            _buildSecondaryActionButton(
+              key: const Key('action_bar_print_invoice'),
+              icon: Icons.print_rounded,
+              label: 'Print Invoice',
+              isDark: isDark,
+              onPressed: () => _onPrintInvoicePressed(context),
+            ),
+            _buildSecondaryActionButton(
+              key: const Key('action_bar_print_receipt'),
+              icon: Icons.print_outlined,
+              label: 'Print Receipt',
+              isDark: isDark,
+              onPressed: () => _onPrintReceiptPressed(context),
+            ),
+          ],
         ];
 
       case 7:
@@ -1272,6 +1215,194 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                             title: 'Tax Invoice $invId',
                             documentBuilder: () =>
                                 PdfService.generateInvoicePdf(inv),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _onPrintReceiptPressed(BuildContext context) {
+    final receipts = StorageService.getReceipts();
+    if (receipts.isEmpty) {
+      AppNotification.show(
+        context,
+        message: 'No receipts available to print yet. Add a receipt first.',
+        backgroundColor: AppColors.warning,
+      );
+      return;
+    }
+    if (receipts.length == 1) {
+      final rec = receipts.first;
+      PdfService.showPdfViewer(
+        context,
+        title: 'Receipt ${rec['id'] ?? ''}',
+        documentBuilder: () => PdfService.generateReceiptPdf(rec),
+      );
+      return;
+    }
+    _showReceiptPrintPickerSheet(context, receipts);
+  }
+
+  void _showReceiptPrintPickerSheet(
+    BuildContext context,
+    List<Map<String, dynamic>> receipts,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showAppModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCard : AppColors.lightCard,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            border: Border.all(
+              color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+                  .withValues(alpha: 0.8),
+              width: 0.8,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.65,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.white24 : Colors.black12),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.print_rounded,
+                    color: AppColors.brandPeach,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Select Receipt to Print',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: isDark
+                          ? AppColors.textLightPrimary
+                          : AppColors.textDarkPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: receipts.length,
+                  separatorBuilder: (context, index) => Divider(
+                    height: 1,
+                    color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+                        .withValues(alpha: 0.5),
+                  ),
+                  itemBuilder: (context, index) {
+                    final rec = receipts[index];
+                    final recId = rec['id'] ?? 'RCP-$index';
+                    final party = rec['party'] ?? 'Client / Vendor';
+                    final amount = rec['amount'] ?? '₹ 0';
+                    final date = rec['timestamp'] ?? rec['date'] ?? '';
+                    return Material(
+                      color: Colors.transparent,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.brandPeach.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(
+                            Icons.receipt_rounded,
+                            color: AppColors.brandPeach,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          '$recId • $party',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '$date • $amount',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? AppColors.textLightMuted
+                                : AppColors.textDarkMuted,
+                          ),
+                        ),
+                        trailing: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.brandPeach,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4.0),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            PdfService.showPdfViewer(
+                              context,
+                              title: 'Receipt $recId',
+                              documentBuilder: () =>
+                                  PdfService.generateReceiptPdf(rec),
+                            );
+                          },
+                          icon: const Icon(Icons.print_rounded, size: 16),
+                          label: const Text(
+                            'Print',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          PdfService.showPdfViewer(
+                            context,
+                            title: 'Receipt $recId',
+                            documentBuilder: () =>
+                                PdfService.generateReceiptPdf(rec),
                           );
                         },
                       ),

@@ -10,6 +10,7 @@ import 'package:assist_interiors_dashboard/features/design/views/design_view.dar
 import 'package:assist_interiors_dashboard/features/sales/views/sales_view.dart';
 import 'package:assist_interiors_dashboard/features/dashboard/views/accounts_dashboard.dart';
 import 'package:assist_interiors_dashboard/features/dashboard/views/proprietor_dashboard.dart';
+import 'package:assist_interiors_dashboard/features/projects/views/projects_view.dart';
 
 void main() {
   setUp(() async {
@@ -67,12 +68,6 @@ void main() {
       );
       await tester.enterText(scopeField, '5BHK Ultra Luxury');
 
-      final budgetField = find.widgetWithText(
-        TextField,
-        'Est. Budget (e.g. ₹60L)',
-      );
-      await tester.enterText(budgetField, '7500000');
-
       final submitBtn = find.widgetWithText(
         ElevatedButton,
         'Save Lead to Pipeline',
@@ -83,7 +78,7 @@ void main() {
       // Verify dynamic update
       expect(find.text('Ambience Towers Penthouse'), findsOneWidget);
       expect(find.text('1 Leads'), findsOneWidget);
-      expect(find.text('₹ 75,00,000'), findsWidgets);
+      expect(find.text('₹ 25,00,000'), findsWidgets);
 
       // Verify persistent storage
       final storedLeads = StorageService.getLeads();
@@ -112,17 +107,39 @@ void main() {
 
       final ctx = tester.element(find.byType(ProprietorDashboard));
 
-      // 1. Log Attendance via sheet
+      // 1. Log Attendance via sheet (Person name, Time in, Time out, Day, Taken by)
       MobileActionSheets.showLabourAttendanceSheet(ctx);
       await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('labour_person_name_field')),
+        'Ramesh Kumar',
+      );
+      await tester.enterText(
+        find.byKey(const Key('labour_taken_by_field')),
+        'Vikram (Site Engineer)',
+      );
+      await tester.tap(find.byKey(const Key('labour_add_entry_btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ramesh Kumar'), findsOneWidget);
+      expect(find.text('Taken by: Vikram (Site Engineer)'), findsOneWidget);
 
       final saveAttBtn = find.widgetWithText(
         ElevatedButton,
         'Verify & Submit Daily Muster Roll',
       );
+      await tester.ensureVisible(saveAttBtn);
       await tester.tap(saveAttBtn);
       await tester.pumpAndSettle();
-      expect(MobileActionSheets.attendanceCountNotifier.value, 26);
+      expect(MobileActionSheets.attendanceCountNotifier.value, 1);
+      final roll = StorageService.getLabourRoll();
+      expect(roll.length, 1);
+      expect(roll.first['personName'], 'Ramesh Kumar');
+      expect(roll.first['takenBy'], 'Vikram (Site Engineer)');
+      expect(roll.first['timeIn'], isNotEmpty);
+      expect(roll.first['timeOut'], isNotEmpty);
+      expect(roll.first['day'], isNotEmpty);
 
       // 2. Post Daily Site Log via sheet
       MobileActionSheets.showSiteLogSheet(ctx);
@@ -217,12 +234,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify DesignView updated
-      expect(find.text('3D Photorealistic Render & BOQ'), findsOneWidget);
+      expect(find.text('CAD Drawing Deliverable'), findsOneWidget);
 
       // Verify persistent storage
       final storedItems = StorageService.getDesignItems();
       expect(storedItems.length, 1);
-      expect(storedItems.first['title'], '3D Photorealistic Render & BOQ');
+      expect(storedItems.first['title'], 'CAD Drawing Deliverable');
     },
   );
 
@@ -260,11 +277,10 @@ void main() {
       await tester.tap(submitBtn);
       await tester.pumpAndSettle();
 
-      // Switch to Expense Vouchers tab
-      final expenseTab = find.text('Expense Vouchers (1)');
-      expect(expenseTab, findsOneWidget);
-      await tester.tap(expenseTab);
-      await tester.pumpAndSettle();
+      // Verify Outgoing pane displays the recorded voucher immediately
+      expect(find.byKey(const Key('accounts_incoming_pane')), findsOneWidget);
+      expect(find.byKey(const Key('accounts_outgoing_pane')), findsOneWidget);
+      expect(find.text('1 Vouchers'), findsOneWidget);
 
       // Verify voucher is listed
       expect(find.text('Kajaria Vitrified Tiles Procurement'), findsOneWidget);
@@ -278,6 +294,75 @@ void main() {
         storedExpenses.first['title'],
         'Kajaria Vitrified Tiles Procurement',
       );
+    },
+  );
+
+  testWidgets(
+    'Accounts: Receipts side displays, records, persists, and expands payment receipts',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        createTestWidget(const AccountsDashboard(), role: UserRole.accounts),
+      );
+      await tester.pumpAndSettle();
+
+      // Switch to Receipts side
+      final receiptsTab = find.text('Receipts (0)');
+      expect(receiptsTab, findsOneWidget);
+      await tester.tap(receiptsTab);
+      await tester.pumpAndSettle();
+
+      expect(find.text('No Receipts Logged'), findsOneWidget);
+
+      // Tap Add Receipt from empty state
+      await tester.tap(find.text('Add Receipt'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add Payment Receipt'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Receipt Title / Description *'),
+        'Mobilization Advance Receipt',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Received From / Party'),
+        'Birla Residence',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Amount (₹) *'),
+        '250000',
+      );
+      await tester.pumpAndSettle();
+
+      final saveBtn = find.text('Save Receipt');
+      await tester.ensureVisible(saveBtn);
+      await tester.tap(saveBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Receipts (1)'), findsOneWidget);
+      expect(find.text('Mobilization Advance Receipt'), findsOneWidget);
+      expect(find.text('₹ 2,50,000'), findsWidgets);
+      expect(find.text('0 invoices • 1 receipts'), findsOneWidget);
+
+      final storedReceipts = StorageService.getReceipts();
+      expect(storedReceipts.length, 1);
+      expect(storedReceipts.first['title'], 'Mobilization Advance Receipt');
+      expect(storedReceipts.first['party'], 'Birla Residence');
+
+      // Tap receipt item to view expanded detail dialog
+      await tester.tap(find.text('Mobilization Advance Receipt'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('RECEIPT DETAILS'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Receipts (0)'), findsOneWidget);
+      expect(StorageService.getReceipts(), isEmpty);
     },
   );
 
@@ -328,6 +413,20 @@ void main() {
       final storedProjects = StorageService.getProjects();
       expect(storedProjects.length, 1);
       expect(storedProjects.first['name'], 'The Camellias Villa 12');
+
+      // Mount ProjectsView and verify overview KPIs dynamically reflect current projects
+      await tester.pumpWidget(
+        createTestWidget(const ProjectsView(), role: UserRole.proprietor),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 Sites'), findsOneWidget);
+      expect(find.text('₹ 1,20,00,000'), findsWidgets);
+      expect(find.text('0%'), findsWidgets);
+      expect(find.text('1 Projects'), findsOneWidget);
+      expect(find.text('₹ 4.62 Cr'), findsNothing);
+      expect(find.text('68%'), findsNothing);
+      expect(find.text('2 Projects'), findsNothing);
     },
   );
 
@@ -400,7 +499,7 @@ void main() {
       // Verify project is launched and lead converted
       final updatedLeads = StorageService.getLeads();
       expect(updatedLeads.first['isConverted'], isTrue);
-      expect(updatedLeads.first['stage'], 'Closed Won');
+      expect(updatedLeads.first['stage'], 'Approved');
       expect(
         updatedLeads.first['convertedToProject'],
         'Sunil Mittal Residence',

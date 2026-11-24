@@ -74,7 +74,11 @@ class AssignMilestoneSheet {
                 keyboardType: TextInputType.text,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
-                  labelText: 'Task / Milestone Description',
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text('Task / Milestone Description'),
+                  ),
                   prefixIcon: Icon(Icons.task_alt_rounded),
                 ),
               ),
@@ -84,7 +88,11 @@ class AssignMilestoneSheet {
                 keyboardType: TextInputType.name,
                 textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
-                  labelText: 'Assignee (Supervisor / Designer / Vendor)',
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text('Assignee (Supervisor / Designer / Vendor)'),
+                  ),
                   prefixIcon: Icon(Icons.person_outline),
                 ),
               ),

@@ -100,7 +100,8 @@ class RoleBottomBar extends StatelessWidget {
   }
 
   List<_NavTabSpec> get _primaryTabs {
-    final isFieldStaff = role == UserRole.supervisor;
+    final isFieldStaff =
+        role == UserRole.supervisor || role == UserRole.siteEngineer;
     final List<int> indices;
     switch (role) {
       case UserRole.proprietor:
@@ -119,6 +120,7 @@ class RoleBottomBar extends StatelessWidget {
         indices = const [0, 6, 2, 4];
         break;
       case UserRole.supervisor:
+      case UserRole.siteEngineer:
         indices = const [0, 2, 4, 5];
         break;
     }

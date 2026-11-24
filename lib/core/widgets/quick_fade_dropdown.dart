@@ -162,6 +162,63 @@ class _QuickFadeDropdownBodyState<T> extends State<_QuickFadeDropdownBody<T>> {
     }
   }
 
+  InputDecoration? _fitLabelDecoration(InputDecoration? dec) {
+    if (dec == null || dec.labelText == null || dec.label != null) {
+      return dec;
+    }
+    return InputDecoration(
+      icon: dec.icon,
+      iconColor: dec.iconColor,
+      label: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(dec.labelText!),
+      ),
+      labelStyle: dec.labelStyle,
+      floatingLabelStyle: dec.floatingLabelStyle,
+      helperText: dec.helperText,
+      helperStyle: dec.helperStyle,
+      hintText: dec.hintText,
+      hintStyle: dec.hintStyle,
+      errorText: dec.errorText,
+      errorStyle: dec.errorStyle,
+      floatingLabelBehavior: dec.floatingLabelBehavior,
+      floatingLabelAlignment: dec.floatingLabelAlignment,
+      isCollapsed: dec.isCollapsed,
+      isDense: dec.isDense,
+      contentPadding: dec.contentPadding,
+      prefixIcon: dec.prefixIcon,
+      prefixIconConstraints: dec.prefixIconConstraints,
+      prefix: dec.prefix,
+      prefixText: dec.prefixText,
+      prefixStyle: dec.prefixStyle,
+      prefixIconColor: dec.prefixIconColor,
+      suffixIcon: dec.suffixIcon,
+      suffix: dec.suffix,
+      suffixText: dec.suffixText,
+      suffixStyle: dec.suffixStyle,
+      suffixIconColor: dec.suffixIconColor,
+      suffixIconConstraints: dec.suffixIconConstraints,
+      counter: dec.counter,
+      counterText: dec.counterText,
+      counterStyle: dec.counterStyle,
+      filled: dec.filled,
+      fillColor: dec.fillColor,
+      focusColor: dec.focusColor,
+      hoverColor: dec.hoverColor,
+      errorBorder: dec.errorBorder,
+      focusedBorder: dec.focusedBorder,
+      focusedErrorBorder: dec.focusedErrorBorder,
+      disabledBorder: dec.disabledBorder,
+      enabledBorder: dec.enabledBorder,
+      border: dec.border,
+      enabled: dec.enabled,
+      semanticCounterText: dec.semanticCounterText,
+      alignLabelWithHint: dec.alignLabelWithHint,
+      constraints: dec.constraints,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final effectiveValue = widget.value ?? widget.initialValue;
@@ -176,7 +233,7 @@ class _QuickFadeDropdownBodyState<T> extends State<_QuickFadeDropdownBody<T>> {
             initialValue: effectiveValue,
             items: widget.items,
             onChanged: widget.onChanged != null ? (_) {} : null,
-            decoration: widget.decoration,
+            decoration: _fitLabelDecoration(widget.decoration),
             icon:
                 widget.icon ??
                 const Icon(

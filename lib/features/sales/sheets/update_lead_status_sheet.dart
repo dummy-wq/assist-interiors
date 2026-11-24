@@ -103,17 +103,11 @@ class UpdateLeadStatusSheet {
                       children: () {
                         final stagesList = <String>[
                           ...AppConstants.salesPipelineStages,
-                          for (final legacy in const [
-                            'Site Visit Scheduled',
-                            'Closed Won',
-                          ])
-                            if (!AppConstants.salesPipelineStages.contains(
-                              legacy,
-                            ))
-                              legacy,
                         ];
                         if (currentStage.isNotEmpty &&
-                            !stagesList.contains(currentStage)) {
+                            !stagesList.contains(currentStage) &&
+                            currentStage != 'Site Visit Scheduled' &&
+                            currentStage != 'Closed Won') {
                           stagesList.add(currentStage);
                         }
                         return stagesList.map((stage) {
@@ -173,7 +167,11 @@ class UpdateLeadStatusSheet {
                       keyboardType: TextInputType.text,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(
-                        labelText: 'Status Transition Note (Optional)',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Status Transition Note (Optional)'),
+                        ),
                         hintText: 'e.g. Site visit completed, client approved contemporary Italian theme',
                         prefixIcon: Icon(Icons.notes_rounded),
                       ),
@@ -198,11 +196,9 @@ class UpdateLeadStatusSheet {
                         size: 18,
                       ),
                       label: Text(
-                        currentStage == 'Closed Won'
-                            ? 'Mark Won & Update Projects'
-                            : (SalesPipelineService.isApproved(currentStage)
-                                ? 'Approve & Move to Projects'
-                                : 'Update Status to $currentStage'),
+                        SalesPipelineService.isApproved(currentStage)
+                            ? 'Approve & Move to Projects'
+                            : 'Update Status to $currentStage',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       onPressed: () async {

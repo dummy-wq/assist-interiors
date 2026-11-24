@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:assist_interiors_dashboard/core/widgets/custom_entry_dropdown.dart';
 import 'package:assist_interiors_dashboard/core/widgets/quick_fade_dropdown.dart';
 
 void main() {
@@ -259,6 +260,48 @@ void main() {
         // The popup list must NOT blow up to screen width; it must remain equal to columnWidth
         final popupListSize = tester.getSize(find.byType(ListView));
         expect(popupListSize.width, columnWidth);
+      },
+    );
+
+    testWidgets(
+      'CustomEntryDropdown provides Custom... option and emits user-entered text',
+      (WidgetTester tester) async {
+        String selectedValue = 'UPI';
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setState) {
+                  return CustomEntryDropdown(
+                    value: selectedValue,
+                    options: const ['UPI', 'Bank Transfer', 'Cash'],
+                    customFieldLabel: 'Custom Payment Mode',
+                    onChanged: (val) => setState(() => selectedValue = val),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(
+          find.byType(DropdownButtonFormField<String>),
+          warnIfMissed: false,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Custom...'), findsOneWidget);
+        await tester.tap(find.text('Custom...'));
+        await tester.pumpAndSettle();
+
+        final customField = find.widgetWithText(TextField, 'Custom Payment Mode');
+        expect(customField, findsOneWidget);
+
+        await tester.enterText(customField, 'Wire Transfer');
+        await tester.pumpAndSettle();
+
+        expect(selectedValue, 'Wire Transfer');
       },
     );
   });

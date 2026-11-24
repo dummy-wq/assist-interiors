@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/blueprint_grid_painter.dart';
 import '../../../core/widgets/cloud_network_image.dart';
 import '../../../core/widgets/expanded_detail_dialog.dart';
+import '../../../core/widgets/full_screen_media_viewer.dart';
 import '../../../core/widgets/studio_dialog.dart';
 
 class ProjectPhotoViewerDialog {
@@ -122,6 +123,26 @@ class ProjectPhotoViewerDialog {
                         ),
                       ),
                       IconButton(
+                        key: const Key('photo_fullscreen_btn'),
+                        icon: const Icon(Icons.fullscreen_rounded, size: 22),
+                        tooltip: 'Open Full Screen',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          FullScreenMediaViewer.show(
+                            dialogCtx,
+                            title: photoTitle,
+                            subtitle: '$projectName • $photoTimestamp',
+                            filePath: imagePath,
+                            fileUrl: imageUrl,
+                            fileName: photo['fileName']?.toString(),
+                            fallbackIcon: Icons.photo_camera_rounded,
+                            accentColor: projectAccent,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -184,107 +205,58 @@ class ProjectPhotoViewerDialog {
                               ),
                             ),
                           ),
-                          // Center icon and title
+                          // Clean icon-only placeholder (no unnecessary text inside image frame)
                           Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      color: projectAccent.withValues(
-                                        alpha: isDark ? 0.2 : 0.12,
-                                      ),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: projectAccent.withValues(
-                                          alpha: 0.5,
-                                        ),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.photo_camera_rounded,
-                                      size: 32,
-                                      color: projectAccent,
-                                    ),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: projectAccent.withValues(
+                                  alpha: isDark ? 0.2 : 0.12,
+                                ),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: projectAccent.withValues(
+                                    alpha: 0.5,
                                   ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    photoTitle,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark
-                                          ? AppColors.textLightPrimary
-                                          : AppColors.textDarkPrimary,
-                                    ),
-                                  ),
-                                ],
+                                  width: 1,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.photo_camera_rounded,
+                                size: 32,
+                                color: projectAccent,
                               ),
                             ),
                           ),
                         ],
-                        // Bottom timestamp strip
-                        Positioned(
-                          bottom: 10,
-                          left: 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: hasRealImage
-                                  ? Colors.black.withValues(alpha: 0.75)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(3.0),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    photoTimestamp,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: hasRealImage
-                                          ? Colors.white.withValues(alpha: 0.9)
-                                          : (isDark
-                                              ? AppColors.textLightMuted
-                                              : AppColors.textDarkMuted),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    '${AppStrings.tr('Captured By')}: $capturedBy',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.end,
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: projectAccent,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
-                    const SizedBox(height: 14),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Photo Title & Timestamp Details
+                  Text(
+                    photoTitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: isDark
+                          ? AppColors.textLightPrimary
+                          : AppColors.textDarkPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$photoTimestamp  •  $capturedBy',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppColors.textLightMuted
+                          : AppColors.textDarkMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
 
                     // Metadata Details
                     Container(

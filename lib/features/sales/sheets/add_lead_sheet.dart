@@ -6,7 +6,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_sizes.dart';
-import '../../../core/widgets/quick_fade_dropdown.dart';
+import '../../../core/widgets/custom_entry_dropdown.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/spreadsheet_service.dart';
@@ -22,7 +22,6 @@ class AddLeadSheet {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
     final scopeController = TextEditingController();
-    final budgetController = TextEditingController();
     final locationController = TextEditingController();
     final referrerController = TextEditingController();
     final reminderNoteController = TextEditingController();
@@ -65,28 +64,36 @@ class AddLeadSheet {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.brandPeach.withValues(
-                                  alpha: 0.15,
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.brandPeach.withValues(
+                                    alpha: 0.15,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4.0),
                                 ),
-                                borderRadius: BorderRadius.circular(4.0),
+                                child: const Icon(
+                                  Icons.person_add_alt_1_rounded,
+                                  color: AppColors.brandPeach,
+                                  size: 20,
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.person_add_alt_1_rounded,
-                                color: AppColors.brandPeach,
-                                size: 20,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Add Prospective Lead',
+                                    style: AppTypography.titleLarge(isDark),
+                                  ),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Add Prospective Lead',
-                              style: AppTypography.titleLarge(isDark),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close_rounded),
@@ -100,69 +107,61 @@ class AddLeadSheet {
                       keyboardType: TextInputType.name,
                       textCapitalization: TextCapitalization.words,
                       decoration: const InputDecoration(
-                        labelText: 'Client / Company Name',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Client / Company Name'),
+                        ),
                         prefixIcon: Icon(Icons.person_outline),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: phoneController,
-                            keyboardType: TextInputType.phone,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'[0-9+\- ]'),
-                              ),
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Phone Number',
-                              prefixIcon: Icon(Icons.phone_outlined),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: budgetController,
-                            keyboardType: TextInputType.text,
-                            textCapitalization: TextCapitalization.characters,
-                            decoration: const InputDecoration(
-                              labelText: 'Est. Budget (e.g. ₹60L)',
-                              prefixIcon: Icon(Icons.currency_rupee_rounded),
-                            ),
-                          ),
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[0-9+\- ]'),
                         ),
                       ],
+                      decoration: const InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Phone Number'),
+                        ),
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: scopeController,
-                            keyboardType: TextInputType.text,
-                            textCapitalization: TextCapitalization.sentences,
-                            decoration: const InputDecoration(
-                              labelText: 'Project Scope (e.g. 4BHK Villa / 5000 sq ft)',
-                              prefixIcon: Icon(Icons.home_work_outlined),
-                            ),
+                    TextField(
+                      controller: scopeController,
+                      keyboardType: TextInputType.text,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: const InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Project Scope (e.g. 4BHK Villa / 5000 sq ft)',
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: locationController,
-                            keyboardType: TextInputType.streetAddress,
-                            textCapitalization: TextCapitalization.words,
-                            decoration: const InputDecoration(
-                              labelText: 'Site Location / City',
-                              prefixIcon: Icon(Icons.place_outlined),
-                            ),
-                          ),
+                        prefixIcon: Icon(Icons.home_work_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: locationController,
+                      keyboardType: TextInputType.streetAddress,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Site Location / City'),
                         ),
-                      ],
+                        prefixIcon: Icon(Icons.place_outlined),
+                      ),
                     ),
                     const SizedBox(height: 16),
 
@@ -202,8 +201,15 @@ class AddLeadSheet {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          QuickFadeDropdown<String>(
-                            initialValue: selectedReferralSource,
+                          CustomEntryDropdown(
+                            value: selectedReferralSource,
+                            options: AppConstants.salesReferralSources,
+                            customFieldLabel: 'Custom Referral Channel',
+                            customFieldHint: 'Enter referral source...',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                             decoration: const InputDecoration(
                               labelText: 'Lead Origin / Referral Channel',
                               prefixIcon: Icon(Icons.diversity_3_outlined),
@@ -212,23 +218,10 @@ class AddLeadSheet {
                                 vertical: 11,
                               ),
                             ),
-                            items: AppConstants.salesReferralSources.map((
-                              source,
-                            ) {
-                              return DropdownMenuItem(
-                                value: source,
-                                child: Text(
-                                  source,
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                                ),
-                              );
-                            }).toList(),
                             onChanged: (val) {
-                              if (val != null) {
-                                setModalState(
-                                  () => selectedReferralSource = val,
-                                );
-                              }
+                              setModalState(
+                                () => selectedReferralSource = val,
+                              );
                             },
                           ),
                           const SizedBox(height: 10),
@@ -237,8 +230,13 @@ class AddLeadSheet {
                             keyboardType: TextInputType.name,
                             textCapitalization: TextCapitalization.words,
                             decoration: const InputDecoration(
-                              labelText:
+                              label: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
                                   'Referrer Name / Partner Details (Optional)',
+                                ),
+                              ),
                               prefixIcon: Icon(Icons.handshake_outlined),
                               contentPadding: EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -287,8 +285,15 @@ class AddLeadSheet {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          QuickFadeDropdown<String>(
-                            initialValue: selectedStage,
+                          CustomEntryDropdown(
+                            value: selectedStage,
+                            options: AppConstants.salesPipelineStages,
+                            customFieldLabel: 'Custom Pipeline Status',
+                            customFieldHint: 'Enter custom stage...',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                             decoration: const InputDecoration(
                               labelText: 'Initial Pipeline Status',
                               prefixIcon: Icon(Icons.timeline_rounded),
@@ -297,19 +302,8 @@ class AddLeadSheet {
                                 vertical: 11,
                               ),
                             ),
-                            items: AppConstants.salesPipelineStages.map((stg) {
-                              return DropdownMenuItem(
-                                value: stg,
-                                child: Text(
-                                  stg,
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                                ),
-                              );
-                            }).toList(),
                             onChanged: (val) {
-                              if (val != null) {
-                                setModalState(() => selectedStage = val);
-                              }
+                              setModalState(() => selectedStage = val);
                             },
                           ),
                           const SizedBox(height: 12),
@@ -386,7 +380,11 @@ class AddLeadSheet {
                             keyboardType: TextInputType.text,
                             textCapitalization: TextCapitalization.sentences,
                             decoration: const InputDecoration(
-                              labelText: 'Call Reminder / Follow-up Note',
+                              label: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text('Call Reminder / Follow-up Note'),
+                              ),
                               hintText: 'e.g. Confirm 3D render presentation & site recce',
                               prefixIcon: Icon(Icons.edit_note_rounded),
                               contentPadding: EdgeInsets.symmetric(
@@ -478,12 +476,7 @@ class AddLeadSheet {
                         final name = nameController.text.trim();
                         if (name.isEmpty) return;
 
-                        final budgetRaw = budgetController.text.trim();
-                        final budgetStr = budgetRaw.isNotEmpty
-                            ? (budgetRaw.startsWith('₹')
-                                  ? budgetRaw
-                                  : '₹ $budgetRaw')
-                            : '₹ 25L';
+                        const budgetStr = '₹ 25L';
 
                         final leadId =
                             'lead_${DateTime.now().millisecondsSinceEpoch}';
@@ -594,6 +587,7 @@ class AddLeadSheet {
                           'status': selectedStage,
                           'nextCallDate': nextCallDateFormatted,
                           'nextCallTime': nextCallTimeFormatted,
+                          'callScheduledAt': DateTime.now().toIso8601String(),
                           'reminderNote': reminderNoteController.text.trim(),
                           'hasReminder': hasReminder,
                           'isReminderDismissed': false,

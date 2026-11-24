@@ -12,6 +12,7 @@ import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/widgets/expanded_detail_dialog.dart';
+import '../../../core/widgets/full_screen_media_viewer.dart';
 import '../../../core/widgets/pill_box.dart';
 import '../../../core/widgets/screen_layout.dart';
 import '../../../core/widgets/stat_card.dart';
@@ -73,10 +74,12 @@ class _DesignViewState extends State<DesignView> {
   void _onAssetCreated() {
     final newAsset = MobileActionSheets.renderCreatedNotifier.value;
     if (newAsset != null && mounted) {
-      setState(() {
-        _designItems.insert(0, Map<String, dynamic>.from(newAsset));
-      });
-      StorageService.saveDesignItems(_designItems);
+      if (!_designItems.any((i) => i['id'] == newAsset['id'])) {
+        setState(() {
+          _designItems.insert(0, Map<String, dynamic>.from(newAsset));
+        });
+        StorageService.saveDesignItems(_designItems);
+      }
     }
   }
 
@@ -223,7 +226,7 @@ class _DesignViewState extends State<DesignView> {
       children: [
         ScreenHeader(
           AppStrings.tr('Drawings & Renders'),
-          subtitle: AppStrings.tr('Drawings, 3D views & material lists'),
+          subtitle: AppStrings.tr('Drawings, 3D views & PDFs'),
         ),
         const SizedBox(height: ScreenLayout.headerGap),
 
@@ -290,73 +293,82 @@ class _DesignViewState extends State<DesignView> {
                     },
                   ),
                 ),
-              if (projectsList.length > 2) ...[
-                const SizedBox(width: 4),
-                SizedBox(
-                  width: 190,
-                  height: AppSizes.chipHeight,
-                  child: QuickFadeDropdown<String>(
-                    value: _selectedProject,
-                    isExpanded: true,
-                    dropdownColor: isDark
-                        ? AppColors.darkCardElevated
-                        : AppColors.lightCard,
-                    icon: const Icon(
-                      Icons.filter_alt_rounded,
-                      size: 14,
-                      color: AppColors.brandPeach,
-                    ),
-                    style: AppTypography.labelSmall(isDark).copyWith(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.textLightPrimary
-                          : AppColors.textDarkPrimary,
-                    ),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      filled: true,
-                      fillColor: isDark
-                          ? AppColors.darkCardElevated
-                          : AppColors.lightCard,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.chipRadius),
-                        borderSide: BorderSide(
-                          color: (isDark
-                                  ? AppColors.darkBorder
-                                  : AppColors.lightBorder)
-                              .withValues(alpha: 0.7),
-                          width: 0.8,
-                        ),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.chipRadius),
-                      ),
-                    ),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() => _selectedProject = val);
-                      }
-                    },
-                    items: projectsList.map((p) {
-                      return DropdownMenuItem<String>(
-                        value: p,
-                        child: Text(
-                          p == 'All' ? 'All Projects' : p,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
             ],
           ),
         ),
+        if (projectsList.length > 1) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: AppSizes.chipHeight,
+            child: QuickFadeDropdown<String>(
+              value: _selectedProject,
+              isExpanded: true,
+              dropdownColor: isDark
+                  ? AppColors.darkCardElevated
+                  : AppColors.lightCard,
+              icon: const Icon(
+                Icons.filter_alt_rounded,
+                size: 14,
+                color: AppColors.brandPeach,
+              ),
+              style: AppTypography.labelSmall(isDark).copyWith(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: isDark
+                    ? AppColors.textLightPrimary
+                    : AppColors.textDarkPrimary,
+              ),
+              decoration: InputDecoration(
+                isDense: true,
+                filled: true,
+                fillColor: isDark
+                    ? AppColors.darkCardElevated
+                    : AppColors.lightCard,
+                prefixIcon: const Icon(
+                  Icons.apartment_rounded,
+                  size: 15,
+                  color: AppColors.brandPeach,
+                ),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 34,
+                  minHeight: 0,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.chipRadius),
+                  borderSide: BorderSide(
+                    color: (isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder)
+                        .withValues(alpha: 0.7),
+                    width: 0.8,
+                  ),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.chipRadius),
+                ),
+              ),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => _selectedProject = val);
+                }
+              },
+              items: projectsList.map((p) {
+                return DropdownMenuItem<String>(
+                  value: p,
+                  child: Text(
+                    p == 'All' ? 'All Projects' : p,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
         const SizedBox(height: ScreenLayout.listGap),
 
         // Deliverables Grid / List — smooth cross-fade on filter change
@@ -484,6 +496,53 @@ class _DesignViewState extends State<DesignView> {
           child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Top Header Row: Category & Version + Status Badge
+          SizedBox(
+            width: double.infinity,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                Wrap(
+                  spacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    StatusTagPill(label: category),
+                    StatusTagPill(label: format),
+                    StatusTagPill(label: version),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4.0),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.5),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Text(
+                    status.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Full-Width Title & Project Row extending all the way to the right side
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -516,21 +575,24 @@ class _DesignViewState extends State<DesignView> {
                             : AppColors.textDarkPrimary,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.apartment_rounded,
-                          size: 13,
-                          color: AppColors.brandPeach,
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(
+                            Icons.apartment_rounded,
+                            size: 13,
+                            color: AppColors.brandPeach,
+                          ),
                         ),
-                        const SizedBox(width: 4),
-                        Flexible(
+                        const SizedBox(width: 5),
+                        Expanded(
                           child: Text(
                             project,
-                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                               color: isDark
                                   ? AppColors.textLightSecondary
@@ -543,43 +605,15 @@ class _DesignViewState extends State<DesignView> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              // Status Badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3.5,
-                ),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4.0),
-                  border: Border.all(
-                    color: statusColor.withValues(alpha: 0.5),
-                    width: 0.8,
-                  ),
-                ),
-                child: Text(
-                  status.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                    color: statusColor,
-                  ),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 10),
 
-          // Metadata Chips (Format, Version, Size, Designer)
+          // Metadata Chips (Size, Designer)
           Wrap(
             spacing: 6,
             runSpacing: 4,
             children: [
-              StatusTagPill(label: category),
-              StatusTagPill(label: format),
-              StatusTagPill(label: version),
               StatusTagPill(label: fileSize),
               StatusTagPill(
                 label: 'Ar. $designer',
@@ -779,45 +813,78 @@ class _DesignViewState extends State<DesignView> {
       bodyBuilder: (dialogCtx) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            height: 132,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.black26 : Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(
-                color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-                    .withValues(alpha: 0.7),
+          InkWell(
+            key: const Key('design_preview_fullscreen_tap'),
+            borderRadius: BorderRadius.circular(8.0),
+            onTap: () {
+              FullScreenMediaViewer.show(
+                dialogCtx,
+                title: title,
+                subtitle: '$project • $format',
+                filePath: item['filePath']?.toString(),
+                fileUrl: item['downloadUrl']?.toString() ??
+                    item['fileUrl']?.toString(),
+                base64Data: item['base64Data']?.toString(),
+                fileName: item['fileName']?.toString(),
+                format: format,
+                fallbackIcon: _getCategoryIcon(category),
+                accentColor: statusColor,
+              );
+            },
+            child: Container(
+              height: 132,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.black26 : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(
+                  color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+                      .withValues(alpha: 0.7),
+                ),
               ),
-            ),
-            alignment: Alignment.center,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  _getCategoryIcon(category),
-                  size: 44,
-                  color: AppColors.brandPeach.withValues(alpha: 0.65),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'High-Resolution Preview Simulation',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark
-                        ? AppColors.textLightMuted
-                        : AppColors.textDarkMuted,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(
+                    _getCategoryIcon(category),
+                    size: 44,
+                    color: AppColors.brandPeach.withValues(alpha: 0.65),
                   ),
-                ),
-                Text(
-                  '$format • $fileSize • $version',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.brandPeach,
+                  Positioned(
+                    right: 8,
+                    bottom: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.fullscreen_rounded,
+                            size: 13,
+                            color: Colors.white,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Full Screen',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -869,12 +936,27 @@ class _DesignViewState extends State<DesignView> {
       ),
       actionsBuilder: (dialogCtx) => [
         OutlinedButton.icon(
-          icon: const Icon(Icons.close_rounded, size: 15),
+          key: const Key('design_fullscreen_btn'),
+          icon: const Icon(Icons.fullscreen_rounded, size: 15),
           label: const FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text('Close', maxLines: 1),
+            child: Text('Full Screen', maxLines: 1),
           ),
-          onPressed: () => Navigator.of(dialogCtx).pop(),
+          onPressed: () {
+            FullScreenMediaViewer.show(
+              dialogCtx,
+              title: title,
+              subtitle: '$project • $format',
+              filePath: item['filePath']?.toString(),
+              fileUrl: item['downloadUrl']?.toString() ??
+                  item['fileUrl']?.toString(),
+              base64Data: item['base64Data']?.toString(),
+              fileName: item['fileName']?.toString(),
+              format: format,
+              fallbackIcon: _getCategoryIcon(category),
+              accentColor: statusColor,
+            );
+          },
         ),
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(

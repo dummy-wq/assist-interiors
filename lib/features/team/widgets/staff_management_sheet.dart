@@ -7,7 +7,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/app_notification.dart';
-import '../../../core/widgets/app_modal_sheet.dart';
 import '../../../core/widgets/studio_dialog.dart';
 import '../../auth/models/custom_role_model.dart';
 import '../../auth/models/user_model.dart';
@@ -26,13 +25,25 @@ void showStaffManagementSheet(BuildContext context, {int initialTabIndex = 0}) {
     return;
   }
   auth.markPendingRequestsSeen();
+  ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
 
-  showAppModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (context) =>
-        StaffManagementSheet(initialTabIndex: initialTabIndex),
+  Navigator.of(context).push(
+    PageRouteBuilder<void>(
+      transitionDuration: const Duration(milliseconds: 170),
+      reverseTransitionDuration: const Duration(milliseconds: 140),
+      pageBuilder: (_, _, _) =>
+          StaffManagementSheet(initialTabIndex: initialTabIndex),
+      transitionsBuilder: (_, animation, _, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          ),
+          child: child,
+        );
+      },
+    ),
   );
 }
 
@@ -140,103 +151,57 @@ class _StaffManagementSheetState extends State<StaffManagementSheet> {
     final approvedList = auth.approvedUsers;
     final customRoles = auth.customRoles;
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720),
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.85,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: isDark
-                ? AppColors.darkBackground
-                : AppColors.lightBackground,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(16.0),
+    return Scaffold(
+      backgroundColor: isDark
+          ? AppColors.darkBackground
+          : AppColors.lightBackground,
+      appBar: AppBar(
+        titleSpacing: 8,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: const BoxDecoration(
+                color: AppColors.brandPeach,
+                borderRadius: BorderRadius.all(Radius.circular(6.0)),
+              ),
+              child: const Icon(
+                Icons.shield_rounded,
+                color: Colors.black,
+                size: 18,
+              ),
             ),
-            border: Border.all(
-              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              width: 1.0,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Executive Staff Access & Governance',
+                    style: AppTypography.titleLarge(isDark).copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Proprietor Command • View All Staff, Authorize Sign-Ups & Dismiss Personnel',
+                    style: AppTypography.bodySmall(isDark),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
-          ),
-          child: SafeArea(
-            top: false,
-            maintainBottomViewPadding: true,
+          ],
+        ),
+      ),
+      body: SafeArea(
+        top: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
             child: Column(
               children: [
-                // Unified Sheet Drag Handle Bar
-                Container(
-                  width: double.infinity,
-                  color: isDark ? AppColors.darkCard : AppColors.lightCard,
-                  padding: const EdgeInsets.only(top: 10, bottom: 4),
-                  child: Center(
-                    child: Container(
-                      width: 38,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.22)
-                            : Colors.black.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(2.0),
-                      ),
-                    ),
-                  ),
-                ),
-                // Header
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkCard : AppColors.lightCard,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: isDark
-                            ? AppColors.darkBorder
-                            : AppColors.lightBorder,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: AppColors.brandPeach,
-                          borderRadius: BorderRadius.all(Radius.circular(6.0)),
-                        ),
-                        child: const Icon(
-                          Icons.shield_rounded,
-                          color: Colors.black,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Executive Staff Access & Governance',
-                              style: AppTypography.titleLarge(isDark),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Proprietor Command • View All Staff, Authorize Sign-Ups & Dismiss Personnel',
-                              style: AppTypography.bodySmall(isDark),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                ),
-
                 // Segmented Tabs
                 Container(
                   decoration: BoxDecoration(

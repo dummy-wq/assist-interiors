@@ -255,6 +255,13 @@ void main() {
       await tester.tap(find.text('Open More'));
       await tester.pumpAndSettle();
       expect(find.text('Assist Interiors Suite'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(MoreModulesSheet),
+          matching: find.byType(Scrollable),
+        ),
+        findsNothing,
+      );
 
       await tester.drag(
         find.text('Assist Interiors Suite'),

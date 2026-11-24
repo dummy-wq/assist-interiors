@@ -82,7 +82,11 @@ class SiteLogSheet {
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: const InputDecoration(
-                        labelText: 'Labour Headcount Present Today',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Labour Headcount Present Today'),
+                        ),
                         prefixIcon: Icon(Icons.groups_rounded),
                       ),
                     ),
@@ -93,7 +97,11 @@ class SiteLogSheet {
                       textCapitalization: TextCapitalization.sentences,
                       maxLines: 3,
                       decoration: const InputDecoration(
-                        labelText: 'Daily Progress & Work Completed Notes',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Daily Progress & Work Completed Notes'),
+                        ),
                         hintText: 'e.g. Master bedroom plywood grid installed. Plastering finished in living room.',
                       ),
                     ),

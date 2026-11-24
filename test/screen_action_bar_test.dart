@@ -128,12 +128,14 @@ void main() {
       expect(find.byKey(const Key('action_bar_record_expense')), findsOneWidget);
 
       // Tap Print Invoice opens invoice selection sheet
+      await tester.ensureVisible(find.byKey(const Key('action_bar_print_invoice')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('action_bar_print_invoice')));
       await tester.pumpAndSettle();
       expect(find.text('Select Invoice to Print'), findsOneWidget);
     });
 
-    testWidgets('Sales tab renders Add Lead and Schedule Call in action section', (
+    testWidgets('Sales tab renders Add Lead without Schedule Call in action section', (
       WidgetTester tester,
     ) async {
       tester.view.physicalSize = const Size(1200, 900);
@@ -148,7 +150,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('action_bar_add_lead')), findsOneWidget);
-      expect(find.byKey(const Key('action_bar_schedule_call')), findsOneWidget);
+      expect(find.byKey(const Key('action_bar_schedule_call')), findsNothing);
 
       // Tap Add Lead opens lead modal
       await tester.tap(find.byKey(const Key('action_bar_add_lead')));
@@ -171,7 +173,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('action_bar_add_material_request')), findsOneWidget);
       expect(find.text('New Request'), findsOneWidget);
-      expect(find.byKey(const Key('action_bar_track_pos')), findsOneWidget);
+      expect(find.byKey(const Key('action_bar_track_pos')), findsNothing);
 
       // Switch to Team
       await tester.ensureVisible(find.text('Team').first);
@@ -246,8 +248,40 @@ void main() {
       // Tab 6: Accounts
       await tester.tap(find.text('Accounts').last);
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('action_bar_add_invoice')), findsOneWidget);
-      expect(find.byKey(const Key('action_bar_print_invoice')), findsOneWidget);
+      final addInvFinder = find.byKey(const Key('action_bar_add_invoice'));
+      final addRecFinder = find.byKey(const Key('action_bar_add_receipt'));
+      final pnlFinder = find.byKey(const Key('action_bar_pnl_report'));
+      final printInvFinder = find.byKey(const Key('action_bar_print_invoice'));
+      final printRecFinder = find.byKey(const Key('action_bar_print_receipt'));
+
+      expect(addInvFinder, findsOneWidget);
+      expect(addRecFinder, findsOneWidget);
+      expect(printInvFinder, findsOneWidget);
+      expect(printRecFinder, findsOneWidget);
+
+      final addInvRect = tester.getRect(addInvFinder);
+      final addRecRect = tester.getRect(addRecFinder);
+      final pnlRect = tester.getRect(pnlFinder);
+      final printInvRect = tester.getRect(printInvFinder);
+      final printRecRect = tester.getRect(printRecFinder);
+
+      // New Invoice and New Receipt beside each other at the top
+      expect(addInvRect.top, equals(addRecRect.top));
+      expect(addRecRect.left, greaterThan(addInvRect.right));
+      expect(pnlRect.top, greaterThan(addInvRect.bottom));
+
+      // Print Invoice and Print Receipt beside each other at the bottom
+      expect(printInvRect.top, equals(printRecRect.top));
+      expect(printRecRect.left, greaterThan(printInvRect.right));
+      expect(printInvRect.top, greaterThan(pnlRect.bottom));
+
+      // Both New Invoice and New Receipt have the same primary background color
+      final addInvBtn = tester.widget<ElevatedButton>(addInvFinder);
+      final addRecBtn = tester.widget<ElevatedButton>(addRecFinder);
+      expect(
+        addInvBtn.style?.backgroundColor?.resolve({}),
+        equals(addRecBtn.style?.backgroundColor?.resolve({})),
+      );
     });
   });
 }

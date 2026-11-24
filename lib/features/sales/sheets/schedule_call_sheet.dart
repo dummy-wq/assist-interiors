@@ -13,6 +13,83 @@ import '../../../core/utils/app_notification.dart';
 class ScheduleCallSheet {
   ScheduleCallSheet._();
 
+  /// Returns `true` when [lead] has an active scheduled follow-up call
+  /// that has not yet been marked as made.
+  static bool hasActiveScheduledCall(Map<String, dynamic> lead) {
+    final nextCallDate = (lead['nextCallDate'] ?? '').toString().trim();
+    if (nextCallDate.isEmpty) return false;
+    if (lead['isReminderDismissed'] == true) return false;
+    if (lead['hasReminder'] == false) return false;
+    return true;
+  }
+
+  /// Returns the most recently scheduled active call lead from [leads], or
+  /// `null` if no active scheduled call exists.
+  static Map<String, dynamic>? latestScheduledLead(
+    List<Map<String, dynamic>> leads,
+  ) {
+    final active = leads.where(hasActiveScheduledCall).toList();
+    if (active.isEmpty) return null;
+
+    DateTime? parseIso(dynamic raw) {
+      if (raw == null) return null;
+      return DateTime.tryParse(raw.toString());
+    }
+
+    active.sort((a, b) {
+      final aTime =
+          parseIso(a['callScheduledAt']) ??
+          parseIso(a['updatedAt']) ??
+          parseIso(a['createdAt']) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime =
+          parseIso(b['callScheduledAt']) ??
+          parseIso(b['updatedAt']) ??
+          parseIso(b['createdAt']) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      return bTime.compareTo(aTime);
+    });
+    return active.first;
+  }
+
+  /// Marks the scheduled follow-up call on [lead] as made and clears the
+  /// active reminder so it no longer appears as pending/scheduled.
+  static Future<Map<String, dynamic>> markCallAsMade(
+    Map<String, dynamic> lead, {
+    String? discussionNote,
+  }) async {
+    final leadId = (lead['id'] ?? '').toString();
+    final now = DateTime.now();
+    final existingNotes = lead['notes'] is List
+        ? List<dynamic>.from(lead['notes'] as List)
+        : <dynamic>[];
+    final trimmedNote = (discussionNote ?? '').trim();
+    existingNotes.insert(0, {
+      'date': DateFormat('dd MMM yyyy, hh:mm a').format(now),
+      'text': trimmedNote.isNotEmpty
+          ? 'Call made: $trimmedNote'
+          : 'Scheduled follow-up call marked as made.',
+    });
+
+    final updatedFields = <String, dynamic>{
+      'nextCallDate': '',
+      'nextCallTime': '',
+      'reminderNote': '',
+      'hasReminder': false,
+      'isReminderDismissed': true,
+      'lastCallMadeAt': now.toIso8601String(),
+      'notes': existingNotes,
+      'updatedAt': now.toIso8601String(),
+    };
+
+    if (leadId.isNotEmpty) {
+      await StorageService.updateLead(leadId, updatedFields);
+    }
+    final updatedLead = <String, dynamic>{...lead, ...updatedFields};
+    MobileActionSheets.leadUpdatedNotifier.value = updatedLead;
+    return updatedLead;
+  }
+
   static void show(
     BuildContext context,
     Map<String, dynamic> lead, {
@@ -22,6 +99,7 @@ class ScheduleCallSheet {
     final clientName = (lead['client'] ?? lead['name'] ?? 'Client') as String;
     final leadId = lead['id'] as String;
     final phone = (lead['phone'] as String? ?? '').trim();
+    final isCurrentlyScheduled = hasActiveScheduledCall(lead);
 
     DateTime chosenDate = DateTime.now().add(const Duration(days: 1));
     if ((lead['nextCallDate'] as String? ?? '').isNotEmpty) {
@@ -212,7 +290,11 @@ class ScheduleCallSheet {
                       keyboardType: TextInputType.text,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(
-                        labelText: 'Reminder Reason / Deliverable Target',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text('Reminder Reason / Deliverable Target'),
+                        ),
                         hintText: 'e.g. Share revised 3D kitchen render and finalize quote',
                         prefixIcon: Icon(Icons.notification_important_rounded),
                       ),
@@ -224,7 +306,13 @@ class ScheduleCallSheet {
                       textCapitalization: TextCapitalization.sentences,
                       maxLines: 2,
                       decoration: const InputDecoration(
-                        labelText: 'Log Call / Discussion Remarks (Optional)',
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Log Call / Discussion Remarks (Optional)',
+                          ),
+                        ),
                         hintText: 'e.g. Client requested Italian marble catalog and revised layout',
                         prefixIcon: Icon(Icons.notes_rounded),
                       ),
@@ -256,14 +344,16 @@ class ScheduleCallSheet {
                           });
                         }
 
+                        final nowIso = DateTime.now().toIso8601String();
                         final updatedFields = {
                           'nextCallDate': dateFormatted,
                           'nextCallTime': timeFormatted,
+                          'callScheduledAt': nowIso,
                           'reminderNote': reminderNoteCtrl.text.trim(),
                           'hasReminder': true,
                           'isReminderDismissed': false,
                           'notes': existingNotes,
-                          'updatedAt': DateTime.now().toIso8601String(),
+                          'updatedAt': nowIso,
                         };
 
                         await StorageService.updateLead(leadId, updatedFields);
@@ -278,6 +368,42 @@ class ScheduleCallSheet {
                         AppNotification.show(context, message: 'Call scheduled for $dateFormatted at $timeFormatted!', backgroundColor: AppColors.success);
                       },
                     ),
+                    if (isCurrentlyScheduled) ...[
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.success,
+                          side: BorderSide(
+                            color: AppColors.success.withValues(alpha: 0.7),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6.0),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 18,
+                        ),
+                        label: const Text(
+                          'Mark Call as Made',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () async {
+                          await markCallAsMade(
+                            lead,
+                            discussionNote: discussionCtrl.text,
+                          );
+                          onUpdated?.call();
+                          if (!context.mounted) return;
+                          Navigator.pop(context);
+                          AppNotification.show(
+                            context,
+                            message: 'Call with $clientName marked as made.',
+                            backgroundColor: AppColors.success,
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),

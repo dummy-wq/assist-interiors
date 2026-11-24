@@ -82,13 +82,25 @@ class _VendorsViewState extends State<VendorsView> {
 
     int totalOpenPOs = 0;
     int totalOutstanding = 0;
+    double onTimeSum = 0;
+    int onTimeCount = 0;
     for (final v in _vendors) {
       totalOpenPOs += (v['openPOs'] as num?)?.toInt() ?? 0;
       totalOutstanding +=
           CurrencyUtils.parseAmount(v['amountDue'] ?? v['outstanding']);
+      final rawOnTime =
+          (v['onTime'] ?? '').toString().replaceAll('%', '').trim();
+      final parsedOnTime = double.tryParse(rawOnTime);
+      if (parsedOnTime != null) {
+        onTimeSum += parsedOnTime;
+        onTimeCount++;
+      }
     }
     final outstandingStr =
         totalOutstanding > 0 ? CurrencyUtils.formatInr(totalOutstanding) : '₹ 0';
+    final fulfillmentStr = onTimeCount == 0
+        ? '--'
+        : '${(onTimeSum / onTimeCount).toStringAsFixed(1)}%';
 
     final filteredVendors = _vendors.where((v) {
       if (_selectedCategory != 'All' && v['category'] != _selectedCategory) {
@@ -151,8 +163,8 @@ class _VendorsViewState extends State<VendorsView> {
             ),
             StatCard(
               title: 'Fulfillment',
-              value: _vendors.isEmpty ? '--' : '96.2%',
-              trend: _vendors.isNotEmpty ? '96.2%' : null,
+              value: fulfillmentStr,
+              trend: onTimeCount > 0 ? fulfillmentStr : null,
               icon: Icons.verified_rounded,
               accentColor: AppColors.success,
             ),

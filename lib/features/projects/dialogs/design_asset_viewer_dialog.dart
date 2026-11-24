@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/blueprint_grid_painter.dart';
 import '../../../core/widgets/expanded_detail_dialog.dart';
+import '../../../core/widgets/full_screen_media_viewer.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
 import '../../../core/widgets/studio_dialog.dart';
 
@@ -30,7 +31,6 @@ class DesignAssetViewerDialog {
     final fileSize = asset['fileSize'] as String? ?? '12.4 MB';
     var status = asset['status'] as String? ?? 'Under Client Review';
     final date = asset['date'] as String? ?? 'Recently';
-    final designer = asset['designer'] as String? ?? 'Priya Sharma';
     final fileName = asset['fileName'] as String?;
     final filePath = asset['filePath'] as String?;
     final isUploaded = asset['isUploaded'] as bool? ?? false;
@@ -224,8 +224,26 @@ class DesignAssetViewerDialog {
                       ),
                       const SizedBox(height: 14),
 
-                      // Architectural Blueprint / 3D Render Preview Widget
-                      Container(
+                      // Architectural Blueprint / 3D Render Preview Widget (tap for Full Screen)
+                      InkWell(
+                        key: const Key('asset_preview_fullscreen_tap'),
+                        borderRadius: BorderRadius.circular(4.0),
+                        onTap: () {
+                          FullScreenMediaViewer.show(
+                            dialogCtx,
+                            title: title,
+                            subtitle: '$projectName • $format',
+                            filePath: filePath,
+                            fileUrl: asset['downloadUrl']?.toString() ??
+                                asset['fileUrl']?.toString(),
+                            base64Data: asset['base64Data']?.toString(),
+                            fileName: fileName,
+                            format: format,
+                            fallbackIcon: getTypeIcon(type),
+                            accentColor: projectAccent,
+                          );
+                        },
+                        child: Container(
                         height: 140,
                         decoration: BoxDecoration(
                           color: isDark
@@ -252,40 +270,46 @@ class DesignAssetViewerDialog {
                               ),
                             ),
                             Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    getTypeIcon(type),
-                                    size: 42,
-                                    color: projectAccent,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    '$format DELIVERABLE CONTAINER',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.0,
-                                      color: isDark
-                                          ? AppColors.textLightPrimary
-                                          : AppColors.textDarkPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    'Architectural CAD / 3D Spec Sheet',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: isDark
-                                          ? AppColors.textLightMuted
-                                          : AppColors.textDarkMuted,
-                                    ),
-                                  ),
-                                ],
+                              child: Icon(
+                                getTypeIcon(type),
+                                size: 42,
+                                color: projectAccent,
                               ),
                             ),
-                            // Corner tech indicators
+                            Positioned(
+                              right: 8,
+                              bottom: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.55),
+                                  borderRadius: BorderRadius.circular(4.0),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.fullscreen_rounded,
+                                      size: 13,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Full Screen',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // Status badge
                             Positioned(
                               top: 8,
                               right: 8,
@@ -312,23 +336,9 @@ class DesignAssetViewerDialog {
                                 ),
                               ),
                             ),
-                            Positioned(
-                              bottom: 8,
-                              left: 8,
-                              child: Text(
-                                'LEAD: $designer',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5,
-                                  color: isDark
-                                      ? AppColors.textLightMuted
-                                      : AppColors.textDarkMuted,
-                                ),
-                              ),
-                            ),
                           ],
                         ),
+                      ),
                       ),
                       const SizedBox(height: 12),
 

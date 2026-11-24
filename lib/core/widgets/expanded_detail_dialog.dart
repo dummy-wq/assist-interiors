@@ -91,11 +91,10 @@ class _FlickDismissibleCardState extends State<FlickDismissibleCard>
   late final AnimationController _resetController;
   late final Animation<double> _resetCurve;
 
-  static const double _dragSlop = 8.0;
-  static const double _mediumVelocityThreshold = 340.0;
-  static const double _fastFlickVelocityThreshold = 460.0;
-  static const double _minFlickDisplacement = 20.0;
-  static const double _mediumDistanceThreshold = 70.0;
+  static const double _dragSlop = 16.0;
+  static const double _mediumVelocityThreshold = 460.0;
+  static const double _minFlickDisplacement = 110.0;
+  static const double _mediumDistanceThreshold = 165.0;
 
   @override
   void initState() {
@@ -126,14 +125,13 @@ class _FlickDismissibleCardState extends State<FlickDismissibleCard>
     super.dispose();
   }
 
-  bool _canStartCardDrag(Offset totalDelta, Offset stepDelta, double cardHeight) {
-    // 1. Horizontal gesture dominates
-    if (totalDelta.dx.abs() > totalDelta.dy.abs() * 1.05) {
+  bool _canStartCardDrag(Offset totalDelta, Offset stepDelta) {
+    // 1. Clearly horizontal gesture dominates (ignore diagonal vertical scrolls)
+    if (totalDelta.dx.abs() > totalDelta.dy.abs() * 1.65) {
       return true;
     }
-    // 2. Gesture started on header or footer regions
-    if (_pointerDownLocalY <= 72.0 ||
-        (cardHeight > 0 && _pointerDownLocalY >= cardHeight - 72.0)) {
+    // 2. Gesture started on the top header bar
+    if (_pointerDownLocalY <= 68.0) {
       return true;
     }
     // 3. No inner scrollable or content fits without scrolling
@@ -167,7 +165,7 @@ class _FlickDismissibleCardState extends State<FlickDismissibleCard>
     _isDragging = false;
   }
 
-  void _onPointerMove(PointerMoveEvent event, double cardHeight) {
+  void _onPointerMove(PointerMoveEvent event) {
     if (_isDismissed || event.pointer != _activePointer) return;
     _velocityTracker?.addPosition(event.timeStamp, event.position);
     final downPos = _pointerDownPosition;
@@ -176,7 +174,7 @@ class _FlickDismissibleCardState extends State<FlickDismissibleCard>
     final totalDelta = event.position - downPos;
     if (!_isDragging) {
       if (totalDelta.distance < _dragSlop) return;
-      if (_canStartCardDrag(totalDelta, event.delta, cardHeight)) {
+      if (_canStartCardDrag(totalDelta, event.delta)) {
         _isDragging = true;
       }
     }
@@ -193,8 +191,6 @@ class _FlickDismissibleCardState extends State<FlickDismissibleCard>
     _velocityTracker?.addPosition(event.timeStamp, event.position);
     final velocity =
         _velocityTracker?.getVelocity().pixelsPerSecond ?? Offset.zero;
-    final totalDelta =
-        event.position - (_pointerDownPosition ?? event.position);
 
     _activePointer = null;
     _pointerDownPosition = null;
@@ -202,11 +198,11 @@ class _FlickDismissibleCardState extends State<FlickDismissibleCard>
     final speed = velocity.distance;
     final draggedDistance = _dragOffset.distance;
 
-    final shouldDismiss = (_isDragging &&
-            ((speed >= _mediumVelocityThreshold &&
-                    draggedDistance >= _minFlickDisplacement) ||
-                draggedDistance >= _mediumDistanceThreshold)) ||
-        (speed >= _fastFlickVelocityThreshold && totalDelta.distance >= 36.0);
+    final shouldDismiss =
+        _isDragging &&
+        ((speed >= _mediumVelocityThreshold &&
+                draggedDistance >= _minFlickDisplacement) ||
+            draggedDistance >= _mediumDistanceThreshold);
 
     _isDragging = false;
 
@@ -242,32 +238,26 @@ class _FlickDismissibleCardState extends State<FlickDismissibleCard>
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardHeight =
-            constraints.maxHeight.isFinite ? constraints.maxHeight : 0.0;
-        final double rotation = (_dragOffset.dx / 1800.0).clamp(-0.07, 0.07);
-        final double opacity =
-            (1.0 - (_dragOffset.distance / 520.0)).clamp(0.35, 1.0);
+    final double rotation = (_dragOffset.dx / 1800.0).clamp(-0.07, 0.07);
+    final double opacity =
+        (1.0 - (_dragOffset.distance / 520.0)).clamp(0.35, 1.0);
 
-        return Listener(
-          behavior: HitTestBehavior.translucent,
-          onPointerDown: _onPointerDown,
-          onPointerMove: (e) => _onPointerMove(e, cardHeight),
-          onPointerUp: _onPointerUp,
-          onPointerCancel: _onPointerCancel,
-          child: Transform.translate(
-            offset: _dragOffset,
-            child: Transform.rotate(
-              angle: rotation,
-              child: Opacity(
-                opacity: opacity,
-                child: widget.child,
-              ),
-            ),
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
+      onPointerUp: _onPointerUp,
+      onPointerCancel: _onPointerCancel,
+      child: Transform.translate(
+        offset: _dragOffset,
+        child: Transform.rotate(
+          angle: rotation,
+          child: Opacity(
+            opacity: opacity,
+            child: widget.child,
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

@@ -228,12 +228,14 @@ void main() {
       expect(find.textContaining('INV-ACC-01', skipOffstage: false), findsWidgets);
       expect(find.text('₹ 8,50,000', skipOffstage: false), findsWidgets);
 
-      // Find the QR code payment icon button
-      final qrIconFinder = find.byIcon(Icons.qr_code_2_rounded);
-      expect(qrIconFinder, findsWidgets);
+      // Verify inline QR and PDF icons are removed from list row
+      expect(find.byIcon(Icons.qr_code_2_rounded), findsNothing);
+      expect(find.byIcon(Icons.picture_as_pdf_rounded), findsNothing);
 
-      // Tap the QR action button
-      await tester.tap(qrIconFinder.first);
+      // Tap the invoice row to open detail box, then tap Pay via QR
+      await tester.tap(find.text('Turnkey Fitout Phase 1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Pay via QR'));
       await tester.pumpAndSettle();
 
       // Dialog opens
@@ -344,7 +346,7 @@ void main() {
       expect(advanceInv['amount'], '₹ 3,00,000');
     });
 
-    testWidgets('SalesView lead card displays mapped invoice with Pay via QR button', (tester) async {
+    testWidgets('SalesView lead card and Project Status Report display without Pay via QR button', (tester) async {
       tester.view.physicalSize = const Size(1200, 1000);
       tester.view.devicePixelRatio = 1.0;
 
@@ -360,6 +362,16 @@ void main() {
         'status': 'Approved',
         'convertedToProject': 'Aditya Roy Residence',
       };
+      final project = {
+        'id': 'proj_vis_01',
+        'name': 'Aditya Roy Residence',
+        'client': 'Aditya Roy',
+        'location': 'Bandra West',
+        'type': '3BHK Fitout',
+        'budget': '₹ 50,00,000',
+        'status': 'In Progress',
+        'color': AppColors.brandPeach,
+      };
       final invoice = {
         'id': 'INV-VIS-01',
         'title': 'Aditya Roy Residence - Mobilization Advance (10%)',
@@ -373,22 +385,23 @@ void main() {
         'upiId': 'assistinteriors@hdfcbank',
       };
       await StorageService.saveLeads([lead]);
+      await StorageService.saveProjects([project]);
       await StorageService.saveInvoices([invoice]);
 
       await tester.pumpWidget(createTestWidget(const SalesView(), role: UserRole.sales));
       await tester.pumpAndSettle();
 
-      // Lead card should display mapped invoice
+      // Lead card should display mapped invoice without Pay via QR
       expect(find.text('Aditya Roy Residence - Mobilization Advance (10%)'), findsOneWidget);
-      expect(find.text('Pay via QR'), findsWidgets);
+      expect(find.text('Pay via QR'), findsNothing);
+      expect(find.byIcon(Icons.qr_code_2_rounded), findsNothing);
 
-      // Tap Pay via QR
-      await tester.tap(find.text('Pay via QR').first);
+      // Switch to Project Status Report -> also no Pay via QR
+      await tester.tap(find.text('Project Status Report'));
       await tester.pumpAndSettle();
 
-      // QR payment dialog should appear
-      expect(find.text('Scan & Pay Invoice'), findsOneWidget);
-      expect(find.text('₹ 5,00,000'), findsOneWidget);
+      expect(find.text('Pay via QR'), findsNothing);
+      expect(find.byIcon(Icons.qr_code_2_rounded), findsNothing);
     });
 
     testWidgets('ProjectsView project card displays mapped invoice without Pay via QR button', (tester) async {

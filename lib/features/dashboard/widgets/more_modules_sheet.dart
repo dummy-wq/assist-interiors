@@ -102,89 +102,94 @@ class MoreModulesSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Scrollable 2x2 Module Grid + Footer Note
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 1.25,
-                      children: [
-                        _buildModuleCard(
-                          context: context,
-                          key: const Key('more_sheet_module_design'),
-                          screenIndex: 3,
-                          title: 'Drawings & Renders',
-                          subtitle: '2D Plans, 3D Views & Material Lists',
-                          icon: Icons.draw_rounded,
-                          accentColor: const Color(0xFF6366F1),
-                          isDark: isDark,
-                          isActive: currentScreenIndex == 3,
-                        ),
-                        _buildModuleCard(
-                          context: context,
-                          key: const Key('more_sheet_module_materials'),
-                          screenIndex: 4,
-                          title: 'Materials',
-                          subtitle: 'Material Requests & Stock',
-                          icon: Icons.inventory_2_rounded,
-                          accentColor: const Color(0xFFF59E0B),
-                          isDark: isDark,
-                          isActive: currentScreenIndex == 4,
-                        ),
-                        _buildModuleCard(
-                          context: context,
-                          key: const Key('more_sheet_module_amendments'),
-                          screenIndex: 5,
-                          title: 'Change Requests',
-                          subtitle: 'Client Changes & Approvals',
-                          icon: Icons.published_with_changes_rounded,
-                          accentColor: const Color(0xFF8B5CF6),
-                          isDark: isDark,
-                          isActive: currentScreenIndex == 5,
-                        ),
-                        _buildModuleCard(
-                          context: context,
-                          key: const Key('more_sheet_module_team'),
-                          screenIndex: 7,
-                          title: 'Team & Staff',
-                          subtitle: 'Directory, Roles & Crew',
-                          icon: Icons.badge_rounded,
-                          accentColor: const Color(0xFF10B981),
-                          isDark: isDark,
-                          isActive: currentScreenIndex == 7,
-                          badgeText: pendingStaffCount > 0
-                              ? '$pendingStaffCount Pending'
-                              : null,
-                        ),
-                      ],
+            // Static 2x2 Module Grid (non-scrollable)
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _buildModuleCard(
+                      context: context,
+                      key: const Key('more_sheet_module_design'),
+                      screenIndex: 3,
+                      title: 'Drawings & Renders',
+                      subtitle: '2D Plans, 3D Views & PDFs',
+                      icon: Icons.draw_rounded,
+                      accentColor: const Color(0xFF6366F1),
+                      isDark: isDark,
+                      isActive: currentScreenIndex == 3,
                     ),
-                    const SizedBox(height: 16),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModuleCard(
+                      context: context,
+                      key: const Key('more_sheet_module_materials'),
+                      screenIndex: 4,
+                      title: 'Materials',
+                      subtitle: 'Material Requests & Stock',
+                      icon: Icons.inventory_2_rounded,
+                      accentColor: const Color(0xFFF59E0B),
+                      isDark: isDark,
+                      isActive: currentScreenIndex == 4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _buildModuleCard(
+                      context: context,
+                      key: const Key('more_sheet_module_amendments'),
+                      screenIndex: 5,
+                      title: 'Change Requests',
+                      subtitle: 'Client Changes & Approvals',
+                      icon: Icons.published_with_changes_rounded,
+                      accentColor: const Color(0xFF8B5CF6),
+                      isDark: isDark,
+                      isActive: currentScreenIndex == 5,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildModuleCard(
+                      context: context,
+                      key: const Key('more_sheet_module_team'),
+                      screenIndex: 7,
+                      title: 'Team & Staff',
+                      subtitle: 'Directory, Roles & Crew',
+                      icon: Icons.badge_rounded,
+                      accentColor: const Color(0xFF10B981),
+                      isDark: isDark,
+                      isActive: currentScreenIndex == 7,
+                      badgeText: pendingStaffCount > 0
+                          ? '$pendingStaffCount Pending'
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
 
-                    // Footer Note
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6.0, bottom: 4.0),
-                      child: Center(
-                        child: Text(
-                          'Primary tabs (Hub, Sales, Projects, Accounts) are accessible on the main bar.',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            color: isDark
-                                ? AppColors.textLightMuted
-                                : AppColors.textDarkMuted,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ],
+            // Footer Note
+            Padding(
+              padding: const EdgeInsets.only(top: 6.0, bottom: 4.0),
+              child: Center(
+                child: Text(
+                  'Primary tabs (Hub, Sales, Projects, Accounts) are accessible on the main bar.',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: isDark
+                        ? AppColors.textLightMuted
+                        : AppColors.textDarkMuted,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
@@ -216,6 +221,7 @@ class MoreModulesSheet extends StatelessWidget {
         },
         borderRadius: BorderRadius.circular(10.0),
         child: Container(
+          constraints: const BoxConstraints(minHeight: 112),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isActive
@@ -282,6 +288,7 @@ class MoreModulesSheet extends StatelessWidget {
                     ),
                 ],
               ),
+              const SizedBox(height: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,

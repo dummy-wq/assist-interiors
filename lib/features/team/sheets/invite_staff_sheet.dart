@@ -42,6 +42,7 @@ class _InviteStaffSheetState extends State<InviteStaffSheet> {
     UserRole.designer,
     UserRole.accounts,
     UserRole.supervisor,
+    UserRole.siteEngineer,
   ];
 
   @override

@@ -255,7 +255,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Finance, Invoicing & Expense Control'), findsOneWidget);
       expect(find.text('New Invoice'), findsWidgets);
-      expect(find.text('Record Expense'), findsOneWidget);
+      expect(find.text('Record Expense'), findsWidgets);
 
       // 8. Switch to Team tab via More sheet
       await tester.tap(find.text('More').last);
@@ -264,7 +264,7 @@ void main() {
       await tester.tap(find.text('Team & Staff').last);
       await tester.pumpAndSettle();
       expect(find.text('Team & Staff Directory'), findsOneWidget);
-      expect(find.text('1 Staff'), findsOneWidget);
+      expect(find.text('2 Staff'), findsOneWidget);
       expect(find.text('1 Designers'), findsOneWidget);
       expect(find.text('Invite Staff'), findsOneWidget);
       expect(find.byTooltip('Labour Roll'), findsNothing);
@@ -336,7 +336,7 @@ void main() {
   );
 
   testWidgets(
-    'PillBox taps trigger bounce scale animation and state selection',
+    'Projects wide Filter Projects button opens filter sheet and filters by status',
     (WidgetTester tester) async {
       tester.view.physicalSize = const Size(420, 900);
       tester.view.devicePixelRatio = 1.0;
@@ -357,12 +357,10 @@ void main() {
       await tester.tap(find.text('Projects').last);
       await tester.pumpAndSettle();
 
-      // Verify Status PillBoxes rendered: All, Completed, On Track, Delayed, Design and Planning
-      expect(find.text('All'), findsWidgets);
-      expect(find.text('Completed'), findsWidgets);
-      expect(find.text('On Track'), findsWidgets);
-      expect(find.text('Delayed'), findsWidgets);
-      expect(find.text('Design and Planning'), findsWidgets);
+      // Verify wide Filter Projects button replaced the old status PillBoxes
+      expect(find.byType(PillBox), findsNothing);
+      expect(find.byKey(const Key('action_bar_filter_projects')), findsOneWidget);
+      expect(find.text('Filter Projects (0)'), findsOneWidget);
 
       // Initially verify empty state because all projects are erased
       expect(find.text('No Projects Listed'), findsOneWidget);
@@ -385,20 +383,25 @@ void main() {
       await tester.tap(markDelayedButtons.first);
       await tester.pumpAndSettle();
 
-      // Now tap 'Delayed' pill box
-      final delayedPill = find.widgetWithText(PillBox, 'Delayed');
-      await tester.ensureVisible(delayedPill);
-      await tester.tap(delayedPill);
+      // Open wide Filter Projects button and select 'Delayed'
+      final filterBtn = find.byKey(const Key('action_bar_filter_projects'));
+      await tester.ensureVisible(filterBtn);
+      await tester.tap(filterBtn);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Delayed').last);
       await tester.pumpAndSettle();
 
       // Verify filtered projects list shows the delayed project
       expect(find.text('The Camellias Penthouse'), findsOneWidget);
       expect(find.text('Innov8 Co-Working Hub'), findsNothing);
 
-      // Tap 'Design and Planning' pill box
-      final designPill = find.widgetWithText(PillBox, 'Design and Planning');
-      await tester.ensureVisible(designPill);
-      await tester.tap(designPill);
+      // Open wide Filter Projects button and select 'Design & Planning'
+      await tester.ensureVisible(filterBtn);
+      await tester.tap(filterBtn);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Design & Planning').last);
       await tester.pumpAndSettle();
 
       // Verify projects in Design and Planning are visible
@@ -698,7 +701,7 @@ void main() {
       await tester.tap(find.text('Team & Staff').last);
       await tester.pumpAndSettle();
       expect(find.text('Team & Staff Directory'), findsOneWidget);
-      expect(find.text('1 Staff'), findsOneWidget);
+      expect(find.text('2 Staff'), findsOneWidget);
       expect(find.text('1 Designers'), findsOneWidget);
     },
   );
@@ -770,7 +773,7 @@ void main() {
       // Verify invoice appears in Accounts list
       expect(find.text('Milestone 1: Civil & Demolition'), findsOneWidget);
       expect(find.text('₹ 3,50,000'), findsWidgets);
-      expect(find.text('1 active billings'), findsOneWidget);
+      expect(find.text('1 invoices • 0 receipts'), findsOneWidget);
 
       // Verify saved in StorageService
       final storedInvoices = StorageService.getInvoices();

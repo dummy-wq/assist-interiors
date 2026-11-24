@@ -10,6 +10,7 @@ import 'package:assist_interiors_dashboard/core/services/storage_service.dart';
 import 'package:assist_interiors_dashboard/core/utils/app_notification.dart';
 import 'package:assist_interiors_dashboard/features/auth/state/auth_provider.dart';
 import 'package:assist_interiors_dashboard/features/projects/sheets/take_site_photo_sheet.dart';
+import 'package:assist_interiors_dashboard/features/projects/sheets/upload_render_sheet.dart';
 
 Widget _buildTestApp({UserRole role = UserRole.proprietor}) {
   final authProvider = AuthProvider()..switchRole(role);
@@ -205,18 +206,16 @@ void main() {
       await tester.tap(addPhotoButton);
       await tester.pumpAndSettle();
 
-      // Verify TakeSitePhotoSheet modal opened without the old live camera viewfinder
+      // Verify TakeSitePhotoSheet modal opened without the old live camera viewfinder or site zone selector
       expect(find.text('OPTICAL VIEWFINDER • LIVE SITE CAMERA'), findsNothing);
       expect(find.text('Instant Camera Shutter (Capture Now)'), findsNothing);
+      expect(find.text('SITE ZONE / ROOM'), findsNothing);
+      expect(find.text('OR CHOOSE INSPECTION MILESTONE PRESET'), findsNothing);
       expect(find.text('CURRENT TIME & DATE'), findsOneWidget);
+      expect(find.text('Take Photo'), findsOneWidget);
+      expect(find.text('Gallery'), findsOneWidget);
+      expect(find.text('Files'), findsWidgets);
       expect(find.text('Save & Attach Photo to Project'), findsOneWidget);
-
-      // Select an area tag
-      final kitchenChip = find.text('Kitchen');
-      if (kitchenChip.evaluate().isNotEmpty) {
-        await tester.tap(kitchenChip.first);
-        await tester.pumpAndSettle();
-      }
 
       // Enter a custom note
       final noteField = find.byType(TextField);
@@ -310,6 +309,32 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('ASSIST INTERIORS • VERIFIED SITE PHOTO'), findsNothing);
+    });
+
+    testWidgets('UploadRenderSheet displays multi-file and multi-photo selection buttons', (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(_buildTestApp(role: UserRole.proprietor));
+      await tester.pumpAndSettle();
+
+      final context = tester.element(find.byType(Scaffold).first);
+      UploadRenderSheet.show(
+        context,
+        preselectedProject: 'The Camellias Penthouse',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Upload Drawing or Render'), findsOneWidget);
+      expect(find.text('Browse Device Storage'), findsOneWidget);
+      expect(find.text('Select Photos'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.close_rounded));
+      await tester.pumpAndSettle();
     });
   });
 }

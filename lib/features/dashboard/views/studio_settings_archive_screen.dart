@@ -25,24 +25,17 @@ class StudioSettingsArchiveScreen extends StatefulWidget {
   static Future<void> open(BuildContext context) {
     return Navigator.of(context).push(
       PageRouteBuilder<void>(
-        transitionDuration: const Duration(milliseconds: 200),
-        reverseTransitionDuration: const Duration(milliseconds: 170),
+        transitionDuration: const Duration(milliseconds: 170),
+        reverseTransitionDuration: const Duration(milliseconds: 140),
         pageBuilder: (_, _, _) => const StudioSettingsArchiveScreen(),
         transitionsBuilder: (_, animation, _, child) {
-          final curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
-          );
           return FadeTransition(
-            opacity: curved,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.025),
-                end: Offset.zero,
-              ).animate(curved),
-              child: child,
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
             ),
+            child: child,
           );
         },
       ),

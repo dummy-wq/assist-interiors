@@ -89,44 +89,51 @@ class ProjectFilterSheet {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            color: AppColors.brandPeach.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(
-                              AppSizes.radiusSm,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.filter_list_rounded,
-                            color: AppColors.brandPeach,
-                            size: 18,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Filter Projects',
-                              style: AppTypography.titleMedium(isDark),
-                            ),
-                            Text(
-                              'Select status to refine project portfolio',
-                              style: AppTypography.bodySmall(isDark).copyWith(
-                                color: isDark
-                                    ? AppColors.textLightMuted
-                                    : AppColors.textDarkMuted,
-                                fontSize: 11,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: AppColors.brandPeach.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(
+                                AppSizes.radiusSm,
                               ),
                             ),
-                          ],
-                        ),
-                      ],
+                            child: const Icon(
+                              Icons.filter_list_rounded,
+                              color: AppColors.brandPeach,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Filter Projects',
+                                  style: AppTypography.titleMedium(isDark),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  'Select status to refine project portfolio',
+                                  style: AppTypography.bodySmall(isDark).copyWith(
+                                    color: isDark
+                                        ? AppColors.textLightMuted
+                                        : AppColors.textDarkMuted,
+                                    fontSize: 11,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     IconButton(
                       icon: Icon(

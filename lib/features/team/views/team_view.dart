@@ -48,8 +48,12 @@ class _TeamViewState extends State<TeamView> {
               )
               .toList();
 
-    final supervisorsCount =
-        allMembers.where((m) => m.role == UserRole.supervisor).length;
+    final supervisorsCount = allMembers
+        .where(
+          (m) =>
+              m.role == UserRole.supervisor || m.role == UserRole.siteEngineer,
+        )
+        .length;
     final designersCount =
         allMembers.where((m) => m.role == UserRole.designer).length;
     final salesCount =
