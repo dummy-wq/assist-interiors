@@ -186,7 +186,8 @@ class _ProjectStatusDistributionChartState
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Header with Direct Navigation
           Row(

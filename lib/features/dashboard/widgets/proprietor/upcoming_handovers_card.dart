@@ -43,7 +43,7 @@ class UpcomingHandoversCard extends StatelessWidget {
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -329,12 +329,14 @@ class UpcomingHandoversCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: [
+                      SizedBox(
+                        width: double.infinity,
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
                           InkWell(
                             onTap: () {
                               if (p['status'] == 'Delayed' ||
@@ -375,6 +377,7 @@ class UpcomingHandoversCard extends StatelessWidget {
                                 .copyWith(fontSize: 10.5),
                           ),
                         ],
+                      ),
                       ),
                     ],
                   ),

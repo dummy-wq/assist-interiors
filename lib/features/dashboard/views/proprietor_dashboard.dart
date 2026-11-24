@@ -246,63 +246,93 @@ class _ProprietorDashboardState extends State<ProprietorDashboard> {
             const SizedBox(height: 14),
           ],
 
-          // Upper Area: Project Status Distribution Chart (Projects - Tab 2) + Compact Stat Tiles sitting to the side
+          // Upper Area: Project Status Distribution Chart (50%) + 2x2 Compact Stat Tiles Grid (50%)
           if (isWide) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 7,
-                  child: ProjectStatusDistributionChart(
-                    projects: _projects,
-                    onTap: () => MainDashboardScreen.navigateToTab(2),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 6,
+                    child: ProjectStatusDistributionChart(
+                      projects: _projects,
+                      onTap: () => MainDashboardScreen.navigateToTab(2),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    children: [
-                      CompactStatTile(
-                        title: 'Ongoing Projects',
-                        value: '${_projects.length} Active Sites',
-                        icon: Icons.apartment_rounded,
-                        accentColor: AppColors.brandPeach,
-                        onTap: () => MainDashboardScreen.navigateToTab(2),
-                      ),
-                      const SizedBox(height: 8),
-                      CompactStatTile(
-                        title: 'Upcoming Handovers',
-                        value: '${_projects.length} Scheduled',
-                        icon: Icons.key_rounded,
-                        accentColor: AppColors.brandPeach,
-                        onTap: () => MainDashboardScreen.navigateToTab(2),
-                      ),
-                      if (!isFieldStaff) ...[
-                        const SizedBox(height: 8),
-                        CompactStatTile(
-                          title: 'Pending Receivables',
-                          value: receivablesStr,
-                          icon: Icons.account_balance_wallet_rounded,
-                          accentColor: AppColors.brandPeach,
-                          onTap: () => MainDashboardScreen.navigateToTab(6),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    flex: 6,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: CompactStatTile(
+                                  title: 'Ongoing Projects',
+                                  value: '${_projects.length} Active Sites',
+                                  icon: Icons.apartment_rounded,
+                                  accentColor: AppColors.brandPeach,
+                                  onTap: () =>
+                                      MainDashboardScreen.navigateToTab(2),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: CompactStatTile(
+                                  title: 'Upcoming Handovers',
+                                  value: '${_projects.length} Scheduled',
+                                  icon: Icons.key_rounded,
+                                  accentColor: AppColors.brandPeach,
+                                  onTap: () =>
+                                      MainDashboardScreen.navigateToTab(2),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        CompactStatTile(
-                          title: 'Net Cash Flow',
-                          value: netCashStr,
-                          trend: netCash >= 0 ? '+Surplus' : '-Deficit',
-                          icon: Icons.swap_vert_rounded,
-                          accentColor: netCash >= 0
-                              ? AppColors.success
-                              : AppColors.error,
-                          onTap: () => MainDashboardScreen.navigateToTab(6),
-                        ),
+                        if (!isFieldStaff) ...[
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  child: CompactStatTile(
+                                    title: 'Pending Receivables',
+                                    value: receivablesStr,
+                                    icon: Icons.account_balance_wallet_rounded,
+                                    accentColor: AppColors.brandPeach,
+                                    onTap: () =>
+                                        MainDashboardScreen.navigateToTab(6),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: CompactStatTile(
+                                    title: 'Net Cash Flow',
+                                    value: netCashStr,
+                                    trend:
+                                        netCash >= 0 ? '+Surplus' : '-Deficit',
+                                    icon: Icons.swap_vert_rounded,
+                                    accentColor: netCash >= 0
+                                        ? AppColors.success
+                                        : AppColors.error,
+                                    onTap: () =>
+                                        MainDashboardScreen.navigateToTab(6),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 14),
 
