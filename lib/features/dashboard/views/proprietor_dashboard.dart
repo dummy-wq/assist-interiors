@@ -10,7 +10,6 @@ import '../../../core/utils/currency_utils.dart';
 import '../../../core/widgets/project_status_chart.dart';
 import '../../../core/widgets/screen_layout.dart';
 import '../../../core/services/storage_service.dart';
-import '../../../core/permissions/app_permissions.dart';
 import '../../auth/state/auth_provider.dart';
 import '../../projects/sheets/take_site_photo_sheet.dart';
 import '../widgets/mobile_action_sheets.dart';
@@ -206,36 +205,8 @@ class _ProprietorDashboardState extends State<ProprietorDashboard> {
 
     return ScreenScrollView(
       children: [
-        // Header Banner
-        Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                AppStrings.tr('Executive Studio Hub'),
-                style: AppTypography.displayMedium(isDark),
-              ),
-              if (isWide &&
-                  AppPermissions.canCreateProject(
-                    auth.currentRole,
-                    user: auth.currentUser,
-                  ))
-                ElevatedButton.icon(
-                  onPressed: () =>
-                      MobileActionSheets.showInitiateProjectSheet(context),
-                  icon: const Icon(Icons.apartment_rounded, size: 18),
-                  label: const Text('Initiate Project'),
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4.0),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
+        const ScreenHeader('Executive Studio Hub'),
+        const SizedBox(height: ScreenLayout.headerGap),
 
           if (_buildPrimaryRoleHeroButton(context, auth, isDark) case final heroBtn?) ...[
             heroBtn,

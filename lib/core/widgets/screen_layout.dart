@@ -57,24 +57,18 @@ class ScreenScrollView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = ScreenLayout.isWide(context);
-    final hPad = isWide ? 24.0 : ScreenLayout.gutter;
     return SingleChildScrollView(
       padding: EdgeInsets.only(
-        left: hPad,
-        right: hPad,
+        left: ScreenLayout.gutter,
+        right: ScreenLayout.gutter,
         top: ScreenLayout.topPadding,
         bottom: isWide
             ? ScreenLayout.bottomPaddingWide
             : ScreenLayout.bottomPaddingNarrow,
       ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1280),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: children,
-          ),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
       ),
     );
   }
