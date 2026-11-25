@@ -109,7 +109,11 @@ class _TasksViewState extends State<TasksView> {
 
     return ScreenScrollView(
       children: [
-        ScreenHeader(AppStrings.tasksAndMilestones),
+        const ScreenHeader(
+          AppStrings.tasksAndMilestones,
+          subtitle:
+              'Track site tasks, urgent snags, assignees & delivery deadlines',
+        ),
         const SizedBox(height: ScreenLayout.headerGap),
 
         // Stats Strip (Compact StatStrip)
@@ -211,29 +215,27 @@ class _TasksViewState extends State<TasksView> {
                         )
                       : null,
                 )
-              : ListView.separated(
+              : ResponsiveCardGrid(
                   key: ValueKey(_selectedFilter),
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredTasks.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: ScreenLayout.itemGap),
-                  itemBuilder: (context, index) {
-                    final t = filteredTasks[index];
-                    final bool completed = t['completed'] as bool? ?? false;
-                    final Color color =
-                        t['color'] as Color? ?? AppColors.brandPeach;
-                    final String priority =
-                        t['priority'] as String? ?? 'Normal';
-                    final bool isUrgent = priority == 'Urgent';
-                    final String department =
-                        (t['department'] as String?)?.isNotEmpty == true
-                        ? t['department'] as String
-                        : 'Site & Execution';
-                    final String description =
-                        (t['description'] as String?) ?? '';
+                  children: [
+                    for (final t in filteredTasks)
+                      Builder(
+                        builder: (context) {
+                          final bool completed =
+                              t['completed'] as bool? ?? false;
+                          final Color color =
+                              t['color'] as Color? ?? AppColors.brandPeach;
+                          final String priority =
+                              t['priority'] as String? ?? 'Normal';
+                          final bool isUrgent = priority == 'Urgent';
+                          final String department =
+                              (t['department'] as String?)?.isNotEmpty == true
+                              ? t['department'] as String
+                              : 'Site & Execution';
+                          final String description =
+                              (t['description'] as String?) ?? '';
 
-                    return Material(
+                          return Material(
                       color: Colors.transparent,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(6.0),
@@ -632,7 +634,9 @@ class _TasksViewState extends State<TasksView> {
                     ),
                     ),
                     );
-                  },
+                        },
+                      ),
+                  ],
                 ),
         ),
       ],

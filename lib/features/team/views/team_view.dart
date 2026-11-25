@@ -470,46 +470,21 @@ class _TeamViewState extends State<TeamView> {
                         )
                       : null,
                 )
-              : ListView.separated(
+              : ResponsiveCardGrid(
                   key: ValueKey(_selectedRoleFilter),
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredMembers.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: ScreenLayout.itemGap),
-                  itemBuilder: (context, index) {
-                    final m = filteredMembers[index];
-
-                    return Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(6.0),
-                        onTap: () =>
-                            _showMemberExpandedBox(context, m, auth, isDark),
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.darkCard
-                                : AppColors.lightCard,
-                            borderRadius: BorderRadius.circular(6.0),
-                            border: Border.all(
-                              color: isDark
-                                  ? AppColors.darkBorder.withValues(alpha: 0.7)
-                                  : AppColors.lightBorder.withValues(alpha: 0.8),
-                              width: 0.8,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: isDark ? 0.2 : 0.03,
-                                ),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Row(
+                  equalRowHeight: true,
+                  children: [
+                    for (final m in filteredMembers)
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: AppSizes.borderRadiusMd,
+                          onTap: () =>
+                              _showMemberExpandedBox(context, m, auth, isDark),
+                          child: Container(
+                            padding: AppSizes.cardPadding,
+                            decoration: AppSizes.cardDecoration(isDark),
+                            child: Row(
                             children: [
                               CircleAvatar(
                                 radius: 20,
@@ -616,8 +591,8 @@ class _TeamViewState extends State<TeamView> {
                           ),
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
         ),
       ],

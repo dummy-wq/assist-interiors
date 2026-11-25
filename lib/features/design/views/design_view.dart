@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/localization/app_strings.dart';
 import '../../../core/permissions/app_permissions.dart';
+import '../../../core/services/cloud_storage_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_sizes.dart';
@@ -434,24 +435,19 @@ class _DesignViewState extends State<DesignView> {
                               )
                             : null),
                 )
-              : ListView.separated(
+              : ResponsiveCardGrid(
                   key: ValueKey(
                     'design_${_selectedCategory}_${_selectedProject}_${filteredItems.length}',
                   ),
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredItems.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final item = filteredItems[index];
-                    return _buildDesignCard(
-                      context,
-                      item,
-                      isDark,
-                      canManageDesign,
-                    );
-                  },
+                  children: [
+                    for (final item in filteredItems)
+                      _buildDesignCard(
+                        context,
+                        item,
+                        isDark,
+                        canManageDesign,
+                      ),
+                  ],
                 ),
         ),
       ],
@@ -483,16 +479,8 @@ class _DesignViewState extends State<DesignView> {
         borderRadius: BorderRadius.circular(6.0),
         onTap: () => _viewDesignDetails(context, item, isDark),
         child: Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCard : AppColors.lightCard,
-            borderRadius: BorderRadius.circular(6.0),
-            border: Border.all(
-              color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-                  .withValues(alpha: 0.7),
-              width: 0.8,
-            ),
-          ),
-          padding: const EdgeInsets.all(14),
+          decoration: AppSizes.cardDecoration(isDark),
+          padding: AppSizes.cardPadding,
           child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -689,6 +677,14 @@ class _DesignViewState extends State<DesignView> {
                     final cloudUrl =
                         (item['fileUrl'] ?? item['downloadUrl'])?.toString();
                     if (cloudUrl != null && cloudUrl.startsWith('http')) {
+                      await CloudStorageService.prepareCloudDownload(
+                        downloadUrl: cloudUrl,
+                        storagePath: item['storagePath']?.toString(),
+                        fileName: item['fileName']?.toString(),
+                        format: format,
+                        title: title,
+                        asAttachment: true,
+                      );
                       await launchUrl(
                         Uri.parse(cloudUrl),
                         mode: LaunchMode.externalApplication,

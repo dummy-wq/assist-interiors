@@ -2,16 +2,20 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// Centralized design tokens for sizes, radii, and spacing.
-/// Standardizes geometry across all cards, dialogs, buttons, and pillboxes.
+import 'app_colors.dart';
+
+/// Centralized design tokens for sizes, radii, borders, and spacing.
+/// Standardizes geometry across all cards, dialogs, buttons, sheets, and grids.
 class AppSizes {
   AppSizes._();
 
   // Corner Radii Tokens
-  // sm = 4.0 (micro indicators / small internal tags)
-  // md = 6.0 (standardized buttons, chips, cards, dialogs, bottom sheets)
+  // sm = 4.0 (micro indicators / inline tags / badges)
+  // md = 6.0 (standardized buttons, chips, cards, inputs, dialogs)
+  // lg = 12.0 (standardized modal bottom sheets)
   static const double radiusSm = 4.0;
   static const double radiusMd = 6.0;
+  static const double radiusLg = 12.0;
 
   static const BorderRadius borderRadiusSm = BorderRadius.all(
     Radius.circular(radiusSm),
@@ -19,6 +23,42 @@ class AppSizes {
   static const BorderRadius borderRadiusMd = BorderRadius.all(
     Radius.circular(radiusMd),
   );
+  static const BorderRadius borderRadiusLg = BorderRadius.all(
+    Radius.circular(radiusLg),
+  );
+  static const BorderRadius sheetBorderRadius = BorderRadius.vertical(
+    top: Radius.circular(radiusLg),
+  );
+  static const RoundedRectangleBorder sheetShape = RoundedRectangleBorder(
+    borderRadius: sheetBorderRadius,
+  );
+
+  // Standardized Border & Surface Tokens
+  static const double borderWidth = 0.8;
+  static const EdgeInsets cardPadding = EdgeInsets.all(16.0);
+  static const EdgeInsets cardHeaderPadding = EdgeInsets.symmetric(
+    horizontal: 16.0,
+    vertical: 14.0,
+  );
+
+  /// Canonical card surface decoration shared across all cards and panels.
+  static BoxDecoration cardDecoration(
+    bool isDark, {
+    Color? color,
+    Color? borderColor,
+    BorderRadius? borderRadius,
+  }) {
+    return BoxDecoration(
+      color: color ?? (isDark ? AppColors.darkCard : AppColors.lightCard),
+      borderRadius: borderRadius ?? borderRadiusMd,
+      border: Border.all(
+        color: borderColor ??
+            (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+                .withValues(alpha: 0.75),
+        width: borderWidth,
+      ),
+    );
+  }
 
   // Spacing Scale
   static const double spaceXs = 4.0;
@@ -28,14 +68,14 @@ class AppSizes {
   static const double spaceXl = 24.0;
   static const double spaceXxl = 32.0;
 
-  // Typography Size Tokens
+  // Typography Size Tokens (aligned 1:1 with AppTypography)
   static const double fontXs = 11.0;
   static const double fontSm = 12.0;
   static const double fontBase = 13.0;
   static const double fontMd = 14.0;
   static const double fontLg = 16.0;
-  static const double fontXl = 20.0;
-  static const double fontDisplay = 24.0;
+  static const double fontXl = 18.0;
+  static const double fontDisplay = 22.0;
 
   // Standardized Chiplet / PillBox Tokens
   static const double chipHeight = 35.0;

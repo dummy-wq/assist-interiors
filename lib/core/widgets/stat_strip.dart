@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_sizes.dart';
+import 'screen_layout.dart';
 import 'stat_card.dart';
 
 /// Reusable metric strip that renders KPIs compactly across all viewports.
-/// - Desktop (width > 900): Single row of cards with fixed 50dp height.
-/// - Mobile / Narrow (width <= 900): 2x2 grid with fixed 48dp card height (~104dp total).
+/// - Desktop (width > 900): Single row of cards with standardized desktop height & gridGap.
+/// - Mobile / Narrow (width <= 900): 2x2 grid with standardized mobile card height.
 class StatStrip extends StatelessWidget {
   final List<StatCard> cards;
 
@@ -13,7 +14,7 @@ class StatStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 900;
+    final isWide = ScreenLayout.isWide(context);
 
     if (isWide) {
       return SizedBox(
@@ -21,7 +22,7 @@ class StatStrip extends StatelessWidget {
         child: Row(
           children: [
             for (int i = 0; i < cards.length; i++) ...[
-              if (i > 0) const SizedBox(width: 8),
+              if (i > 0) const SizedBox(width: ScreenLayout.gridGap),
               Expanded(child: cards[i]),
             ],
           ],

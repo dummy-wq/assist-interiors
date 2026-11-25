@@ -205,7 +205,11 @@ class _ProprietorDashboardState extends State<ProprietorDashboard> {
 
     return ScreenScrollView(
       children: [
-        const ScreenHeader('Executive Studio Hub'),
+        const ScreenHeader(
+          'Executive Studio Hub',
+          subtitle:
+              'Live portfolio health, upcoming handovers, cash flow & studio operations',
+        ),
         const SizedBox(height: ScreenLayout.headerGap),
 
           if (_buildPrimaryRoleHeroButton(context, auth, isDark) case final heroBtn?) ...[
@@ -309,95 +313,103 @@ class _ProprietorDashboardState extends State<ProprietorDashboard> {
 
             // Row 2: Upcoming Handovers (Projects) & Cash Flow Snapshot (Accounts)
             if (isFieldStaff) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 6,
-                    child: UpcomingHandoversCard(
-                      projects: _projects,
-                      onTap: () => MainDashboardScreen.navigateToTab(2),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: UpcomingHandoversCard(
+                        projects: _projects,
+                        onTap: () => MainDashboardScreen.navigateToTab(2),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    flex: 6,
-                    child: TasksSnapshotCard(
-                      tasks: _tasks,
-                      onTap: () => MainDashboardScreen.navigateToTab(5),
+                    const SizedBox(width: ScreenLayout.gridGap),
+                    Expanded(
+                      flex: 6,
+                      child: TasksSnapshotCard(
+                        tasks: _tasks,
+                        onTap: () => MainDashboardScreen.navigateToTab(5),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ] else ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 6,
-                    child: UpcomingHandoversCard(
-                      projects: _projects,
-                      onTap: () => MainDashboardScreen.navigateToTab(2),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: UpcomingHandoversCard(
+                        projects: _projects,
+                        onTap: () => MainDashboardScreen.navigateToTab(2),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    flex: 6,
-                    child: CashFlowSnapshotCard(
-                      projects: _projects,
-                      invoices: _invoices,
-                      expenses: _expenses,
-                      onTap: () => MainDashboardScreen.navigateToTab(6),
+                    const SizedBox(width: ScreenLayout.gridGap),
+                    Expanded(
+                      flex: 6,
+                      child: CashFlowSnapshotCard(
+                        projects: _projects,
+                        invoices: _invoices,
+                        expenses: _expenses,
+                        onTap: () => MainDashboardScreen.navigateToTab(6),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: ScreenLayout.gridGap),
 
               // Row 3: Sales Pipeline (Sales - Tab 1) & Site Variations (Amendments - Tab 5)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 6,
-                    child: SalesSnapshotCard(
-                      leads: _leads,
-                      onTap: () => MainDashboardScreen.navigateToTab(1),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: SalesSnapshotCard(
+                        leads: _leads,
+                        onTap: () => MainDashboardScreen.navigateToTab(1),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    flex: 6,
-                    child: TasksSnapshotCard(
-                      tasks: _tasks,
-                      onTap: () => MainDashboardScreen.navigateToTab(5),
+                    const SizedBox(width: ScreenLayout.gridGap),
+                    Expanded(
+                      flex: 6,
+                      child: TasksSnapshotCard(
+                        tasks: _tasks,
+                        onTap: () => MainDashboardScreen.navigateToTab(5),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: ScreenLayout.gridGap),
 
               // Row 4: Materials & Indents (Tab 4) & Staff Governance (Team - Tab 7)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 6,
-                    child: VendorsSnapshotCard(
-                      vendors: _vendors,
-                      onTap: () => MainDashboardScreen.navigateToTab(4),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: VendorsSnapshotCard(
+                        vendors: _vendors,
+                        onTap: () => MainDashboardScreen.navigateToTab(4),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    flex: 6,
-                    child: TeamSnapshotCard(
-                      approvedUsers: auth.approvedUsers,
-                      pendingUsers: auth.pendingUsers,
-                      onTap: () => MainDashboardScreen.navigateToTab(7),
+                    const SizedBox(width: ScreenLayout.gridGap),
+                    Expanded(
+                      flex: 6,
+                      child: TeamSnapshotCard(
+                        approvedUsers: auth.approvedUsers,
+                        pendingUsers: auth.pendingUsers,
+                        onTap: () => MainDashboardScreen.navigateToTab(7),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ] else ...[

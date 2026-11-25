@@ -151,6 +151,12 @@ class ProjectTimelineSheetDialog {
               try {
                 if (downloadUrl.startsWith('http://') ||
                     downloadUrl.startsWith('https://')) {
+                  await CloudStorageService.prepareCloudDownload(
+                    downloadUrl: downloadUrl,
+                    storagePath: storagePath,
+                    fileName: fileName,
+                    asAttachment: true,
+                  );
                   final uri = Uri.parse(downloadUrl);
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                   return;

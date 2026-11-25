@@ -32,9 +32,7 @@ class MoreModulesSheet extends StatelessWidget {
       isScrollControlled: true,
       showDragHandleBar: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
-      ),
+      shape: AppSizes.sheetShape,
       builder: (ctx) => MoreModulesSheet(
         currentScreenIndex: currentScreenIndex,
         pendingStaffCount: pendingStaffCount,

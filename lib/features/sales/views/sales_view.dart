@@ -252,6 +252,15 @@ class _SalesViewState extends State<SalesView> {
 
     return ScreenScrollView(
       children: [
+        ScreenHeader(
+          _selectedSalesViewTab == 'pipeline'
+              ? 'Sales & Client Acquisition'
+              : 'Executive Project Status Report',
+          subtitle: _selectedSalesViewTab == 'pipeline'
+              ? 'Track client inquiries, follow-ups, site visits & conversion pipeline'
+              : 'Track active, completed, and delayed turnkey sites with financial totals',
+        ),
+        const SizedBox(height: ScreenLayout.headerGap),
         // Top View Switcher: Sales Pipeline vs Detailed Project Status Report
         _buildViewSwitcher(isDark),
         const SizedBox(height: ScreenLayout.sectionGap),
@@ -757,19 +766,14 @@ class _SalesViewState extends State<SalesView> {
                           )
                         : null),
               )
-            : ListView.separated(
+            : ResponsiveCardGrid(
                 key: ValueKey(
                   'leads_${_selectedStageFilter}_$_selectedReferralFilter',
                 ),
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredLeads.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: ScreenLayout.itemGap),
-                itemBuilder: (context, index) {
-                  final lead = filteredLeads[index];
-                  return _buildLeadPipelineCard(context, lead, isDark);
-                },
+                children: [
+                  for (final lead in filteredLeads)
+                    _buildLeadPipelineCard(context, lead, isDark),
+                ],
               ),
       ),
     ];
@@ -1941,9 +1945,6 @@ class _SalesViewState extends State<SalesView> {
     }).toList();
 
     return [
-      const ScreenHeader('Executive Project Status Report'),
-      const SizedBox(height: ScreenLayout.headerGap),
-
       // Project Status StatStrip: Ongoing, Completed, Delayed, and Portfolio Value
       StatStrip(
         cards: [

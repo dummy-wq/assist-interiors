@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/services/cloud_storage_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/blueprint_grid_painter.dart';
 import '../../../core/widgets/expanded_detail_dialog.dart';
@@ -588,6 +589,15 @@ class DesignAssetViewerDialog {
                                   Navigator.pop(dialogCtx);
                                   if (cloudUrl != null &&
                                       cloudUrl.startsWith('http')) {
+                                    await CloudStorageService.prepareCloudDownload(
+                                      downloadUrl: cloudUrl,
+                                      storagePath:
+                                          asset['storagePath']?.toString(),
+                                      fileName: asset['fileName']?.toString(),
+                                      format: format,
+                                      title: title,
+                                      asAttachment: true,
+                                    );
                                     await launchUrl(
                                       Uri.parse(cloudUrl),
                                       mode: LaunchMode.externalApplication,

@@ -430,7 +430,11 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
 
     return ScreenScrollView(
       children: [
-        const ScreenHeader('Finance, Invoicing & Expense Control'),
+        const ScreenHeader(
+          'Finance, Invoicing & Expense Control',
+          subtitle:
+              'Manage incoming client invoices & receipts and outgoing vendor & site expenses',
+        ),
         const SizedBox(height: ScreenLayout.headerGap),
         // Financial KPIs (Compact StatStrip: Total Incoming & Total Outgoing)
         StatStrip(
@@ -467,13 +471,13 @@ class _AccountsDashboardState extends State<AccountsDashboard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: incomingPane),
-              const SizedBox(width: 16),
+              const SizedBox(width: ScreenLayout.gridGap),
               Expanded(child: outgoingPane),
             ],
           )
         else ...[
           incomingPane,
-          const SizedBox(height: 16),
+          const SizedBox(height: ScreenLayout.itemGap),
           outgoingPane,
         ],
       ],

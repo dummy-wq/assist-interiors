@@ -88,9 +88,7 @@ class CreateTaskSheet {
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(6.0)),
-      ),
+      shape: AppSizes.sheetShape,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -687,9 +685,7 @@ class CreateTaskSheet {
     showAppModalBottomSheet(
       context: context,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(6.0)),
-      ),
+      shape: AppSizes.sheetShape,
       builder: (context) {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

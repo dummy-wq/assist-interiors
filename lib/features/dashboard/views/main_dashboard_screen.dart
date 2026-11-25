@@ -10,6 +10,7 @@ import '../../../core/localization/app_strings.dart';
 import '../../../core/widgets/instant_press_feedback.dart';
 import '../../../core/widgets/app_modal_sheet.dart';
 import '../../../core/widgets/role_onboarding_guide.dart';
+import '../../../core/widgets/screen_layout.dart';
 import '../../../core/widgets/sync_status_badge.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/permissions/app_permissions.dart';
@@ -346,11 +347,13 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                       ),
                     ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
+                  child: ScreenContentFrame(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        child: Row(
                       children: [
                         _buildWideNavTab(
                           0,
@@ -407,12 +410,14 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
                     ),
                   ),
                 ),
+                  ),
+                ),
               )
             : null,
       ),
       body: Column(
         children: [
-          if (_selectedTabIndex != 0)
+          if (_selectedTabIndex != 0 || isWide)
             _buildScreenActionSection(context, auth, isDark, isWide),
           Expanded(
             child: _AnimatedIndexedStack(
@@ -625,76 +630,83 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
     bool isWide,
   ) {
     final buttons = _getScreenActionButtons(context, auth, isDark);
-    if (buttons.isEmpty) return const SizedBox.shrink();
+    if (buttons.isEmpty && !isWide) return const SizedBox.shrink();
 
     final screenTitle = _getScreenTitle(_selectedTabIndex);
 
     return Container(
       width: double.infinity,
+      constraints: isWide ? const BoxConstraints(minHeight: 55) : null,
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : AppColors.lightCard,
         border: Border(
           bottom: BorderSide(
             color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
                 .withValues(alpha: 0.7),
-            width: 0.8,
+            width: AppSizes.borderWidth,
           ),
         ),
       ),
-      padding: EdgeInsets.symmetric(
-        horizontal: isWide ? 14 : 10,
-        vertical: 8,
-      ),
-      child: isWide
-          ? Row(
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 3.5,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: AppColors.brandPeach,
-                        borderRadius: BorderRadius.circular(2.0),
+      child: ScreenContentFrame(
+        verticalPadding: 8,
+        child: isWide
+            ? Row(
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 3.5,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: AppColors.brandPeach,
+                          borderRadius: BorderRadius.circular(2.0),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      screenTitle.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.5,
-                        color: isDark
-                            ? AppColors.textLightSecondary
-                            : AppColors.textDarkSecondary,
+                      const SizedBox(width: 8),
+                      Text(
+                        screenTitle.toUpperCase(),
+                        style: AppTypography.labelSmall(isDark).copyWith(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
+                          color: isDark
+                              ? AppColors.textLightSecondary
+                              : AppColors.textDarkSecondary,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (int i = 0; i < buttons.length; i++) ...[
-                            if (i > 0) const SizedBox(width: 8),
-                            buttons[i],
-                          ],
-                        ],
-                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: buttons.isEmpty
+                          ? StatusTagPill(
+                              label:
+                                  auth.currentUser?.effectiveRoleTitle ??
+                                  auth.currentRole.title,
+                              accentColor: AppColors.brandPeach,
+                            )
+                          : SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  for (int i = 0; i < buttons.length; i++) ...[
+                                    if (i > 0) const SizedBox(width: 8),
+                                    buttons[i],
+                                  ],
+                                ],
+                              ),
+                            ),
                     ),
                   ),
-                ),
-              ],
-            )
-          : _buildMobileActionButtonsGrid(buttons),
+                ],
+              )
+            : _buildMobileActionButtonsGrid(buttons),
+      ),
     );
   }
 
@@ -1022,6 +1034,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
 
   String _getScreenTitle(int index) {
     switch (index) {
+      case 0:
+        return 'Executive Studio Hub';
       case 1:
         return 'Sales & Client Acquisition';
       case 2:

@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../theme/app_sizes.dart';
+
 /// Displays a modal bottom sheet that reliably supports swipe-down dismissal,
 /// both via direct vertical drag on non-scrollable areas (including the top
 /// drag handle and headers) AND when swiping downward inside scrollable
@@ -19,7 +21,7 @@ Future<T?> showAppModalBottomSheet<T>({
   bool useRootNavigator = false,
   bool isDismissible = true,
   bool enableDrag = true,
-  bool useSafeArea = false,
+  bool useSafeArea = true,
   bool showDragHandleBar = true,
 }) {
   final isTransparent = backgroundColor == Colors.transparent;
@@ -71,13 +73,7 @@ Future<T?> showAppModalBottomSheet<T>({
                   theme.bottomSheetTheme.backgroundColor ??
                   theme.colorScheme.surface,
               elevation: elevation ?? 0,
-              shape:
-                  shape ??
-                  const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(16.0),
-                    ),
-                  ),
+              shape: shape ?? AppSizes.sheetShape,
               clipBehavior: clipBehavior ?? Clip.antiAlias,
               child: sheetBody,
             );

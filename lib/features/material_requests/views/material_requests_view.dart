@@ -533,19 +533,14 @@ class _MaterialRequestsViewState extends State<MaterialRequestsView> {
                           ),
                         ),
                 )
-              : ListView.separated(
+              : ResponsiveCardGrid(
                   key: ValueKey(
                     'mat_${effectiveSelectedProject}_${_selectedPane}_${displayedRequests.length}',
                   ),
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: displayedRequests.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final req = displayedRequests[index];
-                    return _buildRequestCard(context, req, isDark);
-                  },
+                  children: [
+                    for (final req in displayedRequests)
+                      _buildRequestCard(context, req, isDark),
+                  ],
                 ),
         ),
       ],
@@ -1248,9 +1243,7 @@ class _MaterialRequestsViewState extends State<MaterialRequestsView> {
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-      ),
+      shape: AppSizes.sheetShape,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => AnimatedPadding(
           duration: const Duration(milliseconds: 180),

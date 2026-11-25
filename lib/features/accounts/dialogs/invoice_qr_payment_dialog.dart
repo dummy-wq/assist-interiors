@@ -34,9 +34,7 @@ class InvoiceQrPaymentDialog {
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(8.0)),
-      ),
+      shape: AppSizes.sheetShape,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (modalContext, setModalState) {
@@ -76,8 +74,7 @@ class InvoiceQrPaymentDialog {
                 left: 20,
                 right: 20,
                 top: 12,
-                bottom: MediaQuery.of(modalContext).viewInsets.bottom +
-                    AppSizes.sheetBottomPadding(modalContext),
+                bottom: AppSizes.sheetBottomPadding(modalContext),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

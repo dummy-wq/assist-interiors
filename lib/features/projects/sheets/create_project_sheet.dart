@@ -93,9 +93,7 @@ class CreateProjectSheet {
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(6.0)),
-      ),
+      shape: AppSizes.sheetShape,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {

@@ -61,9 +61,7 @@ class UploadRenderSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.darkCard : AppColors.lightCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(6.0)),
-      ),
+      shape: AppSizes.sheetShape,
       builder: (context) {
         return UploadRenderSheet(
           preselectedProject: preselectedProject,
@@ -329,6 +327,7 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
   }) {
     if (!CloudStorageService.isAvailable) return;
     final assetId = asset['id'];
+    final resolvedFormat = (asset['format'] ?? file.format).toString();
     CloudStorageService.uploadDesignAsset(
       projectId: projId,
       projectName: projName,
@@ -337,6 +336,11 @@ class _UploadRenderSheetState extends State<UploadRenderSheet> {
       originalFileName: file.name,
       title: (asset['title'] ?? file.name).toString(),
       assetType: (asset['type'] ?? _selectedType).toString(),
+      format: resolvedFormat,
+      contentType: CloudStorageService.inferContentType(
+        file.name,
+        format: resolvedFormat,
+      ),
       retentionMonths: StorageService.getCadRetentionMonths(),
     ).then((uploadRes) {
       if (uploadRes == null) return;

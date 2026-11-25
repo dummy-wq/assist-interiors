@@ -177,38 +177,40 @@ class UpcomingHandoversCard extends StatelessWidget {
               ),
             )
           else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: projects.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final p = projects[index];
-                final color = p['color'] as Color? ?? AppColors.brandPeach;
-                final handoverDate = p['handover'] as String? ?? 'TBD';
-                final stages = (p['stages'] as List?) ?? [];
-                final completedStages = stages
-                    .where((s) => s['isDone'] == true)
-                    .length;
-                final totalStages = stages.isEmpty ? 1 : stages.length;
-                final progressPercent = stages.isEmpty
-                    ? (p['status'] == 'Completed' ? 1.0 : 0.65)
-                    : (completedStages / totalStages);
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (int index = 0; index < projects.length; index++) ...[
+                  if (index > 0) const Divider(height: 1),
+                  Builder(
+                    builder: (context) {
+                      final p = projects[index];
+                      final color = p['color'] as Color? ?? AppColors.brandPeach;
+                      final handoverDate = p['handover'] as String? ?? 'TBD';
+                      final stages = (p['stages'] as List?) ?? [];
+                      final completedStages = stages
+                          .where((s) => s['isDone'] == true)
+                          .length;
+                      final totalStages = stages.isEmpty ? 1 : stages.length;
+                      final progressPercent = stages.isEmpty
+                          ? (p['status'] == 'Completed' ? 1.0 : 0.65)
+                          : (completedStages / totalStages);
 
-                String readinessTag = 'Site Execution • On Track';
-                Color readinessColor = AppColors.info;
-                if (p['status'] == 'Completed' || progressPercent >= 1.0) {
-                  readinessTag = 'Handed Over • Client Sign-off';
-                  readinessColor = AppColors.success;
-                } else if (progressPercent >= 0.75) {
-                  readinessTag = 'Finishing • Final Snagging';
-                  readinessColor = AppColors.brandPeach;
-                } else if (p['status'] == 'Delayed') {
-                  readinessTag = 'Attention • Snag Resolution';
-                  readinessColor = AppColors.error;
-                }
+                      String readinessTag = 'Site Execution • On Track';
+                      Color readinessColor = AppColors.info;
+                      if (p['status'] == 'Completed' ||
+                          progressPercent >= 1.0) {
+                        readinessTag = 'Handed Over • Client Sign-off';
+                        readinessColor = AppColors.success;
+                      } else if (progressPercent >= 0.75) {
+                        readinessTag = 'Finishing • Final Snagging';
+                        readinessColor = AppColors.brandPeach;
+                      } else if (p['status'] == 'Delayed') {
+                        readinessTag = 'Attention • Snag Resolution';
+                        readinessColor = AppColors.error;
+                      }
 
-                return Padding(
+                      return Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
                     vertical: 12,
@@ -382,7 +384,10 @@ class UpcomingHandoversCard extends StatelessWidget {
                     ],
                   ),
                 );
-              },
+                    },
+                  ),
+                ],
+              ],
             ),
         ],
       ),

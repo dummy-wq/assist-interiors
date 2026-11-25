@@ -1117,7 +1117,11 @@ class _ProjectsViewState extends State<ProjectsView> {
 
     return ScreenScrollView(
       children: [
-        ScreenHeader(AppStrings.projectsPortfolio),
+        const ScreenHeader(
+          AppStrings.projectsPortfolio,
+          subtitle:
+              'Track site progress, stage checklists, inspection photos, files & billing',
+        ),
         const SizedBox(height: ScreenLayout.headerGap),
 
         // High-level Metrics (Compact StatStrip)
@@ -1187,8 +1191,8 @@ class _ProjectsViewState extends State<ProjectsView> {
                           .withValues(alpha: 0.8),
                 width: 0.9,
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4.0),
+              shape: const RoundedRectangleBorder(
+                borderRadius: AppSizes.borderRadiusMd,
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14),
             ),
@@ -4346,33 +4350,29 @@ class _ProjectsViewState extends State<ProjectsView> {
 
                                     const SizedBox(height: 12),
                                     // Bottom info bar: Handover Target
-                                    Wrap(
-                                      alignment: WrapAlignment.spaceBetween,
-                                      crossAxisAlignment:
-                                          WrapCrossAlignment.center,
-                                      spacing: 8,
-                                      runSpacing: 4,
-                                      children: [
-                                        Text(
-                                          'Handover: ${p['handover']}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: isDark
-                                                ? AppColors.textLightMuted
-                                                : AppColors.textDarkMuted,
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: Wrap(
+                                        alignment: WrapAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        spacing: 8,
+                                        runSpacing: 4,
+                                        children: [
+                                          Text(
+                                            'Handover: ${p['handover']}',
+                                            style: AppTypography.bodySmall(isDark),
                                           ),
-                                        ),
-                                        Text(
-                                          totalCount == 0
+                                          Text(
+                                            totalCount == 0
                                               ? '0 execution stages'
                                               : '${totalCount - doneCount} stages remaining',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: projectAccent,
+                                            style: AppTypography.bodySmall(isDark).copyWith(
+                                              color: projectAccent,
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                     ],
                                         ],

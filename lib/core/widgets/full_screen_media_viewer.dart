@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../services/cloud_storage_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_notification.dart';
 import 'blueprint_grid_painter.dart';
@@ -263,6 +264,13 @@ class _FullScreenMediaViewerState extends State<FullScreenMediaViewer> {
         }
       }
       if (_hasRemoteUrl) {
+        await CloudStorageService.prepareCloudDownload(
+          downloadUrl: widget.fileUrl!,
+          fileName: widget.fileName,
+          format: widget.format,
+          title: widget.title,
+          asAttachment: !_isImage,
+        );
         final uri = Uri.parse(widget.fileUrl!);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);

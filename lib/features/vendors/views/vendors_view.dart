@@ -137,7 +137,11 @@ class _VendorsViewState extends State<VendorsView> {
 
     return ScreenScrollView(
       children: [
-        const ScreenHeader('Vendors & Suppliers'),
+        const ScreenHeader(
+          'Vendors & Suppliers',
+          subtitle:
+              'Manage trade partners, active POs, ratings & vendor payables',
+        ),
         const SizedBox(height: ScreenLayout.headerGap),
 
         // Stats Strip (Compact StatStrip)
@@ -229,16 +233,14 @@ class _VendorsViewState extends State<VendorsView> {
                         )
                       : null,
                 )
-              : ListView.separated(
+              : ResponsiveCardGrid(
                   key: ValueKey(_selectedCategory),
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredVendors.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: ScreenLayout.itemGap),
-                  itemBuilder: (context, index) {
-                    final v = filteredVendors[index];
-                    final name = (v['name'] as String?) ?? 'Trade Partner';
+                  children: [
+                    for (final v in filteredVendors)
+                      Builder(
+                        builder: (context) {
+                          final name =
+                              (v['name'] as String?) ?? 'Trade Partner';
                     final category =
                         (v['category'] as String?) ?? 'General Works';
                     final contactPerson =
@@ -697,7 +699,9 @@ class _VendorsViewState extends State<VendorsView> {
                     ),
                     ),
                     );
-                  },
+                        },
+                      ),
+                  ],
                 ),
         ),
       ],

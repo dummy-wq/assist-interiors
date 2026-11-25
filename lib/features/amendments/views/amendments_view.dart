@@ -431,19 +431,14 @@ class _AmendmentsViewState extends State<AmendmentsView> {
                           ),
                         ),
                 )
-              : ListView.separated(
+              : ResponsiveCardGrid(
                   key: ValueKey(
                     'amd_${_selectedFilter}_${_selectedProject}_${filteredAmendments.length}',
                   ),
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredAmendments.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final amd = filteredAmendments[index];
-                    return _buildAmendmentCard(context, amd, isDark);
-                  },
+                  children: [
+                    for (final amd in filteredAmendments)
+                      _buildAmendmentCard(context, amd, isDark),
+                  ],
                 ),
         ),
       ],
@@ -476,16 +471,8 @@ class _AmendmentsViewState extends State<AmendmentsView> {
         borderRadius: BorderRadius.circular(6.0),
         onTap: () => _showAmendmentExpandedBox(context, amd, isDark),
         child: Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCard : AppColors.lightCard,
-            borderRadius: BorderRadius.circular(6.0),
-            border: Border.all(
-              color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-                  .withValues(alpha: 0.7),
-              width: 0.8,
-            ),
-          ),
-          padding: const EdgeInsets.all(14),
+          decoration: AppSizes.cardDecoration(isDark),
+          padding: AppSizes.cardPadding,
           child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

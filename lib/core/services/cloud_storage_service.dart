@@ -109,6 +109,100 @@ class CloudStorageService {
     return cleaned.isEmpty ? 'general' : cleaned;
   }
 
+  /// Sanitizes a file name while preserving (or attaching from [format]) its
+  /// real file extension (e.g. `Floor Plan.pdf` -> `Floor_Plan.pdf`), preventing
+  /// browsers and OS download managers from falling back to `.bin`.
+  static String safeFileName(String? input, {String? format}) {
+    final raw = (input ?? '').trim();
+    String ext = '';
+    String base = raw;
+
+    final dotIdx = raw.lastIndexOf('.');
+    if (dotIdx > 0 && dotIdx < raw.length - 1) {
+      final candidate = raw.substring(dotIdx + 1).toLowerCase();
+      if (RegExp(r'^[a-z0-9]{1,8}$').hasMatch(candidate)) {
+        ext = candidate;
+        base = raw.substring(0, dotIdx);
+      }
+    }
+
+    if (ext.isEmpty && format != null && format.trim().isNotEmpty) {
+      final cleanFmt = format.trim().replaceFirst(RegExp(r'^\.+'), '').toLowerCase();
+      if (RegExp(r'^[a-z0-9]{1,8}$').hasMatch(cleanFmt)) {
+        ext = cleanFmt;
+      }
+    }
+
+    // Handle legacy sanitized filenames like `1732482910_Floor_Plan_pdf`
+    if (ext.isNotEmpty && base.toLowerCase().endsWith('_$ext')) {
+      base = base.substring(0, base.length - (ext.length + 1));
+    }
+
+    final cleanBase = base
+        .replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    final finalBase = cleanBase.isEmpty ? 'document' : cleanBase;
+    return ext.isEmpty ? finalBase : '$finalBase.$ext';
+  }
+
+  /// Infers a proper MIME content-type from [fileName] or [format] so Firebase
+  /// Storage serves PDFs, images, CAD, and Excel files with accurate headers
+  /// instead of `application/octet-stream`.
+  static String inferContentType(String? fileName, {String? format}) {
+    final resolved = safeFileName(fileName, format: format);
+    final dotIdx = resolved.lastIndexOf('.');
+    final ext = (dotIdx != -1 && dotIdx < resolved.length - 1)
+        ? resolved.substring(dotIdx + 1).toLowerCase()
+        : '';
+
+    switch (ext) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'webp':
+        return 'image/webp';
+      case 'gif':
+        return 'image/gif';
+      case 'bmp':
+        return 'image/bmp';
+      case 'heic':
+        return 'image/heic';
+      case 'svg':
+        return 'image/svg+xml';
+      case 'csv':
+        return 'text/csv';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'dwg':
+        return 'application/acad';
+      case 'dxf':
+        return 'application/dxf';
+      case 'skp':
+        return 'application/vnd.sketchup.skp';
+      case 'zip':
+        return 'application/zip';
+      case 'txt':
+        return 'text/plain';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
   /// Uploads a site photo to `projects/{projectId}/photos/{fileName}` in
   /// Firebase Storage and returns its [CloudUploadResult], or `null` if
   /// offline / unavailable.
@@ -361,6 +455,7 @@ class CloudStorageService {
     String? originalFileName,
     String? title,
     String? assetType,
+    String? format,
     int? retentionMonths,
     String contentType = 'application/octet-stream',
   }) async {
@@ -372,17 +467,24 @@ class CloudStorageService {
     try {
       final rawProject = projectId ?? projectName ?? 'general';
       final safeProject = _safeSegment(rawProject);
-      final rawFile = originalFileName ?? fileName ?? 'asset';
+      final rawFile = originalFileName ?? fileName ?? title ?? 'asset';
+      final preservedFileName = safeFileName(rawFile, format: format);
+      final resolvedContentType =
+          (contentType.trim().isEmpty ||
+              contentType == 'application/octet-stream')
+          ? inferContentType(preservedFileName, format: format)
+          : contentType;
       final safeName =
-          '${DateTime.now().millisecondsSinceEpoch}_${_safeSegment(rawFile)}';
+          '${DateTime.now().millisecondsSinceEpoch}_$preservedFileName';
       final storagePath = 'projects/$safeProject/design_assets/$safeName';
       final ref = FirebaseStorage.instance.ref().child(storagePath);
 
       final metadata = SettableMetadata(
-        contentType: contentType,
+        contentType: resolvedContentType,
+        contentDisposition: 'inline; filename="$preservedFileName"',
         customMetadata: {
           'projectId': rawProject,
-          'originalFileName': rawFile,
+          'originalFileName': preservedFileName,
           'title': ?title,
           'assetType': ?assetType,
           if (retentionMonths != null)
@@ -412,6 +514,50 @@ class CloudStorageService {
     } catch (e) {
       debugPrint('Firebase Storage uploadDesignAsset error: $e');
       return null;
+    }
+  }
+
+  /// Repairs `contentType` and `contentDisposition` metadata on an already-uploaded
+  /// Firebase Storage object right before downloading/opening it, so legacy files
+  /// previously saved as `application/octet-stream` without an extension download
+  /// with their real filename and extension (e.g. `.pdf`) instead of `.bin`.
+  static Future<void> prepareCloudDownload({
+    required String downloadUrl,
+    String? storagePath,
+    String? fileName,
+    String? format,
+    String? title,
+    bool asAttachment = true,
+  }) async {
+    if (!isAvailable) return;
+    final hasPath = storagePath != null && storagePath.trim().isNotEmpty;
+    final isFirebaseUrl =
+        downloadUrl.contains('firebasestorage.googleapis.com') ||
+        downloadUrl.startsWith('gs://');
+    if (!hasPath && !isFirebaseUrl) return;
+
+    try {
+      if (!await ensureAuthenticated()) return;
+      final resolvedName = safeFileName(
+        (fileName != null && fileName.trim().isNotEmpty) ? fileName : title,
+        format: format,
+      );
+      final resolvedMime = inferContentType(resolvedName, format: format);
+      final ref = hasPath
+          ? FirebaseStorage.instance.ref().child(storagePath.trim())
+          : FirebaseStorage.instance.refFromURL(downloadUrl.trim());
+      final disposition = asAttachment ? 'attachment' : 'inline';
+
+      await ref
+          .updateMetadata(
+            SettableMetadata(
+              contentType: resolvedMime,
+              contentDisposition: '$disposition; filename="$resolvedName"',
+            ),
+          )
+          .timeout(const Duration(seconds: 6));
+    } catch (e) {
+      debugPrint('Firebase Storage prepareCloudDownload note: $e');
     }
   }
 

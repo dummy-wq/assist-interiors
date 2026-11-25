@@ -178,12 +178,12 @@ class AppTheme {
         ),
         hintStyle: AppTypography.bodyMedium(true).copyWith(
           color: AppColors.textLightMuted,
-          fontSize: 12,
+          fontSize: AppSizes.fontBase,
           fontWeight: FontWeight.w600,
         ),
         labelStyle: AppTypography.bodyMedium(true).copyWith(
           color: AppColors.textLightSecondary,
-          fontSize: 12,
+          fontSize: AppSizes.fontBase,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -202,10 +202,10 @@ class AppTheme {
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
           color: const Color(0xFF1F2430),
-          borderRadius: BorderRadius.circular(5.0),
+          borderRadius: AppSizes.borderRadiusMd,
           border: Border.all(
             color: AppColors.darkBorder.withValues(alpha: 0.8),
-            width: 0.8,
+            width: AppSizes.borderWidth,
           ),
           boxShadow: [
             BoxShadow(
@@ -215,9 +215,9 @@ class AppTheme {
             ),
           ],
         ),
-        textStyle: const TextStyle(
+        textStyle: AppTypography.bodySmall(true).copyWith(
           color: AppColors.textLightPrimary,
-          fontSize: 12,
+          fontSize: AppSizes.fontSm,
           fontWeight: FontWeight.w600,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -375,12 +375,12 @@ class AppTheme {
         ),
         hintStyle: AppTypography.bodyMedium(false).copyWith(
           color: AppColors.textDarkMuted,
-          fontSize: 13,
+          fontSize: AppSizes.fontBase,
           fontWeight: FontWeight.w600,
         ),
         labelStyle: AppTypography.bodyMedium(false).copyWith(
           color: AppColors.textDarkSecondary,
-          fontSize: 13,
+          fontSize: AppSizes.fontBase,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -399,10 +399,10 @@ class AppTheme {
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(5.0),
+          borderRadius: AppSizes.borderRadiusMd,
           border: Border.all(
             color: AppColors.lightBorder.withValues(alpha: 0.8),
-            width: 0.8,
+            width: AppSizes.borderWidth,
           ),
           boxShadow: [
             BoxShadow(
@@ -412,9 +412,9 @@ class AppTheme {
             ),
           ],
         ),
-        textStyle: const TextStyle(
+        textStyle: AppTypography.bodySmall(false).copyWith(
           color: AppColors.textDarkPrimary,
-          fontSize: 12,
+          fontSize: AppSizes.fontSm,
           fontWeight: FontWeight.w600,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

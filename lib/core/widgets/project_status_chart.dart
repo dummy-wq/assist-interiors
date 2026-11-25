@@ -175,7 +175,7 @@ class _ProjectStatusDistributionChartState
     final delayedCount = counts['Delayed'] ?? 0;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      width: double.infinity,
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkCard : AppColors.lightCard,
         borderRadius: BorderRadius.circular(6.0),
@@ -187,98 +187,113 @@ class _ProjectStatusDistributionChartState
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Header with Direct Navigation
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
+          // Standardized Hub Card Header (matching UpcomingHandoversCard, CashFlowSnapshotCard, etc.)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(6),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppColors.brandPeach.withValues(
-                          alpha: isDark ? 0.22 : 0.14,
-                        ),
-                        borderRadius: BorderRadius.circular(4.0),
+                        color: AppColors.brandPeach.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6.0),
                       ),
                       child: const Icon(
                         Icons.bar_chart_rounded,
-                        size: 16,
+                        size: 18,
                         color: AppColors.brandPeach,
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Status Distribution',
-                            style: AppTypography.titleMedium(isDark),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            'Portfolio distribution across delivery stages',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark
-                                  ? AppColors.textLightMuted
-                                  : AppColors.textDarkMuted,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
+                    Text(
+                      'Status Distribution',
+                      style: AppTypography.titleMedium(isDark),
                     ),
                   ],
                 ),
-              ),
-              if (widget.onTap != null)
-                InstantPressFeedback(
-                  child: InkWell(
-                    onTap: widget.onTap,
-                    borderRadius: BorderRadius.circular(4.0),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
+                if (widget.onTap != null)
+                  InstantPressFeedback(
+                    child: InkWell(
+                      onTap: widget.onTap,
+                      borderRadius: BorderRadius.circular(6.0),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            'View Projects',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
+                          Container(
+                            constraints: const BoxConstraints(minHeight: 32.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
                               color: isDark
-                                  ? AppColors.textLightPrimary
-                                  : AppColors.textDarkPrimary,
+                                  ? AppColors.darkBackground
+                                  : AppColors.lightBackground,
+                              borderRadius: BorderRadius.circular(6.0),
+                              border: Border.all(
+                                color: isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.lightBorder,
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.brandPeach,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'View Projects',
+                                  style: AppTypography.labelSmall(isDark)
+                                      .copyWith(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark
+                                            ? AppColors.textLightPrimary
+                                            : AppColors.textDarkPrimary,
+                                        height: 1.2,
+                                      ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 8),
                           Icon(
-                            Icons.arrow_forward_rounded,
+                            Icons.arrow_forward_ios_rounded,
                             size: 13,
                             color: isDark
-                                ? AppColors.textLightPrimary
-                                : AppColors.textDarkPrimary,
+                                ? AppColors.textLightMuted
+                                : AppColors.textDarkMuted,
                           ),
                         ],
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-
-          // Option B: Segmented Proportional Progress Bar
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Option B: Segmented Proportional Progress Bar
           ClipRRect(
             borderRadius: BorderRadius.circular(4.0),
             child: Container(
@@ -422,6 +437,9 @@ class _ProjectStatusDistributionChartState
               ),
             ),
           ],
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -8,6 +8,7 @@ import '../../../core/services/permission_service.dart';
 import '../../../core/services/photo_archive_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/app_notification.dart';
 import '../../../core/widgets/pill_box.dart';
@@ -407,17 +408,9 @@ class _StudioSettingsArchiveScreenState
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
-        borderRadius: BorderRadius.circular(6.0),
-        border: Border.all(
-          color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-              .withValues(alpha: 0.7),
-          width: 0.8,
-        ),
-      ),
+      decoration: AppSizes.cardDecoration(isDark),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Wrap(
             alignment: WrapAlignment.spaceBetween,

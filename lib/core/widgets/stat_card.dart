@@ -31,16 +31,8 @@ class StatCard extends StatelessWidget {
     final color = accentColor ?? AppColors.brandPeach;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-        border: Border.all(
-          color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-              .withValues(alpha: 0.6),
-          width: 0.8,
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: AppSizes.cardDecoration(isDark),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,8 +120,9 @@ class StatCard extends StatelessWidget {
                             alignment: Alignment.centerLeft,
                             child: Text(
                               trend ?? subtitle!,
-                              style: TextStyle(
+                              style: AppTypography.labelSmall(isDark).copyWith(
                                 fontSize: 8.5,
+                                height: 1.15,
                                 fontWeight: FontWeight.w600,
                                 color: trend != null
                                     ? (isPositiveTrend

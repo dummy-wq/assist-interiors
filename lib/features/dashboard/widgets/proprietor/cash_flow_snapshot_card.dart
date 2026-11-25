@@ -147,12 +147,12 @@ class CashFlowSnapshotCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 3 Pillars: Inflow, Outflow, Net Position
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isCompact = constraints.maxWidth < 650;
-                    final cards = [
-                      _buildMetricTile(
+                // 3 Pillars: Inflow, Outflow, Net Position (IntrinsicHeight-safe stacked pillars)
+                Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _buildMetricTile(
                         isDark: isDark,
                         title: 'Total Inflow (Billings)',
                         amount: totalInvoiced > 0
@@ -163,7 +163,10 @@ class CashFlowSnapshotCard extends StatelessWidget {
                         icon: Icons.south_west_rounded,
                         color: AppColors.success,
                       ),
-                      _buildMetricTile(
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _buildMetricTile(
                         isDark: isDark,
                         title: 'Total Outflow (Disbursed)',
                         amount: totalDisbursed > 0
@@ -174,45 +177,20 @@ class CashFlowSnapshotCard extends StatelessWidget {
                         icon: Icons.north_east_rounded,
                         color: AppColors.brandPeach,
                       ),
-                      _buildMetricTile(
-                        isDark: isDark,
-                        title: 'Net Cash Position',
-                        amount: netCash != 0
-                            ? CurrencyUtils.formatInr(netCash)
-                            : '₹ 0',
-                        subtitle: netCash >= 0
-                            ? 'Surplus Operating Balance'
-                            : 'Negative Cash Deficit',
-                        icon: Icons.swap_vert_rounded,
-                        color: netCash >= 0
-                            ? AppColors.success
-                            : AppColors.error,
-                      ),
-                    ];
-
-                    if (isCompact) {
-                      return Column(
-                        children: cards
-                            .map(
-                              (c) => Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: c,
-                              ),
-                            )
-                            .toList(),
-                      );
-                    } else {
-                      return Row(
-                        children: [
-                          Expanded(child: cards[0]),
-                          const SizedBox(width: 10),
-                          Expanded(child: cards[1]),
-                          const SizedBox(width: 10),
-                          Expanded(child: cards[2]),
-                        ],
-                      );
-                    }
-                  },
+                    ),
+                    _buildMetricTile(
+                      isDark: isDark,
+                      title: 'Net Cash Position',
+                      amount: netCash != 0
+                          ? CurrencyUtils.formatInr(netCash)
+                          : '₹ 0',
+                      subtitle: netCash >= 0
+                          ? 'Surplus Operating Balance'
+                          : 'Negative Cash Deficit',
+                      icon: Icons.swap_vert_rounded,
+                      color: netCash >= 0 ? AppColors.success : AppColors.error,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 14),
 

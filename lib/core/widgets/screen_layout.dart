@@ -24,9 +24,19 @@ import '../theme/app_typography.dart';
 class ScreenLayout {
   ScreenLayout._();
 
-  /// Horizontal page gutter. Shared with the screen action bar so that the
-  /// action bar title and the page content line up on the same edge.
-  static const double gutter = 10.0;
+  /// Horizontal page gutter on mobile/narrow viewports.
+  static const double gutter = 12.0;
+
+  /// Horizontal page gutter on desktop/web viewports.
+  static const double gutterWide = 24.0;
+
+  /// Canonical max width shared by AppBar, Screen Action Bar, and ScreenScrollView
+  /// so every screen header, control bar, and grid aligns on identical left/right edges.
+  static const double maxContentWidth = 1320.0;
+
+  /// Standard gap between side-by-side grid cards on desktop/web.
+  static const double gridGap = 14.0;
+
   static const double topPadding = 16.0;
   static const double bottomPaddingWide = 44.0;
 
@@ -35,20 +45,55 @@ class ScreenLayout {
 
   static const double headerGap = 14.0;
   static const double noticeGap = 14.0;
-  static const double sectionGap = 22.0;
+  static const double sectionGap = 20.0;
   static const double controlGap = 14.0;
-  static const double listGap = 20.0;
+  static const double listGap = 16.0;
 
   /// Vertical spacing between cards in a list.
-  static const double itemGap = 16.0;
+  static const double itemGap = 14.0;
 
   static const Duration switchDuration = Duration(milliseconds: 160);
 
   static bool isWide(BuildContext context) =>
       MediaQuery.of(context).size.width > 900;
+
+  static double horizontalGutter(BuildContext context) =>
+      isWide(context) ? gutterWide : gutter;
 }
 
-/// Standard scrollable page body with consistent gutters.
+/// Centers and constrains horizontal width consistently across AppBar, Action Bar,
+/// and page bodies so all edges line up identically on desktop and mobile.
+class ScreenContentFrame extends StatelessWidget {
+  final Widget child;
+  final double? verticalPadding;
+
+  const ScreenContentFrame({
+    super.key,
+    required this.child,
+    this.verticalPadding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hPad = ScreenLayout.horizontalGutter(context);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: ScreenLayout.maxContentWidth,
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: hPad,
+            vertical: verticalPadding ?? 0.0,
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Standard scrollable page body with consistent gutters and max-width frame.
 class ScreenScrollView extends StatelessWidget {
   final List<Widget> children;
 
@@ -57,19 +102,98 @@ class ScreenScrollView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = ScreenLayout.isWide(context);
+    final hPad = ScreenLayout.horizontalGutter(context);
     return SingleChildScrollView(
       padding: EdgeInsets.only(
-        left: ScreenLayout.gutter,
-        right: ScreenLayout.gutter,
         top: ScreenLayout.topPadding,
         bottom: isWide
             ? ScreenLayout.bottomPaddingWide
             : ScreenLayout.bottomPaddingNarrow,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: ScreenLayout.maxContentWidth,
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
+          ),
+        ),
       ),
+    );
+  }
+}
+
+/// Standardized responsive card grid:
+/// - Narrow (<= 900px): 1-column vertical stack with [itemGap].
+/// - Wide (> 900px): balanced [wideColumns]-column grid (default 2) with
+///   [gridGap] gutters and clean trailing spacers so odd items stay half-width.
+class ResponsiveCardGrid extends StatelessWidget {
+  final List<Widget> children;
+  final int wideColumns;
+  final double? spacing;
+  final double? runSpacing;
+  final bool equalRowHeight;
+
+  const ResponsiveCardGrid({
+    super.key,
+    required this.children,
+    this.wideColumns = 2,
+    this.spacing,
+    this.runSpacing,
+    this.equalRowHeight = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (children.isEmpty) return const SizedBox.shrink();
+    final isWide = ScreenLayout.isWide(context);
+    final hGap = spacing ?? ScreenLayout.gridGap;
+    final vGap = runSpacing ?? ScreenLayout.itemGap;
+
+    if (!isWide || wideColumns <= 1) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int i = 0; i < children.length; i++) ...[
+            if (i > 0) SizedBox(height: vGap),
+            children[i],
+          ],
+        ],
+      );
+    }
+
+    final rows = <Widget>[];
+    for (int i = 0; i < children.length; i += wideColumns) {
+      if (i > 0) rows.add(SizedBox(height: vGap));
+      final rowChildren = <Widget>[];
+      for (int c = 0; c < wideColumns; c++) {
+        if (c > 0) rowChildren.add(SizedBox(width: hGap));
+        final idx = i + c;
+        rowChildren.add(
+          Expanded(
+            child: idx < children.length
+                ? children[idx]
+                : const SizedBox.shrink(),
+          ),
+        );
+      }
+      final row = Row(
+        crossAxisAlignment: equalRowHeight
+            ? CrossAxisAlignment.stretch
+            : CrossAxisAlignment.start,
+        children: rowChildren,
+      );
+      rows.add(equalRowHeight ? IntrinsicHeight(child: row) : row);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
     );
   }
 }
